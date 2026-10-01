@@ -1,4 +1,12 @@
 /* ===== PMS Design System — Windows 11 (Fluent) ===== */
+@font-face {
+  font-family: "Noto Kufi Arabic";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/noto-kufi-arabic/NotoKufiArabic-arabic.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
 :root {
   --pms-primary: #005fb8;
   --pms-primary-dark: #004c99;
@@ -21,7 +29,7 @@
   --pms-titlebar-h: 48px;
   --pms-pane-w: 264px;
   --pms-pane-compact-w: 56px;
-  --bs-body-font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Tahoma, Roboto, Arial, sans-serif;
+  --bs-body-font-family: "Noto Kufi Arabic", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Tahoma, Roboto, Arial, sans-serif;
   --bs-primary: #005fb8;
   --bs-primary-rgb: 0,95,184;
   --bs-link-color: #005fb8;
@@ -40,7 +48,7 @@ body {
 }
 [dir="rtl"] body { text-align: right; }
 
-h1, h2, h3, h4, h5 { font-family: "Segoe UI Variable Display", "Segoe UI", var(--bs-body-font-family); font-weight: 600; letter-spacing: 0; }
+h1, h2, h3, h4, h5 { font-family: "Noto Kufi Arabic", "Segoe UI Variable Display", "Segoe UI", var(--bs-body-font-family); font-weight: 600; letter-spacing: 0; }
 h2 { font-size: 1.75rem; }
 h3 { font-size: 1.4rem; }
 a { color: var(--pms-primary); text-decoration: none; }
