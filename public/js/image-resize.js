@@ -36,17 +36,48 @@
         return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() });
     }
 
+    const generations = new WeakMap();
+    const pendingForms = new Map();
+
+    function setBusy(form, busy) {
+        if (!form) {
+            return;
+        }
+        const state = pendingForms.get(form) || { count: 0, deferred: null };
+        state.count += busy ? 1 : -1;
+        form.querySelectorAll('button[type="submit"], button:not([type])').forEach(b => { b.disabled = state.count > 0; });
+        if (state.count > 0) {
+            pendingForms.set(form, state);
+            return;
+        }
+        pendingForms.delete(form);
+        if (state.deferred !== null) {
+            form.requestSubmit(state.deferred || undefined);
+        }
+    }
+
+    document.addEventListener('submit', (e) => {
+        const state = pendingForms.get(e.target);
+        if (state) {
+            e.preventDefault();
+            e.stopPropagation();
+            state.deferred = e.submitter || false;
+        }
+    }, true);
+
     document.addEventListener('change', async (e) => {
         const input = e.target;
         if (!(input instanceof HTMLInputElement) || input.type !== 'file' || input.dataset.resized === '1' || !input.files || !input.files.length) {
             return;
         }
+        const generation = (generations.get(input) || 0) + 1;
+        generations.set(input, generation);
+        const originals = Array.from(input.files);
         const form = input.form;
-        const buttons = form ? form.querySelectorAll('button[type="submit"], button:not([type])') : [];
-        buttons.forEach(b => { b.disabled = true; });
+        setBusy(form, true);
         try {
-            const files = await Promise.all(Array.from(input.files).map(f => shrink(f).catch(() => f)));
-            if (files.some((f, i) => f !== input.files[i])) {
+            const files = await Promise.all(originals.map(f => shrink(f).catch(() => f)));
+            if (generations.get(input) === generation && files.some((f, i) => f !== originals[i])) {
                 const dt = new DataTransfer();
                 files.forEach(f => dt.items.add(f));
                 input.files = dt.files;
@@ -55,7 +86,7 @@
                 delete input.dataset.resized;
             }
         } finally {
-            buttons.forEach(b => { b.disabled = false; });
+            setBusy(form, false);
         }
     }, true);
 })();
