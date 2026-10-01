@@ -24,6 +24,7 @@
         {{ $slot }}
     </main>
     <script src="{{ asset('lib/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('js/image-resize.js') }}?v={{ filemtime(public_path('js/image-resize.js')) }}"></script>
     {{ $scripts ?? '' }}
 </body>
 </html>

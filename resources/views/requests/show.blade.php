@@ -29,6 +29,7 @@
         <div class="col-lg-7">
             <div class="card mb-3">
                 <div class="card-header"><strong>{{ __('RequestDetails') }}</strong></div>
+                <div class="table-responsive">
                 <table class="table mb-0">
                     <tr><th style="width:35%">{{ __('Description') }}</th><td style="white-space:pre-line">{{ $mr->description }}</td></tr>
                     <tr><th>{{ __('Department') }}</th><td>{{ $mr->department?->localized_name }}</td></tr>
@@ -60,6 +61,7 @@
                         <tr><th>{{ __('DepartmentConfirmation') }}</th><td>{{ $mr->department_confirmation->label() }}</td></tr>
                     @endif
                 </table>
+                </div>
             </div>
 
             @if ($mr->attachments->isNotEmpty())
@@ -80,6 +82,7 @@
             @if ($mr->partsUsed->isNotEmpty())
                 <div class="card mb-3">
                     <div class="card-header"><strong>{{ __('SparePartsUsed') }}</strong></div>
+                    <div class="table-responsive">
                     <table class="table mb-0">
                         <thead><tr><th>{{ __('SparePart') }}</th><th>{{ __('Quantity') }}</th><th>{{ __('UnitCost') }}</th><th>{{ __('TotalCost') }}</th></tr></thead>
                         <tbody>
@@ -93,12 +96,14 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                 </div>
             @endif
 
             @if ($mr->checklistResults->isNotEmpty())
                 <div class="card mb-3">
                     <div class="card-header"><strong>{{ __('ChecklistResults') }}</strong></div>
+                    <div class="table-responsive">
                     <table class="table mb-0">
                         <tbody>
                             @foreach ($mr->checklistResults as $c)
@@ -110,6 +115,7 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                 </div>
             @endif
         </div>

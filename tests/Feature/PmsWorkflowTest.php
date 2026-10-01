@@ -17,6 +17,7 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class PmsWorkflowTest extends TestCase
@@ -73,6 +74,22 @@ class PmsWorkflowTest extends TestCase
         $this->assertSame($equipment->department_id, $mr->department_id);
         $this->assertSame(RequestPriority::Urgent, $mr->priority);
         $this->assertSame(RequestStatus::New, $mr->status);
+    }
+
+    public function test_quick_request_validation_errors_are_arabic(): void
+    {
+        $this->actingAs($this->user('employee'))
+            ->withUnencryptedCookie('pms_locale', 'ar')
+            ->from('/r/EQ-FRZ-001')
+            ->post('/r/EQ-FRZ-001', [
+                'priority' => 'Urgent',
+                'photo' => UploadedFile::fake()->create('notes.txt', 5, 'text/plain'),
+            ])
+            ->assertRedirect('/r/EQ-FRZ-001')
+            ->assertSessionHasErrors([
+                'description' => 'حقل الوصف مطلوب.',
+                'photo' => 'يجب أن يكون الصورة صورة.',
+            ]);
     }
 
     public function test_full_request_lifecycle_issues_parts_from_stock(): void

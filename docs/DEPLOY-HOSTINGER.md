@@ -133,4 +133,5 @@ php artisan view:cache
 | صفحة بيضاء أو خطأ 500 | تأكد من `.env` ومن صلاحيات الكتابة على `storage` و`bootstrap/cache` (755). شوف `storage/logs/laravel.log`. |
 | ملصقات QR بتفتح رابط غلط | عدّل `PMS_PUBLIC_URL` وشغّل `php artisan config:cache`، وبعدين اطبع الملصقات من جديد. |
 | الإشعارات ما بتوصل للآيفون | لازم الموقع يكون `https`، والتطبيق مضاف على الشاشة الرئيسية، و`VAPID_SUBJECT` إيميل حقيقي. |
+| صورة كبيرة بتنرفض ("فشل رفع الصورة") | الملف `public/.user.ini` بيرفع الحد لـ 12MB. إذا ما زبط، من **Advanced ← PHP Configuration ← PHP Options** خلّي `upload_max_filesize` = 12M و`post_max_size` = 64M. التلفون كمان بيصغّر الصور لحاله قبل ما يرفعها. |
 | الصور المرفوعة ما بتطلع | الصور بتنحفظ بـ `public/uploads`. تأكد إنه المجلد موجود وقابل للكتابة. |
