@@ -21,6 +21,8 @@ class DashboardController extends Controller
     public function index(Request $request): View|RedirectResponse
     {
         if ($request->user()->isTechnician()) {
+            $request->session()->reflash();
+
             return redirect()->route('requests.mine');
         }
 

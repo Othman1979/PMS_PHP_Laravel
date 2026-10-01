@@ -67,6 +67,33 @@ class FormDialogTest extends TestCase
         ])->assertRedirectContains('/edit?dialog=1');
     }
 
+    public function test_password_change_in_dialog_closes_to_home_with_message(): void
+    {
+        $this->actingAs($this->admin())->put('/password', [
+            '_dialog' => '1',
+            'current_password' => '1234',
+            'password' => '5678',
+            'password_confirmation' => '5678',
+        ])
+            ->assertOk()
+            ->assertViewIs('dialog.close')
+            ->assertViewHas('url', route('home'))
+            ->assertSessionHas('ok', 'PasswordChanged');
+    }
+
+    public function test_technician_sees_password_message_after_home_redirect(): void
+    {
+        $technician = User::where('username', 'tech1')->firstOrFail();
+
+        $this->actingAs($technician)->followingRedirects()->put('/password', [
+            'current_password' => '1234',
+            'password' => '5678',
+            'password_confirmation' => '5678',
+        ])
+            ->assertOk()
+            ->assertSee(__('PasswordChanged'));
+    }
+
     public function test_regular_submit_is_unchanged(): void
     {
         $this->actingAs($this->admin())->post('/departments', [

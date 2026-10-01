@@ -112,7 +112,7 @@ class MaintenanceRequestController extends Controller
             $request->file('files', []),
         );
 
-        return redirect()->route('requests.show', $maintenanceRequest);
+        return redirect()->route('requests.show', $maintenanceRequest)->with('ok', 'Saved');
     }
 
     public function show(Request $request, MaintenanceRequest $maintenanceRequest): View
