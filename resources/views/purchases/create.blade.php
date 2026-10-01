@@ -2,7 +2,7 @@
     $partsJson = $parts->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'partNumber' => $p->part_number, 'unit' => $p->unit, 'unitCost' => (float) $p->unit_cost, 'quantity' => $p->quantity])->values();
 @endphp
 @php $rows = old('items', [['quantity' => 1]]); @endphp
-<x-layouts.app :title="__('NewPurchaseRequest')">
+<x-layouts.app :title="__('NewPurchaseRequest')" dialog-size="lg">
     <h2>{{ __('NewPurchaseRequest') }}</h2>
 
     <form method="post" action="{{ route('purchases.store') }}">

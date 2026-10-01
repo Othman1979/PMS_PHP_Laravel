@@ -6,7 +6,7 @@
     $selCategory = old('category', $equipment->category?->value);
     $selStatus = old('status', $equipment->status?->value);
 @endphp
-<x-layouts.app :title="$isEdit ? __('EditEquipment') : __('AddEquipment')">
+<x-layouts.app :title="$isEdit ? __('EditEquipment') : __('AddEquipment')" dialog-size="lg">
     <h2>{{ $isEdit ? __('EditEquipment') : __('AddEquipment') }}</h2>
 
     <form method="post" enctype="multipart/form-data" action="{{ $isEdit ? route('equipment.update', $equipment) : route('equipment.store') }}">

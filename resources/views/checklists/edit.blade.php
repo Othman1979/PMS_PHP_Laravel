@@ -1,4 +1,4 @@
-<x-layouts.app :title="__('Edit').' — '.$checklist->localized_name">
+<x-layouts.app :title="__('Edit').' — '.$checklist->localized_name" dialog-size="lg">
     <h2>{{ $checklist->localized_name }}</h2>
     <div class="row g-4">
         <div class="col-lg-5">

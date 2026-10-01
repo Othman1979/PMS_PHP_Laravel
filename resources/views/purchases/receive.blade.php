@@ -10,7 +10,7 @@
         'notes' => null,
     ])->all());
 @endphp
-<x-layouts.app :title="__('GoodsReceipt')">
+<x-layouts.app :title="__('GoodsReceipt')" dialog-size="lg">
     <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
         <h2 class="h4 mb-0">{{ __('GoodsReceipt') }} — {{ $pr->number }}</h2>
         <a href="{{ route('purchases.show', $pr) }}" class="btn btn-outline-secondary">{{ __('Back') }}</a>

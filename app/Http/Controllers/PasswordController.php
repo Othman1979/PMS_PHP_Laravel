@@ -22,6 +22,6 @@ class PasswordController extends Controller
 
         $request->user()->update(['password' => $data['password']]);
 
-        return back()->with('ok', 'PasswordChanged');
+        return redirect()->route('home')->with('ok', 'PasswordChanged');
     }
 }
