@@ -2,13 +2,15 @@
     use App\Enums\Role;
     $user = auth()->user();
     $canManage = $user?->canManage() ?? false;
+    $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <x-head :title="$title ?? null" />
 </head>
-<body class="{{ $user ? 'has-pane' : '' }}">
+<body class="{{ $inDialog ? 'in-dialog' : ($user ? 'has-pane' : '') }}" data-dialog-size="{{ $dialogSize ?? 'md' }}">
+    @unless ($inDialog)
     <header class="titlebar">
         @if ($user)
             <button type="button" class="titlebar-btn" id="paneToggle" aria-label="{{ __('Menu') }}" title="{{ __('Menu') }}">
@@ -94,20 +96,31 @@
         </nav>
         <div class="navpane-backdrop" id="paneBackdrop"></div>
     @endif
+    @endunless
 
-    <div class="page">
-        <main role="main" class="page-main">
+    @if ($inDialog)
+        <main role="main" class="dialog-main">
             <x-flash />
             {{ $slot }}
         </main>
-    </div>
+    @else
+        <div class="page">
+            <main role="main" class="page-main">
+                <x-flash />
+                {{ $slot }}
+            </main>
+        </div>
 
-    <div id="toastZone" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+        <div id="toastZone" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+    @endif
 
     <script src="{{ asset('lib/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/image-resize.js') }}?v={{ filemtime(public_path('js/image-resize.js')) }}"></script>
-    <script src="{{ asset('js/push.js') }}?v={{ filemtime(public_path('js/push.js')) }}"></script>
-    <script src="{{ asset('js/navpane.js') }}"></script>
+    <script src="{{ asset('js/form-dialog.js') }}?v={{ filemtime(public_path('js/form-dialog.js')) }}" data-close-label="{{ __('Close') }}"></script>
+    @unless ($inDialog)
+        <script src="{{ asset('js/push.js') }}?v={{ filemtime(public_path('js/push.js')) }}"></script>
+        <script src="{{ asset('js/navpane.js') }}"></script>
+    @endunless
     {{ $scripts ?? '' }}
 </body>
 </html>

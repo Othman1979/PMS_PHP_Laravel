@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\HandleFormDialog;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [SetLocale::class, EnsureUserIsActive::class]);
+        $middleware->web(append: [SetLocale::class, EnsureUserIsActive::class, HandleFormDialog::class]);
         $middleware->encryptCookies(except: [SetLocale::COOKIE]);
         $middleware->alias(['role' => EnsureUserHasRole::class]);
         $middleware->trustProxies(at: '*');

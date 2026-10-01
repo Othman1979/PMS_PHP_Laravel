@@ -468,3 +468,54 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .quick-done-number { font-size: 1.8rem; font-weight: 800; font-family: monospace; color: var(--pms-primary-dark); margin: .3rem 0 .6rem; direction: ltr; }
 
 .table tbody td:first-child { white-space: nowrap; }
+
+/* ===== Form dialogs (centered windows over the page) ===== */
+.fdialog-open { overflow: hidden; }
+.fdialog-backdrop {
+  position: fixed; inset: 0; z-index: 1080;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  background: rgba(0,0,0,.32);
+  opacity: 0; transition: opacity .14s ease;
+}
+.fdialog-backdrop.show { opacity: 1; }
+.fdialog {
+  display: flex; flex-direction: column;
+  width: min(640px, 100%);
+  max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem);
+  background: var(--pms-surface);
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: var(--pms-radius);
+  box-shadow: 0 32px 64px rgba(0,0,0,.24), 0 2px 21px rgba(0,0,0,.18);
+  overflow: hidden;
+  transform: scale(.97); transition: transform .14s ease, width .14s ease;
+}
+.fdialog[data-size="lg"] { width: min(1040px, 100%); }
+.fdialog-backdrop.show .fdialog { transform: none; }
+.fdialog-titlebar {
+  display: flex; align-items: center; gap: .5rem;
+  min-height: 44px; padding-inline-start: 1.1rem;
+  background: var(--pms-bg);
+  border-bottom: 1px solid var(--pms-border);
+  user-select: none;
+}
+.fdialog-title { flex: 1; font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fdialog-close {
+  align-self: stretch; width: 46px; border: 0; background: transparent; color: var(--pms-text);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fdialog-close:hover { background: #c42b1c; color: #fff; }
+.fdialog-body { position: relative; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.fdialog-frame { display: block; width: 100%; height: 160px; border: 0; background: var(--pms-surface); }
+.fdialog-loading { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; color: var(--pms-primary); }
+.is-loading .fdialog-loading { display: flex; }
+.is-loading .fdialog-frame { visibility: hidden; }
+@media (max-width: 575.98px) {
+  .fdialog-backdrop { padding: 0; align-items: stretch; }
+  .fdialog, .fdialog[data-size="lg"] { width: 100%; max-height: none; height: 100%; border-radius: 0; border: 0; }
+}
+
+.in-dialog { background: var(--pms-surface); }
+.dialog-main { padding: 1.1rem 1.25rem 1.25rem; }
+[data-dialog-size="md"] .dialog-main > .row > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+.dialog-main .card.card-body:only-child { border: 0; padding: 0; box-shadow: none; }
