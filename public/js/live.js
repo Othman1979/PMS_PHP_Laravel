@@ -43,10 +43,11 @@
     }
 
     function connect() {
-        if (!cfg || !cfg.key || !window.Echo || !window.Pusher) return;
+        const EchoCtor = typeof window.Echo === 'function' ? window.Echo : window.Echo?.default;
+        if (!cfg || !cfg.key || typeof EchoCtor !== 'function' || !window.Pusher) return;
         try {
             window.Pusher.logToConsole = false;
-            echo = new window.Echo({
+            echo = new EchoCtor({
                 broadcaster: 'reverb',
                 key: cfg.key,
                 wsHost: cfg.host,
@@ -77,8 +78,9 @@
 
     /* ---- generic "reload this page when its request changes" ---- */
     function dirtyForm() {
-        return [...document.querySelectorAll('textarea, input[type=text], input[type=number], input[type=file]')]
-            .some(el => (el.type === 'file' ? el.files.length > 0 : el.value.trim() !== '') && el.form && !el.form.classList.contains('live-ignore'));
+        return [...document.querySelectorAll('textarea, input[type=text], input[type=search], input[type=number], input[type=file]')]
+            .some(el => (el.type === 'file' ? el.files.length > 0 : el.value.trim() !== (el.defaultValue ?? '').trim())
+                && el.form && !el.form.classList.contains('live-ignore'));
     }
     function wireReloads() {
         const els = document.querySelectorAll('[data-live-reload]');

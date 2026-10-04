@@ -25,6 +25,8 @@ class MaintenanceRequestController extends Controller
 {
     public function __construct(private RequestWorkflow $workflow) {}
 
+    private const FILTER_KEYS = ['status', 'department_id', 'user', 'overdue', 'q'];
+
     public function index(Request $request): View|RedirectResponse
     {
         if ($request->user()->isEmployee()) {
@@ -32,18 +34,35 @@ class MaintenanceRequestController extends Controller
         }
 
         $user = $request->user();
-        $status = RequestStatus::tryFrom((string) $request->query('status'));
-        $departmentId = $request->integer('department_id') ?: null;
-        $createdBy = trim((string) $request->query('user'));
+        $filters = $this->rememberFilters($request);
+        if ($filters instanceof RedirectResponse) {
+            return $filters;
+        }
 
-        $requests = MaintenanceRequest::with(['equipment', 'department', 'createdBy', 'assignedTechnician', 'priority'])
-            ->visibleTo($user)
-            ->when($status, fn ($q) => $q->where('status', $status))
+        $status = RequestStatus::tryFrom((string) ($filters['status'] ?? ''));
+        $departmentId = (int) ($filters['department_id'] ?? 0) ?: null;
+        $createdBy = trim((string) ($filters['user'] ?? ''));
+        $overdue = (bool) ($filters['overdue'] ?? false);
+        $search = trim((string) ($filters['q'] ?? ''));
+
+        $base = MaintenanceRequest::query()->visibleTo($user)
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
             ->when($createdBy !== '', fn ($q) => $q->whereHas('createdBy', fn ($u) => $u
                 ->where('full_name', 'like', "%{$createdBy}%")->orWhere('username', 'like', "%{$createdBy}%")))
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('request_number', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhereHas('equipment', fn ($e) => $e->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"))));
+
+        $counts = (clone $base)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status')
+            ->mapWithKeys(fn ($c, $status) => [$status instanceof RequestStatus ? $status->value : (string) $status => (int) $c]);
+        $overdueCount = (clone $base)->overdue()->count();
+
+        $requests = (clone $base)->with(['equipment', 'department', 'createdBy', 'assignedTechnician', 'priority'])
+            ->when($status, fn ($q) => $q->where('status', $status))
+            ->when($overdue, fn ($q) => $q->overdue())
             ->latest()->latest('id')
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->appends($filters);
 
         $title = match ($user->role) {
             Role::Employee => __('MyRequests'),
@@ -57,8 +76,41 @@ class MaintenanceRequestController extends Controller
             'status' => $status,
             'departmentId' => $departmentId,
             'createdBy' => $createdBy,
-            'departments' => Department::query()->orderBy('id')->get(),
+            'overdue' => $overdue,
+            'search' => $search,
+            'filters' => $filters,
+            'counts' => $counts,
+            'overdueCount' => $overdueCount,
+            'departments' => Department::query()->where('is_active', true)->orderBy('name_en')->get(),
         ]);
+    }
+
+    /**
+     * Keeps the last used filters in the session so coming back to the list restores them; an explicit
+     * `reset` query clears them. Returns a redirect when stored filters should be re-applied.
+     *
+     * @return array<string, string>|RedirectResponse
+     */
+    private function rememberFilters(Request $request): array|RedirectResponse
+    {
+        $key = 'requests.filters';
+        if ($request->has('reset')) {
+            $request->session()->forget($key);
+
+            return redirect()->route('requests.index');
+        }
+
+        $given = array_filter($request->only(self::FILTER_KEYS), fn ($v) => $v !== null && $v !== '');
+        if ($given === [] && ! $request->has('page') && ! $request->boolean('all')) {
+            $saved = $request->session()->get($key, []);
+            if ($saved !== []) {
+                return redirect()->route('requests.index', $saved);
+            }
+        }
+
+        $request->session()->put($key, $given);
+
+        return array_map(fn ($v) => (string) $v, $given);
     }
 
     public function mine(Request $request): View
@@ -70,7 +122,8 @@ class MaintenanceRequestController extends Controller
             'tasks' => MaintenanceRequest::with(['equipment', 'department', 'priority'])
                 ->where('assigned_technician_id', $user->id)
                 ->whereIn('status', $active)
-                ->orderByRaw(Priority::rankSql().' desc')->orderBy('assigned_at')
+                ->orderByRaw('case when due_at is not null and due_at < ? then 0 else 1 end', [now()])
+                ->orderByRaw(Priority::rankSql().' desc')->orderBy('due_at')->orderBy('assigned_at')
                 ->get(),
             'recentDone' => MaintenanceRequest::with(['equipment', 'department', 'priority'])
                 ->where('assigned_technician_id', $user->id)
@@ -186,6 +239,32 @@ class MaintenanceRequestController extends Controller
             $note = $this->note($request);
             $maintenanceRequest->accepted_at = now();
             $this->workflow->transition($maintenanceRequest, RequestStatus::Accepted, $request->user(), $note);
+        }
+
+        return $this->back($maintenanceRequest);
+    }
+
+    /** One tap for the technician: accept the assignment and start working on it right away. */
+    public function acceptStart(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        $this->authorizeTechnician($request, $maintenanceRequest);
+        if ($maintenanceRequest->status === RequestStatus::Assigned) {
+            $maintenanceRequest->accepted_at = now();
+            $this->workflow->transition($maintenanceRequest, RequestStatus::Accepted, $request->user());
+            $maintenanceRequest->started_at ??= now();
+            $this->workflow->transition($maintenanceRequest, RequestStatus::InProgress, $request->user(), $this->note($request));
+        }
+
+        return $this->back($maintenanceRequest);
+    }
+
+    /** Any party who can see the request may leave a comment; everyone else involved is notified. */
+    public function comment(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        abort_unless($maintenanceRequest->isVisibleTo($request->user()), 403);
+        $data = $request->validate(['note' => ['required', 'string', 'max:1000']]);
+        if (! in_array($maintenanceRequest->status, [RequestStatus::Cancelled], true)) {
+            $this->workflow->comment($maintenanceRequest, $request->user(), trim($data['note']));
         }
 
         return $this->back($maintenanceRequest);

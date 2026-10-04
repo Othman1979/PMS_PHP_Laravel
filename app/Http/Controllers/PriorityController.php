@@ -35,6 +35,7 @@ class PriorityController extends LookupController
             'hint_ar' => ['nullable', 'string', 'max:120'],
             'color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'rank' => ['required', 'integer', 'min:0', 'max:99'],
+            'sla_hours' => ['nullable', 'integer', 'min:1', 'max:8760'],
         ]);
         foreach (['is_default', 'is_critical', 'show_in_quick', 'is_active'] as $flag) {
             $data[$flag] = $request->boolean($flag);

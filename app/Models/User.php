@@ -40,6 +40,11 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->hasMany(PushSubscription::class);
     }
 
+    public function assignedRequests(): HasMany
+    {
+        return $this->hasMany(MaintenanceRequest::class, 'assigned_technician_id');
+    }
+
     public function hasRole(Role ...$roles): bool
     {
         return in_array($this->role, $roles, true);

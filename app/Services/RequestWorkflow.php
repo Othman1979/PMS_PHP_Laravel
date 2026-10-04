@@ -11,6 +11,7 @@ use App\Models\ChecklistResult;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
 use App\Models\Priority;
+use App\Models\Setting;
 use App\Models\SparePart;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -35,6 +36,7 @@ class RequestWorkflow
                 'created_by_id' => $user?->id ?? User::query()->where('role', Role::Admin)->value('id'),
                 'description' => $description,
                 'priority_id' => $priority->id,
+                'due_at' => $priority->sla_hours ? now()->addHours((int) $priority->sla_hours) : null,
                 'fault_type_id' => $faultTypeId,
                 'status' => RequestStatus::New,
                 'is_under_warranty' => $equipment?->isUnderWarranty() ?? false,
@@ -67,7 +69,62 @@ class RequestWorkflow
         RequestChanged::dispatch($request, true);
         $this->notifyNewRequest($request);
 
+        if (Setting::bool(Setting::AUTO_ASSIGN)) {
+            $this->autoAssign($request);
+        }
+
         return $request;
+    }
+
+    /**
+     * Picks the free-est active technician, preferring those whose specialty matches the equipment category,
+     * and assigns the new request to them on behalf of the system.
+     */
+    public function autoAssign(MaintenanceRequest $request): ?User
+    {
+        $technician = $this->suggestTechnician($request);
+        if ($technician === null) {
+            return null;
+        }
+
+        $this->assign($request, $technician, null, __('AutoAssignedNote'));
+
+        return $technician;
+    }
+
+    public function suggestTechnician(MaintenanceRequest $request): ?User
+    {
+        $category = $request->equipment?->category;
+        $active = [RequestStatus::Assigned, RequestStatus::Accepted, RequestStatus::InProgress, RequestStatus::WaitingParts];
+
+        return User::query()
+            ->where('role', Role::Technician)->where('is_active', true)
+            ->withCount(['assignedRequests as open_tasks' => fn ($q) => $q->whereIn('status', $active)])
+            ->get()
+            ->sortBy(fn (User $t) => [($category !== null && $t->specialty === $category) ? 0 : 1, $t->open_tasks])
+            ->first();
+    }
+
+    /** Adds a comment from any party (requester, manager, staff or technician) to the timeline without changing status. */
+    public function comment(MaintenanceRequest $request, User $by, string $note): void
+    {
+        $this->transition($request, $request->status, $by, $note);
+    }
+
+    /** Flags open requests past their SLA once, alerting staff and the technician; returns how many were escalated. */
+    public function escalateOverdue(): int
+    {
+        $count = 0;
+        MaintenanceRequest::with(['equipment', 'department', 'assignedTechnician', 'priority'])
+            ->overdue()->whereNull('escalated_at')->orderBy('due_at')
+            ->each(function (MaintenanceRequest $request) use (&$count) {
+                $request->forceFill(['escalated_at' => now()])->save();
+                RequestChanged::dispatch($request);
+                $this->notify($request, [...$this->staffIds(), ...array_filter([$request->assigned_technician_id])], 'Push_OverdueTitle', null, withPriority: true);
+                $count++;
+            });
+
+        return $count;
     }
 
     public function transition(MaintenanceRequest $request, RequestStatus $to, ?User $by, ?string $note = null): void
@@ -98,7 +155,7 @@ class RequestWorkflow
         $this->afterTransition($request, $from, $to, $by, $note);
     }
 
-    public function assign(MaintenanceRequest $request, User $technician, User $by, ?string $note): void
+    public function assign(MaintenanceRequest $request, User $technician, ?User $by, ?string $note): void
     {
         $request->assigned_technician_id = $technician->id;
         $request->assigned_at = now();
@@ -190,19 +247,20 @@ class RequestWorkflow
     private function afterTransition(MaintenanceRequest $request, RequestStatus $from, RequestStatus $to, ?User $by, ?string $note): void
     {
         $request->loadMissing(['equipment', 'department', 'assignedTechnician', 'priority']);
-        RequestChanged::dispatch($request);
-
-        if ($from === $to) {
-            $this->notify($request, $this->staffIds($by?->id), 'Push_NoteAddedTitle', $note, withTechnician: true);
-
-            return;
-        }
+        RequestChanged::dispatch($request, false, $from === $to ? null : $from);
 
         $actor = $by?->id;
         $technician = $request->assigned_technician_id;
         $staff = fn () => $this->staffIds($actor);
         $tech = fn () => $technician !== null && $technician !== $actor ? [$technician] : [];
         $requesterSide = fn () => array_values(array_diff($this->requesterSideIds($request), array_filter([$actor])));
+
+        if ($from === $to) {
+            $titleKey = $by?->isTechnician() ? 'Push_NoteAddedTitle' : 'Push_CommentTitle';
+            $this->notify($request, array_values(array_unique([...$staff(), ...$tech(), ...$requesterSide()])), $titleKey, $note, withTechnician: $by?->isTechnician() ?? false);
+
+            return;
+        }
 
         match ($to) {
             RequestStatus::Assigned => [

@@ -670,3 +670,21 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
     margin-inline-end: .4rem;
     vertical-align: middle;
 }
+
+/* ===== Status tabs + SLA ===== */
+.status-tabs { gap: .25rem; scrollbar-width: thin; }
+.status-tabs .nav-link { white-space: nowrap; padding: .35rem .7rem; }
+.status-tabs .nav-link .badge { font-size: .7em; vertical-align: middle; }
+.status-tabs .nav-link.active .badge { background: rgba(255,255,255,.9) !important; color: #1a1a1a !important; }
+.due-badge { font-weight: 500; }
+
+/* ===== Mobile card view for wide tables ===== */
+@media (max-width: 767.98px) {
+  .table-cards thead { display: none; }
+  .table-cards, .table-cards tbody, .table-cards tr, .table-cards td { display: block; width: 100%; }
+  .table-cards tr { border: 1px solid rgba(0,0,0,.08); border-radius: .6rem; margin-bottom: .75rem; padding: .5rem .75rem; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .table-cards td { border: 0; padding: .25rem 0; display: flex; justify-content: space-between; gap: .75rem; max-width: none !important; white-space: normal !important; }
+  .table-cards td[data-label]::before { content: attr(data-label); color: #6c757d; font-size: .8rem; flex: 0 0 38%; }
+  .table-cards td.c-actions { justify-content: flex-end; padding-top: .5rem; }
+  .table-cards tr.empty-row td { justify-content: center; }
+}

@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'priority_id', 'fault_type_id', 'fault_cause_id', 'status',
-    'assigned_technician_id', 'assigned_at', 'accepted_at', 'started_at', 'completed_at', 'closed_at',
+    'assigned_technician_id', 'assigned_at', 'due_at', 'escalated_at', 'accepted_at', 'started_at', 'completed_at', 'closed_at',
     'is_under_warranty', 'is_preventive', 'preventive_maintenance_plan_id', 'cost_labor', 'cost_parts',
     'resolution_notes', 'technician_notes', 'department_confirmation',
 ])]
@@ -26,6 +26,8 @@ class MaintenanceRequest extends Model
             'status' => RequestStatus::class,
             'department_confirmation' => DepartmentConfirmation::class,
             'assigned_at' => 'datetime',
+            'due_at' => 'datetime',
+            'escalated_at' => 'datetime',
             'accepted_at' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -105,6 +107,18 @@ class MaintenanceRequest extends Model
     public function isOpen(): bool
     {
         return ! in_array($this->status, RequestStatus::closed(), true);
+    }
+
+    /** Past the SLA deadline of its priority and still not completed. */
+    public function isOverdue(): bool
+    {
+        return $this->due_at !== null && $this->isOpen() && $this->due_at->isPast();
+    }
+
+    #[Scope]
+    protected function overdue(Builder $query): void
+    {
+        $query->whereNotNull('due_at')->where('due_at', '<', now())->whereNotIn('status', RequestStatus::closedValues());
     }
 
     /** Requests a user may see: staff see all, technicians their own + untriaged, managers their department, others their own. */

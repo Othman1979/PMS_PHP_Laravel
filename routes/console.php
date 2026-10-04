@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Setting;
 use App\Services\PmGenerator;
+use App\Services\RequestWorkflow;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schedule;
@@ -34,3 +36,14 @@ Artisan::command('pms:vapid {--write : Save the keys into .env instead of printi
 })->purpose('Generate a VAPID key pair for Web Push');
 
 Schedule::command('pms:generate-pm')->twiceDaily(6, 18)->withoutOverlapping();
+
+Artisan::command('pms:escalate-overdue', function (RequestWorkflow $workflow) {
+    if (! Setting::bool(Setting::ESCALATE_OVERDUE, true)) {
+        $this->info('Escalation disabled in settings.');
+
+        return;
+    }
+    $this->info('Escalated '.$workflow->escalateOverdue().' overdue request(s).');
+})->purpose('Alert staff and technicians about open requests past their SLA');
+
+Schedule::command('pms:escalate-overdue')->everyFifteenMinutes()->withoutOverlapping();

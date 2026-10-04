@@ -14,6 +14,7 @@
             {{ $mr->request_number }}
             <x-status-badge :status="$status" class="fs-6" />
             <x-status-badge :status="$mr->priority" class="fs-6" />
+            <x-due-badge :request="$mr" class="fs-6" />
             @if ($mr->is_preventive)
                 <span class="badge bg-info text-dark fs-6">{{ __('Preventive') }}</span>
             @endif
@@ -39,6 +40,9 @@
                             @if ($mr->equipment)
                                 <a href="{{ route('equipment.show', $mr->equipment) }}">{{ $mr->equipment->name }}</a>
                                 <x-status-badge :status="$mr->equipment->status" />
+                                @if ($mr->equipment->location)
+                                    <div class="small text-muted">📍 {{ __('Location') }}: <strong>{{ $mr->equipment->location }}</strong></div>
+                                @endif
                             @else
                                 -
                             @endif
@@ -47,8 +51,19 @@
                     @if ($mr->faultType || $mr->faultCause)
                         <tr><th>{{ __('FaultType') }} / {{ __('FaultCause') }}</th><td>{{ $mr->faultType?->localized_name ?? '-' }} / {{ $mr->faultCause?->localized_name ?? '-' }}</td></tr>
                     @endif
-                    <tr><th>{{ __('CreatedBy') }}</th><td>{{ $mr->createdBy?->full_name }}</td></tr>
-                    <tr><th>{{ __('CreatedAt') }}</th><td>{{ $fmt($mr->created_at) }}</td></tr>
+                    <tr>
+                        <th>{{ __('Requester') }}</th>
+                        <td>
+                            {{ $mr->createdBy?->full_name }}
+                            @if ($mr->createdBy?->phone)
+                                <a class="btn btn-sm btn-outline-success ms-1" href="tel:{{ preg_replace('/[^0-9+]/', '', $mr->createdBy->phone) }}">📞 {{ __('Call') }} {{ $mr->createdBy->phone }}</a>
+                            @endif
+                        </td>
+                    </tr>
+                    <tr><th>{{ __('CreatedAt') }}</th><td>{{ $fmt($mr->created_at) }} <span class="text-muted small">({{ str_replace('{0}', $mr->created_at->diffForHumans(now(), ['syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]), __('ElapsedSince')) }})</span></td></tr>
+                    @if ($mr->due_at)
+                        <tr><th>{{ __('DueAt') }}</th><td class="{{ $mr->isOverdue() ? 'text-danger fw-semibold' : '' }}">{{ $fmt($mr->due_at) }} <x-due-badge :request="$mr" /></td></tr>
+                    @endif
                     <tr><th>{{ __('AssignedTo') }}</th><td>{{ $mr->assignedTechnician?->full_name ?? '-' }} {{ $fmt($mr->assigned_at) }}</td></tr>
                     <tr><th>{{ __('AcceptedAt') }}</th><td>{{ $fmt($mr->accepted_at) }}</td></tr>
                     <tr><th>{{ __('StartedAt') }}</th><td>{{ $fmt($mr->started_at) }}</td></tr>
@@ -134,6 +149,9 @@
                         </form>
                     @endif
 
+                    @if ($isCoordinator && $status === S::Reopened && $mr->department_confirmation === \App\Enums\DepartmentConfirmation::NotResolved)
+                        <div class="alert alert-warning small">{{ __('NotResolvedNextStepStaff') }}</div>
+                    @endif
                     @if ($isCoordinator && in_array($status, [S::New, S::UnderReview, S::Reopened], true))
                         <form action="{{ route('requests.assign', $mr) }}" method="post" class="mb-3">
                             @csrf
@@ -153,11 +171,18 @@
                     @endif
 
                     @if ($isAssignedTech && $status === S::Assigned)
+                        @if ($mr->department_confirmation === \App\Enums\DepartmentConfirmation::NotResolved)
+                            <div class="alert alert-warning small">{{ __('NotResolvedNextStep') }}</div>
+                        @endif
+                        <form action="{{ route('requests.accept-start', $mr) }}" method="post" class="mb-2" id="acceptStartForm">
+                            @csrf
+                            <p class="small text-muted mb-2">{{ __('AcceptAndStartHint') }}</p>
+                            <textarea name="note" class="form-control mb-2" rows="2" placeholder="{{ __('NoteOptional') }}"></textarea>
+                            <button class="btn btn-warning btn-lg w-100">▶ {{ __('AcceptAndStart') }}</button>
+                        </form>
                         <form action="{{ route('requests.accept', $mr) }}" method="post" class="mb-3">
                             @csrf
-                            <p class="small text-muted mb-2">{{ __('AcceptHint') }}</p>
-                            <textarea name="note" class="form-control mb-2" rows="2" placeholder="{{ __('NoteOptional') }}"></textarea>
-                            <button class="btn btn-primary btn-lg w-100">{{ __('AcceptRequest') }}</button>
+                            <button class="btn btn-outline-primary w-100">{{ __('AcceptOnly') }}</button>
                         </form>
                     @endif
 
@@ -306,6 +331,19 @@
                 </div>
             @endif
 
+            @if ($status !== S::Cancelled)
+                <div class="card mb-3">
+                    <div class="card-header"><strong>{{ __('AddComment') }}</strong></div>
+                    <div class="card-body">
+                        <form action="{{ route('requests.comment', $mr) }}" method="post">
+                            @csrf
+                            <textarea name="note" class="form-control mb-2" rows="2" required maxlength="1000" placeholder="{{ __('CommentPlaceholder') }}"></textarea>
+                            <button class="btn btn-outline-primary">{{ __('AddComment') }}</button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
             <div class="card">
                 <div class="card-header"><strong>{{ __('Timeline') }}</strong></div>
                 <ul class="list-group list-group-flush">
@@ -314,7 +352,7 @@
                             <div class="d-flex justify-content-between">
                                 <span>
                                     @if ($t->status_from && $t->status_from === $t->status_to)
-                                        <span class="badge bg-light text-dark border">{{ __('Note') }}</span>
+                                        <span class="badge bg-light text-dark border">{{ $t->changedBy?->isTechnician() ? __('Note') : __('Comments') }}</span>
                                     @else
                                         @if ($t->status_from)
                                             <x-status-badge :status="$t->status_from" /> <span>→</span>

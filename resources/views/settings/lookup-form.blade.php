@@ -37,6 +37,11 @@
                             <input id="rank" name="rank" type="number" min="0" max="99" value="{{ old('rank', $item->rank) }}" class="form-control" required>
                             <div class="form-text">{{ __('RankHint') }}</div>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label" for="sla_hours">{{ __('SlaHours') }}</label>
+                            <input id="sla_hours" name="sla_hours" type="number" min="1" max="8760" value="{{ old('sla_hours', $item->sla_hours) }}" class="form-control">
+                            <div class="form-text">{{ __('SlaHoursHint') }}</div>
+                        </div>
                     </div>
                     @foreach (['is_default' => 'Default', 'is_critical' => 'CriticalFlag', 'show_in_quick' => 'ShowInQuick'] as $flag => $label)
                         <div class="form-check form-switch mb-2">

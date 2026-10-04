@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Enums\RequestStatus;
 use App\Models\MaintenanceRequest;
 use App\Support\Localized;
 use Carbon\CarbonInterface;
@@ -23,9 +24,9 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
     /** @var array<string, mixed> */
     public array $payload;
 
-    public function __construct(MaintenanceRequest $request, public bool $isNew = false)
+    public function __construct(MaintenanceRequest $request, public bool $isNew = false, ?RequestStatus $from = null)
     {
-        $this->payload = self::payload($request, $isNew);
+        $this->payload = self::payload($request, $isNew) + ['fromStatus' => $from?->value];
     }
 
     public function broadcastAs(): string
@@ -87,6 +88,8 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
             'statusBadge' => $r->status->badge(),
             'createdAt' => $r->created_at->format('Y-m-d H:i'),
             'updatedAt' => $r->updated_at?->toIso8601String(),
+            'dueAt' => $r->due_at?->format('Y-m-d H:i'),
+            'overdue' => $r->isOverdue(),
             'detailsUrl' => route('requests.show', $r),
         ];
     }

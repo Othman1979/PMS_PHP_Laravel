@@ -65,6 +65,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/{maintenanceRequest}/assign', 'assign')->name('assign')->middleware('role:Admin,Coordinator');
         Route::post('/{maintenanceRequest}/accept', 'accept')->name('accept');
         Route::post('/{maintenanceRequest}/start', 'start')->name('start');
+        Route::post('/{maintenanceRequest}/accept-start', 'acceptStart')->name('accept-start');
+        Route::post('/{maintenanceRequest}/comment', 'comment')->name('comment');
         Route::post('/{maintenanceRequest}/note', 'addNote')->name('note');
         Route::post('/{maintenanceRequest}/wait-parts', 'waitParts')->name('wait-parts');
         Route::post('/{maintenanceRequest}/resume', 'resume')->name('resume');
