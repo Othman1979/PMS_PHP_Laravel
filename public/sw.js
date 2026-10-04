@@ -32,3 +32,28 @@ self.addEventListener('notificationclick', event => {
         return self.clients.openWindow(url);
     })());
 });
+
+// Static assets (Bootstrap, fonts, scripts, icons) are served cache-first so pages and
+// dialogs open instantly on slow connections. CSS/JS URLs carry a ?v= version, so a changed
+// file gets a new URL and is never stale.
+const STATIC_CACHE = 'pms-static-v1';
+const STATIC_PREFIXES = ['/lib/', '/css/', '/js/', '/fonts/', '/icons/'];
+
+self.addEventListener('activate', event => event.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== STATIC_CACHE).map(k => caches.delete(k))))
+));
+
+self.addEventListener('fetch', event => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+    const url = new URL(req.url);
+    if (url.origin !== self.location.origin || !STATIC_PREFIXES.some(p => url.pathname.startsWith(p))) return;
+
+    event.respondWith(caches.open(STATIC_CACHE).then(async cache => {
+        const hit = await cache.match(req);
+        if (hit) return hit;
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone());
+        return res;
+    }));
+});

@@ -119,7 +119,7 @@
     <script src="{{ asset('js/form-dialog.js') }}?v={{ filemtime(public_path('js/form-dialog.js')) }}" data-close-label="{{ __('Close') }}"></script>
     @unless ($inDialog)
         <script src="{{ asset('js/push.js') }}?v={{ filemtime(public_path('js/push.js')) }}"></script>
-        <script src="{{ asset('js/navpane.js') }}"></script>
+        <script src="{{ asset('js/navpane.js') }}?v={{ filemtime(public_path('js/navpane.js')) }}"></script>
     @endunless
     {{ $scripts ?? '' }}
 </body>

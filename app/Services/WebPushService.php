@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PushSubscription;
+use GuzzleHttp\Client;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
@@ -38,15 +39,19 @@ class WebPushService
             return;
         }
 
-        $this->send($subscriptions, json_encode([
+        $payload = json_encode([
             'title' => $title,
             'body' => $body,
             'url' => $url,
             'tag' => $tag,
-        ], JSON_UNESCAPED_UNICODE));
+        ], JSON_UNESCAPED_UNICODE);
+
+        app()->terminating(fn () => $this->send($subscriptions, $payload));
     }
 
-    /** @param Collection<int, PushSubscription> $subscriptions */
+    /** Runs after the response is sent so the user never waits on the push servers.
+     *
+     * @param Collection<int, PushSubscription> $subscriptions */
     private function send(Collection $subscriptions, string $payload): void
     {
         try {
@@ -54,7 +59,7 @@ class WebPushService
                 'subject' => config('pms.vapid.subject'),
                 'publicKey' => config('pms.vapid.public_key'),
                 'privateKey' => config('pms.vapid.private_key'),
-            ]], ['TTL' => 86400, 'urgency' => 'high'], 10);
+            ]], ['TTL' => 86400, 'urgency' => 'high'], new Client(['timeout' => 10, 'connect_timeout' => 5]));
 
             foreach ($subscriptions as $sub) {
                 $webPush->queueNotification(Subscription::create([
