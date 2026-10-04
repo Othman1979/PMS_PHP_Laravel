@@ -7,6 +7,7 @@ use App\Enums\RequestStatus;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
 use App\Models\PreventiveMaintenancePlan;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,12 +31,13 @@ class DashboardController extends Controller
             return redirect()->route('quick.find');
         }
 
+        $user = $request->user();
         $with = ['equipment', 'department', 'assignedTechnician', 'priority'];
 
         return view('dashboard.index', [
-            'stats' => $this->counters(),
-            'recent' => MaintenanceRequest::with($with)->latest()->latest('id')->take(8)->get(),
-            'critical' => MaintenanceRequest::with($with)
+            'stats' => $this->counters($user),
+            'recent' => MaintenanceRequest::with($with)->visibleTo($user)->latest()->latest('id')->take(8)->get(),
+            'critical' => MaintenanceRequest::with($with)->visibleTo($user)
                 ->whereHas('priority', fn ($q) => $q->where('is_critical', true))
                 ->whereNotIn('status', [RequestStatus::Closed, RequestStatus::Cancelled])
                 ->latest()->take(5)->get(),
@@ -52,8 +54,10 @@ class DashboardController extends Controller
     /** Polled by the dashboard: counters plus requests created/changed since `since`. */
     public function stats(Request $request): JsonResponse
     {
+        $user = $request->user();
         $since = $request->date('since') ?? now()->subMinute();
         $changes = MaintenanceRequest::with(['equipment', 'department', 'assignedTechnician', 'priority'])
+            ->visibleTo($user)
             ->where('updated_at', '>', $since)
             ->orderBy('updated_at')->take(20)->get()
             ->map(fn (MaintenanceRequest $r) => [
@@ -75,20 +79,20 @@ class DashboardController extends Controller
                 'detailsUrl' => route('requests.show', $r),
             ]);
 
-        return response()->json([...$this->counters(), 'changes' => $changes, 'now' => now()->toIso8601String()]);
+        return response()->json([...$this->counters($user), 'changes' => $changes, 'now' => now()->toIso8601String()]);
     }
 
     /** @return array<string, mixed> */
-    private function counters(): array
+    private function counters(User $user): array
     {
-        $byStatus = MaintenanceRequest::query()->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+        $byStatus = MaintenanceRequest::query()->visibleTo($user)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
         $count = fn (array $statuses) => collect($statuses)->sum(fn (RequestStatus $s) => (int) ($byStatus[$s->value] ?? 0));
 
         return [
             'open' => $count(self::OPEN),
             'inProgress' => $count([RequestStatus::InProgress]),
             'waitingParts' => $count([RequestStatus::WaitingParts]),
-            'completedThisMonth' => MaintenanceRequest::query()->where('completed_at', '>=', Carbon::now()->startOfMonth())->count(),
+            'completedThisMonth' => MaintenanceRequest::query()->visibleTo($user)->where('completed_at', '>=', Carbon::now()->startOfMonth())->count(),
             'totalEquipment' => Equipment::query()->count(),
             'downEquipment' => Equipment::query()->where('status', EquipmentStatus::Down)->count(),
             'byStatus' => collect(RequestStatus::cases())->mapWithKeys(fn ($s) => [$s->value => (int) ($byStatus[$s->value] ?? 0)]),

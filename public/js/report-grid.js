@@ -154,8 +154,20 @@
         });
     }
 
+    // Wide reports print landscape with a smaller font so the last columns (dates, duration, cost) are never cut off.
+    var pageStyle = document.createElement('style');
+    document.head.appendChild(pageStyle);
+    function printAll() {
+        var visible = table.getColumns().filter(function (c) { return c.isVisible(); }).length;
+        var wide = visible > 7;
+        document.body.classList.toggle('rg-print-wide', wide);
+        document.body.classList.toggle('rg-print-xwide', visible > 11);
+        pageStyle.textContent = '@media print { @page { size: A4 ' + (wide ? 'landscape' : 'portrait') + '; margin: 8mm; } }';
+        table.print('all', true);
+    }
+
     window.reportGrid = {
         table: table,
-        print: function () { table.print('all', true); }
+        print: printAll
     };
 })();

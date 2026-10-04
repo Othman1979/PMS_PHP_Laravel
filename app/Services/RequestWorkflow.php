@@ -77,6 +77,11 @@ class RequestWorkflow
         }
 
         DB::transaction(function () use ($request, $from, $to, $by, $note) {
+            $current = MaintenanceRequest::query()->lockForUpdate()->find($request->id, ['status']);
+            if ($current !== null && $current->status !== $from) {
+                $request->status = $current->status;
+                throw ValidationException::withMessages(['status' => __('Error_StateChanged')]);
+            }
             $request->save();
             $request->touch();
             $request->timeline()->create([
@@ -117,7 +122,6 @@ class RequestWorkflow
         float $laborCost, array $parts, array $checklist, ?int $faultTypeId = null, ?int $faultCauseId = null): void
     {
         DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist, $faultTypeId, $faultCauseId) {
-            $partsCost = 0.0;
             foreach ($parts as $partId => $qty) {
                 $qty = (int) $qty;
                 $spare = SparePart::query()->lockForUpdate()->find($partId);
@@ -145,7 +149,6 @@ class RequestWorkflow
                     'quantity' => $qty,
                     'unit_cost_at_use' => $spare->unit_cost,
                 ]);
-                $partsCost += $qty * (float) $spare->unit_cost;
             }
 
             foreach ($checklist as $itemId => $result) {
@@ -162,8 +165,8 @@ class RequestWorkflow
                 'technician_notes' => $technicianNotes,
                 'fault_type_id' => $faultTypeId ?? $request->fault_type_id,
                 'fault_cause_id' => $faultCauseId,
-                'cost_labor' => $laborCost,
-                'cost_parts' => $partsCost,
+                'cost_labor' => (float) $request->cost_labor + $laborCost,
+                'cost_parts' => (float) $request->partsUsed()->selectRaw('coalesce(sum(quantity * unit_cost_at_use), 0) as total')->value('total'),
                 'completed_at' => now(),
                 'department_confirmation' => DepartmentConfirmation::Pending,
             ]);

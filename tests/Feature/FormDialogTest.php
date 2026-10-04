@@ -72,8 +72,8 @@ class FormDialogTest extends TestCase
         $this->actingAs($this->admin())->put('/password', [
             '_dialog' => '1',
             'current_password' => '1234',
-            'password' => '5678',
-            'password_confirmation' => '5678',
+            'password' => 'Secret!2026',
+            'password_confirmation' => 'Secret!2026',
         ])
             ->assertOk()
             ->assertViewIs('dialog.close')
@@ -87,8 +87,8 @@ class FormDialogTest extends TestCase
 
         $this->actingAs($technician)->followingRedirects()->put('/password', [
             'current_password' => '1234',
-            'password' => '5678',
-            'password_confirmation' => '5678',
+            'password' => 'Secret!2026',
+            'password_confirmation' => 'Secret!2026',
         ])
             ->assertOk()
             ->assertSee(__('PasswordChanged'));

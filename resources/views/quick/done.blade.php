@@ -15,11 +15,9 @@
         <p class="text-muted mt-2">{{ __('Quick_SentHint') }}</p>
         @php($employee = auth()->user()->isEmployee())
         <div class="d-grid gap-2 mt-3">
-            @unless ($employee)
-                <a class="btn btn-primary quick-send" href="{{ route('requests.show', $mr) }}">{{ __('Quick_Track') }}</a>
-            @endunless
+            <a class="btn btn-primary quick-send" href="{{ route('requests.show', $mr) }}">{{ __('Quick_Track') }}</a>
             @if ($mr->equipment)
-                <a class="btn {{ $employee ? 'btn-primary quick-send' : 'btn-outline-secondary btn-lg' }}" href="{{ route('quick.show', $mr->equipment->code) }}">{{ __('Quick_Another') }}</a>
+                <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.show', $mr->equipment->code) }}">{{ __('Quick_Another') }}</a>
             @endif
             @unless ($employee)
                 <a class="btn btn-link" href="{{ route('requests.index') }}">{{ __('MyRequests') }}</a>

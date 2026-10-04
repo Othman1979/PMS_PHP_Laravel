@@ -1,9 +1,9 @@
 @php $canManage = auth()->user()->canManage(); @endphp
 <x-layouts.app :title="__('EquipmentRegistry')">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>{{ __('EquipmentRegistry') }}</h2>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">{{ __('EquipmentRegistry') }}</h2>
         @if ($canManage)
-            <div class="d-flex gap-2">
+            <div class="d-flex flex-wrap gap-2">
                 <div class="dropdown">
                     <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Excel</button>
                     <ul class="dropdown-menu">

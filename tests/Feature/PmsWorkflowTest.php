@@ -227,7 +227,7 @@ class PmsWorkflowTest extends TestCase
     {
         $this->actingAs($this->user('admin'))->post('/users', [
             'full_name' => 'فني جديد', 'username' => 'tech9', 'role' => Role::Technician->value,
-            'specialty' => EquipmentCategory::KitchenEquipment->value, 'password' => '1234', 'is_active' => '1',
+            'specialty' => EquipmentCategory::KitchenEquipment->value, 'password' => 'Tech9!pass', 'is_active' => '1',
         ])->assertRedirect('/users');
 
         $user = $this->user('tech9');
@@ -235,7 +235,7 @@ class PmsWorkflowTest extends TestCase
         $this->assertSame(EquipmentCategory::KitchenEquipment, $user->specialty);
 
         $this->post('/logout');
-        $this->post('/login', ['username' => 'tech9', 'password' => '1234'])->assertRedirect();
+        $this->post('/login', ['username' => 'tech9', 'password' => 'Tech9!pass'])->assertRedirect();
         $this->assertAuthenticatedAs($user);
     }
 

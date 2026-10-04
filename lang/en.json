@@ -534,5 +534,17 @@
     "Import_warranty_end": "Warranty end",
     "Import_warranty_provider": "Warranty provider",
     "Import_warranty_number": "Warranty number",
-    "Import_notes": "Notes"
+    "Import_notes": "Notes",
+    "Error_403Message": "You do not have permission to open this page or perform this action.",
+    "Error_403Title": "Access denied",
+    "Error_404Message": "The link is wrong or the requested item was deleted.",
+    "Error_404Title": "Page not found",
+    "Error_419Message": "The page stayed open too long. Go back and try again.",
+    "Error_419Title": "Page expired",
+    "Error_500Message": "An unexpected error occurred. Try again, and tell the administrator if it repeats.",
+    "Error_500Title": "System error",
+    "Error_503Message": "We will be back in a few minutes.",
+    "Error_503Title": "System under maintenance",
+    "Error_BackHome": "Home page",
+    "Error_StateChanged": "The request was just changed by another user. The page has been refreshed; review the new status and try again."
 }

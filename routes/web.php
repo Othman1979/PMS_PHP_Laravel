@@ -34,7 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
     Route::get('/', [DashboardController::class, 'index'])->name('home');
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats')->middleware('role:Admin,Coordinator,DepartmentManager');
 
     Route::controller(PushController::class)->prefix('push')->name('push.')->group(function () {
         Route::get('/public-key', 'publicKey')->name('public-key');

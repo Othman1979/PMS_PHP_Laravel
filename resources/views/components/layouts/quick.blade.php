@@ -30,6 +30,7 @@
         </div>
     </header>
     <main class="quick-main">
+        <x-flash />
         {{ $slot }}
     </main>
     <script src="{{ asset('lib/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>

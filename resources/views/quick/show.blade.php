@@ -104,7 +104,7 @@
             (function () {
                 const text = document.getElementById('Description');
                 const sep = document.documentElement.dir === 'rtl' ? '، ' : ', ';
-                document.querySelectorAll('.quick-chip').forEach(chip => {
+                document.querySelectorAll('.quick-chip[data-text]').forEach(chip => {
                     chip.addEventListener('click', () => {
                         const t = chip.dataset.text;
                         const cur = text.value.trim();

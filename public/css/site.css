@@ -399,6 +399,8 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 #liveBadge.bg-success .live-dot { animation: pms-livepulse 1.6s ease-in-out infinite; }
 @keyframes pms-livepulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 
+.page-main { overflow-x: clip; }
+
 /* ===== Print ===== */
 @media print {
   .titlebar, .navpane, .navpane-backdrop, #toastZone { display: none !important; }
@@ -585,6 +587,11 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 @media (max-width: 575.98px) {
   .report-grid-tools { width: 100%; }
   .report-grid-tools .form-control, .report-grid-tools .form-select { flex: 1 1 140px; min-width: 0; }
+  .report-grid .tabulator-footer .tabulator-footer-contents { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem; }
+  .report-grid .tabulator-footer .tabulator-paginator { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .25rem; width: 100%; text-align: center; }
+  .report-grid .tabulator-footer .tabulator-page-counter { width: 100%; text-align: center; }
+  .report-grid .tabulator-footer .tabulator-page { min-width: 2.2rem; }
+  .report-grid .tabulator-footer .tabulator-calcs-holder { width: 100%; }
 }
 
 @media print {
@@ -593,7 +600,13 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
   .report-card { border: 0 !important; box-shadow: none !important; }
   .report-cards .card, .report-sections .card { break-inside: avoid; box-shadow: none !important; }
 }
-.tabulator-print-table { width: 100%; border-collapse: collapse; font-family: var(--bs-body-font-family); font-size: 10pt; }
+.tabulator-print-table { width: 100%; border-collapse: collapse; font-family: var(--bs-body-font-family); font-size: 10pt; table-layout: auto; }
+.tabulator-print-table td, .tabulator-print-table th { overflow-wrap: anywhere; }
+.rg-print-wide .tabulator-print-table { font-size: 8.5pt; }
+.rg-print-wide .tabulator-print-table th { font-size: 8pt; padding: 3px 4px; }
+.rg-print-wide .tabulator-print-table td { padding: 2px 4px; }
+.rg-print-xwide .tabulator-print-table { font-size: 7.5pt; }
+.rg-print-xwide .tabulator-print-table th { font-size: 7pt; }
 .tabulator-print-table th { background: #e5f0fb !important; color: #004c99; border: 1px solid #c9d8ea; padding: 4px 6px; font-size: 9.5pt; }
 .tabulator-print-table td { border: 1px solid #d9d9d9; padding: 3px 6px; }
 .tabulator-print-table .tabulator-print-table-group td { background: #eef4fb; font-weight: 600; }
@@ -612,3 +625,7 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .import-preview { max-height: 55vh; }
 .import-preview th, .import-preview td { white-space: nowrap; font-size: .85rem; }
 .import-preview th { position: sticky; top: 0; background: #fff; z-index: 1; }
+
+/* ===== Error pages ===== */
+.error-page { max-width: 460px; margin: 10vh auto; padding: 2rem 1.5rem; text-align: center; background: var(--pms-surface); border: 1px solid var(--pms-border); border-radius: var(--pms-radius); }
+.error-code { font-size: 3.5rem; font-weight: 700; color: var(--pms-primary); line-height: 1; margin-bottom: .75rem; font-variant-numeric: tabular-nums; }

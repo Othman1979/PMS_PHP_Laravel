@@ -30,7 +30,7 @@
         body.roll .label img { width: var(--qr); height: var(--qr); }
         body.roll .label .min-w-0 { display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0; overflow: hidden; height: 100%; }
         body.roll .label .name { font-size: calc(var(--lh) * .14); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        body.roll .label .code { font-size: calc(var(--lh) * .12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        body.roll .label .code { font-size: calc(var(--lh) * .12); white-space: nowrap; overflow: hidden; }
         body.roll .label .meta { font-size: calc(var(--lh) * .09); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         body.roll .label .scan { font-size: calc(var(--lh) * .09); padding: 1px 4px; margin-top: 1mm; align-self: flex-start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         body.roll.small .label .meta, body.roll.small .label .scan { display: none; }
@@ -121,10 +121,25 @@
                 pageStyle.textContent = roll ? '@page { size: ' + w + 'mm ' + h + 'mm; margin: 0; }' : '@page { size: A4; margin: 10mm; }';
                 hint.textContent = hints[roll ? 'roll' : 'a4'];
                 try { localStorage.setItem(KEY, JSON.stringify({ layout: layout.value, size: size.value, w: lw.value, h: lh.value })); } catch (e) {}
+                fitCodes(roll);
+            }
+
+            // Shrinks the equipment code until the whole code fits on the label (never clip it: EQ-0001 vs EQ-0002 must stay readable).
+            function fitCodes(roll) {
+                document.querySelectorAll('.label .code').forEach(function (code) {
+                    code.style.fontSize = '';
+                    if (!roll) return;
+                    var px = parseFloat(getComputedStyle(code).fontSize);
+                    while (code.scrollWidth > code.clientWidth && px > 5) {
+                        px -= 0.5;
+                        code.style.fontSize = px + 'px';
+                    }
+                });
             }
 
             [layout, size, lw, lh].forEach(function (el) { el.addEventListener('change', apply); el.addEventListener('input', apply); });
             apply();
+            window.addEventListener('beforeprint', function () { fitCodes(document.body.classList.contains('roll')); });
         })();
     </script>
 </body>
