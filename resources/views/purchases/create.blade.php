@@ -70,6 +70,7 @@
             (function () {
                 const parts = {{ Js::from($partsJson) }};
                 const stockLabel = @json(__('InStock'));
+                const priceMissing = @json(__('PriceMissingWarning'));
                 const container = document.getElementById('items');
 
                 function bind(row) {
@@ -78,6 +79,8 @@
                         const p = parts.find(x => x.name === name.value.trim());
                         row.querySelector('.part-id').value = p ? p.id : '';
                         row.querySelector('.part-stock').textContent = p ? `${stockLabel}: ${p.quantity}` : '';
+                        row.querySelector('.part-stock').classList.toggle('text-danger', !!p && !p.unitCost);
+                        if (p && !p.unitCost) row.querySelector('.part-stock').textContent += ' — ' + priceMissing;
                         if (p) {
                             if (!row.querySelector('.part-number').value) row.querySelector('.part-number').value = p.partNumber || '';
                             if (!row.querySelector('.part-unit').value) row.querySelector('.part-unit').value = p.unit || '';

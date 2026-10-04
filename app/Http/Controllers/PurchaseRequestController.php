@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\Role;
 use App\Enums\StockMovementType;
+use App\Models\ActivityLog;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseRequest;
 use App\Models\SparePart;
@@ -245,6 +246,7 @@ class PurchaseRequestController extends Controller
             'decision_at' => now(),
             'decision_note' => $note,
         ]);
+        ActivityLog::record('purchase_decided', $purchase, $purchase->number.': '.$decision->value);
 
         $recipients = collect([$purchase->created_by_id]);
         if ($decision === PurchaseRequestStatus::Approved) {

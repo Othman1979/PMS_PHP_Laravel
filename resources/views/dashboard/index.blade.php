@@ -59,6 +59,32 @@
     </div>
 </div>
 
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><strong>{{ __('Trend30Days') }}</strong></div>
+            <div class="card-body"><canvas id="chartTrend" height="170"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-header"><strong>{{ __('RequestsByStatus') }}</strong></div>
+            <div class="card-body"><canvas id="chartStatus" height="170"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><strong>{{ __('AgingOpenRequests') }}</strong> <small class="text-muted">· {{ __('OpenByDepartment') }}</small></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6"><canvas id="chartAging" height="170"></canvas></div>
+                    <div class="col-6"><canvas id="chartDept" height="170"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="card mb-4">
@@ -157,6 +183,49 @@
 </div>
 
 <x-slot:scripts>
+<script src="{{ asset('lib/chartjs/chart.umd.js') }}"></script>
+<script>
+(function () {
+    if (!window.Chart) return;
+    const C = @js($charts);
+    const rtl = document.documentElement.dir === 'rtl';
+    const font = { family: getComputedStyle(document.body).fontFamily };
+    Chart.defaults.font = font;
+    const palette = ['#0d6efd', '#6c757d', '#6610f2', '#20c997', '#fd7e14', '#dc3545', '#198754', '#ffc107', '#343a40', '#adb5bd'];
+    const statusColors = { New: '#0d6efd', UnderReview: '#6c757d', Assigned: '#6610f2', Accepted: '#20c997', InProgress: '#fd7e14', WaitingParts: '#dc3545', Completed: '#198754', Reopened: '#ffc107', Closed: '#343a40', Cancelled: '#adb5bd' };
+    const T = @js(['created' => __('Created'), 'completed' => __('Completed'), 'open' => __('OpenRequests')]);
+
+    new Chart(document.getElementById('chartTrend'), {
+        type: 'line',
+        data: { labels: C.trend.labels, datasets: [
+            { label: T.created, data: C.trend.created, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,.12)', fill: true, tension: .3, pointRadius: 2 },
+            { label: T.completed, data: C.trend.completed, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,.12)', fill: true, tension: .3, pointRadius: 2 },
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', rtl } }, scales: { x: { reverse: rtl, ticks: { maxTicksLimit: 8 } }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
+    });
+
+    const statusChart = new Chart(document.getElementById('chartStatus'), {
+        type: 'doughnut',
+        data: { labels: C.status.labels, datasets: [{ data: C.status.keys.map(() => 0), backgroundColor: C.status.keys.map(k => statusColors[k] || '#999') }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
+    });
+    window.PmsCharts = {
+        status(byStatus) { statusChart.data.datasets[0].data = C.status.keys.map(k => byStatus[k] || 0); statusChart.update('none'); }
+    };
+    window.PmsCharts.status(Object.fromEntries(Array.from(document.querySelectorAll('[data-status-count]')).map(el => [el.dataset.statusCount, parseInt(el.textContent, 10) || 0])));
+
+    new Chart(document.getElementById('chartAging'), {
+        type: 'bar',
+        data: { labels: C.aging.labels, datasets: [{ label: T.open, data: C.aging.values, backgroundColor: ['#198754', '#0d6efd', '#fd7e14', '#dc3545'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { reverse: rtl }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
+    });
+    new Chart(document.getElementById('chartDept'), {
+        type: 'bar',
+        data: { labels: C.departments.labels, datasets: [{ label: T.open, data: C.departments.values, backgroundColor: palette }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 }, reverse: rtl }, y: { position: rtl ? 'right' : 'left' } } }
+    });
+})();
+</script>
 <script>
 (function () {
     const T = @js(['newRequest' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('ViewDetails'), 'live' => __('Live'), 'offline' => __('Offline')]);
@@ -278,6 +347,7 @@
                 const v = String((s.byStatus || {})[el.dataset.statusCount] ?? 0);
                 if (el.textContent !== v) { el.textContent = v; flash(el); }
             });
+            if (window.PmsCharts) window.PmsCharts.status(s.byStatus || {});
             for (const d of s.changes) {
                 if (seen.has(d.id + ':' + d.updatedAt)) continue;
                 showToast(d.isNew ? T.newRequest : T.updated + ' — ' + L(d.statusLabel), d);

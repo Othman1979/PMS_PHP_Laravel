@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,17 +32,20 @@ class AuthController extends Controller
 
         if (! Auth::attempt([...$credentials, 'is_active' => true], $request->boolean('remember'))) {
             RateLimiter::hit($key, 300);
+            ActivityLog::record('login_failed', null, $credentials['username']);
             throw ValidationException::withMessages(['username' => __('InvalidLogin')]);
         }
 
         RateLimiter::clear($key);
         $request->session()->regenerate();
+        ActivityLog::record('login');
 
         return redirect()->intended(route('home'));
     }
 
     public function destroy(Request $request): RedirectResponse
     {
+        ActivityLog::record('logout');
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\StockMovementType;
+use App\Models\ActivityLog;
 use App\Models\GoodsReceiptItem;
 use App\Models\PurchaseRequestItem;
 use App\Models\RequestPartUsed;
@@ -67,6 +68,7 @@ class SparePartController extends Controller
                 $change = $newQty - $part->quantity;
                 $part->update(['quantity' => $newQty]);
                 $this->logAdjustment($part, $change, $request->user()->id);
+                ActivityLog::record('stock_adjusted', $part, $part->name.': '.($change > 0 ? '+' : '').$change.' → '.$newQty);
             }
         });
 

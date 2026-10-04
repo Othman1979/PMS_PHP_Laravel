@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EquipmentCategory;
 use App\Enums\EquipmentStatus;
 use App\Http\Requests\EquipmentRequest;
+use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\Equipment;
 use App\Services\FileUploadService;
@@ -81,6 +82,7 @@ class EquipmentController extends Controller
         }
 
         $equipment = Equipment::create($data);
+        ActivityLog::record('equipment_created', $equipment, $equipment->code.' — '.$equipment->name);
 
         return redirect()->route('equipment.show', $equipment)->with('ok', __('Saved'));
     }
@@ -110,6 +112,7 @@ class EquipmentController extends Controller
         }
 
         $equipment->update($data);
+        ActivityLog::record('equipment_updated', $equipment, $equipment->code.' — '.$equipment->name);
 
         return redirect()->route('equipment.show', $equipment)->with('ok', __('Saved'));
     }
@@ -120,6 +123,7 @@ class EquipmentController extends Controller
             return redirect()->route('equipment.show', $equipment)->with('err', __('Error_HasRequests'));
         }
 
+        ActivityLog::record('equipment_deleted', null, $equipment->code.' — '.$equipment->name);
         $equipment->delete();
 
         return redirect()->route('equipment.index')->with('ok', __('Deleted'));

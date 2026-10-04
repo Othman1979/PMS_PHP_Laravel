@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
 use App\Events\RequestChanged;
+use App\Models\Department;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
 use App\Models\PreventiveMaintenancePlan;
@@ -49,7 +50,53 @@ class DashboardController extends Controller
                 ->where('next_due_date', '<=', today()->addDays(14))
                 ->orderBy('next_due_date')->take(10)->get(),
             'now' => now()->toIso8601String(),
+            'charts' => $this->charts($user),
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function charts(User $user): array
+    {
+        $open = fn () => MaintenanceRequest::query()->visibleTo($user)->whereNotIn('status', RequestStatus::closedValues());
+        $start = today()->subDays(29);
+        $days = collect(range(0, 29))->map(fn (int $i) => $start->copy()->addDays($i)->toDateString());
+        $perDay = fn (string $column) => MaintenanceRequest::query()->visibleTo($user)
+            ->where($column, '>=', $start)
+            ->selectRaw("DATE({$column}) as d, count(*) as c")->groupBy('d')->pluck('c', 'd');
+        $created = $perDay('created_at');
+        $completed = $perDay('completed_at');
+
+        $byDepartment = $open()->selectRaw('department_id, count(*) as c')->groupBy('department_id')->pluck('c', 'department_id');
+        $departments = Department::query()->whereIn('id', $byDepartment->keys())->get()->keyBy('id');
+
+        $buckets = ['<1d' => 0, '1-3d' => 0, '3-7d' => 0, '>7d' => 0];
+        foreach ($open()->pluck('created_at') as $createdAt) {
+            $hours = $createdAt->diffInHours(now());
+            $key = match (true) {
+                $hours < 24 => '<1d',
+                $hours < 72 => '1-3d',
+                $hours < 168 => '3-7d',
+                default => '>7d',
+            };
+            $buckets[$key]++;
+        }
+
+        return [
+            'trend' => [
+                'labels' => $days->map(fn (string $d) => substr($d, 5))->all(),
+                'created' => $days->map(fn (string $d) => (int) ($created[$d] ?? 0))->all(),
+                'completed' => $days->map(fn (string $d) => (int) ($completed[$d] ?? 0))->all(),
+            ],
+            'departments' => [
+                'labels' => $byDepartment->keys()->map(fn ($id) => $departments[$id]?->localized_name ?? '-')->all(),
+                'values' => $byDepartment->values()->all(),
+            ],
+            'aging' => ['labels' => array_keys($buckets), 'values' => array_values($buckets)],
+            'status' => [
+                'labels' => collect(RequestStatus::cases())->map(fn (RequestStatus $s) => $s->label())->all(),
+                'keys' => collect(RequestStatus::cases())->map(fn (RequestStatus $s) => $s->value)->all(),
+            ],
+        ];
     }
 
     /** Polled by the dashboard: counters plus requests created/changed since `since`. */

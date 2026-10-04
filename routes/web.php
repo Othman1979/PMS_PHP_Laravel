@@ -18,6 +18,7 @@ use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\QuickRequestController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -59,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::controller(MaintenanceRequestController::class)->prefix('requests')->name('requests.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/mine', 'mine')->name('mine')->middleware('role:Technician');
+        Route::post('/bulk', 'bulk')->name('bulk')->middleware('role:Admin,Coordinator');
         Route::get('/create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::get('/{maintenanceRequest}', 'show')->name('show');
@@ -160,5 +162,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('priorities', PriorityController::class)->except('show');
         Route::resource('fault-types', FaultTypeController::class)->except('show');
         Route::resource('fault-causes', FaultCauseController::class)->except('show');
+        Route::controller(SettingController::class)->prefix('settings')->name('settings.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::put('/', 'update')->name('update');
+            Route::post('/backup', 'backup')->name('backup');
+            Route::get('/activity', 'activity')->name('activity');
+        });
     });
 });

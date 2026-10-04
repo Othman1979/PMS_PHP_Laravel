@@ -19,6 +19,7 @@ use App\Services\RequestWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MaintenanceRequestController extends Controller
@@ -81,6 +82,7 @@ class MaintenanceRequestController extends Controller
             'filters' => $filters,
             'counts' => $counts,
             'overdueCount' => $overdueCount,
+            'technicians' => $request->user()->canManage() ? User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']) : collect(),
             'departments' => Department::query()->where('is_active', true)->orderBy('name_en')->get(),
         ]);
     }
@@ -367,6 +369,60 @@ class MaintenanceRequestController extends Controller
         }
 
         return $this->back($maintenanceRequest);
+    }
+
+    /** Coordinator/admin bulk action over the selected rows; rows in a non-eligible state are skipped. */
+    public function bulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['assign', 'cancel', 'close'])],
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['integer'],
+            'technician_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->where('role', Role::Technician->value)->where('is_active', true)],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $user = $request->user();
+        $technician = $data['action'] === 'assign' ? User::findOrFail($data['technician_id']) : null;
+        $done = 0;
+        $requests = MaintenanceRequest::query()->visibleTo($user)->whereIn('id', $data['ids'])->get();
+        foreach ($requests as $mr) {
+            try {
+                $done += (int) match ($data['action']) {
+                    'assign' => $this->bulkAssign($mr, $technician, $user, $data['note'] ?? null),
+                    'cancel' => $this->bulkTransition($mr, RequestStatus::Cancelled, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Assigned, RequestStatus::Accepted, RequestStatus::InProgress, RequestStatus::WaitingParts, RequestStatus::Reopened], $user, $data['note'] ?? null),
+                    'close' => $this->bulkTransition($mr, RequestStatus::Closed, [RequestStatus::Completed, RequestStatus::Reopened], $user, $data['note'] ?? null),
+                };
+            } catch (ValidationException) {
+                // concurrent change — leave the row as-is and report it as skipped
+            }
+        }
+
+        return redirect()->route('requests.index')->with('ok', __('BulkDone', ['count' => $done, 'skipped' => count($data['ids']) - $done]));
+    }
+
+    private function bulkAssign(MaintenanceRequest $mr, User $technician, User $by, ?string $note): bool
+    {
+        if (! in_array($mr->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Reopened], true)) {
+            return false;
+        }
+        $this->workflow->assign($mr, $technician, $by, $note);
+
+        return true;
+    }
+
+    /** @param  list<RequestStatus>  $eligible */
+    private function bulkTransition(MaintenanceRequest $mr, RequestStatus $to, array $eligible, User $by, ?string $note): bool
+    {
+        if (! in_array($mr->status, $eligible, true)) {
+            return false;
+        }
+        if ($to === RequestStatus::Closed) {
+            $mr->closed_at = now();
+        }
+        $this->workflow->transition($mr, $to, $by, $note);
+
+        return true;
     }
 
     public function close(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse

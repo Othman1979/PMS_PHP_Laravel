@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EquipmentCategory;
 use App\Enums\Role;
+use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,8 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request, null);
-        User::create($data);
+        $user = User::create($data);
+        ActivityLog::record('user_created', $user, $user->username.' ('.$user->role->value.')');
 
         return redirect()->route('users.index')->with('ok', 'Saved');
     }
@@ -50,6 +52,7 @@ class UserController extends Controller
         }
 
         $user->update($data);
+        ActivityLog::record('user_updated', $user, $user->username.' ('.$user->role->value.')');
 
         return redirect()->route('users.index')->with('ok', 'Saved');
     }

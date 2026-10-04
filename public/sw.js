@@ -1,4 +1,9 @@
 self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', event => {
+    event.waitUntil(caches.open(STATIC_CACHE).then(cache => cache.add(OFFLINE_URL)).catch(() => {}));
+    self.skipWaiting();
+});
+
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', event => {
@@ -36,8 +41,14 @@ self.addEventListener('notificationclick', event => {
 // Static assets (Bootstrap, fonts, scripts, icons) are served cache-first so pages and
 // dialogs open instantly on slow connections. CSS/JS URLs carry a ?v= version, so a changed
 // file gets a new URL and is never stale.
-const STATIC_CACHE = 'pms-static-v1';
+const STATIC_CACHE = 'pms-static-v2';
+const OFFLINE_URL = '/offline.html';
 const STATIC_PREFIXES = ['/lib/', '/css/', '/js/', '/fonts/', '/icons/'];
+
+self.addEventListener('install', event => {
+    event.waitUntil(caches.open(STATIC_CACHE).then(cache => cache.add(OFFLINE_URL)).catch(() => {}));
+    self.skipWaiting();
+});
 
 self.addEventListener('activate', event => event.waitUntil(
     caches.keys().then(keys => Promise.all(keys.filter(k => k !== STATIC_CACHE).map(k => caches.delete(k))))
@@ -47,7 +58,13 @@ self.addEventListener('fetch', event => {
     const req = event.request;
     if (req.method !== 'GET') return;
     const url = new URL(req.url);
-    if (url.origin !== self.location.origin || !STATIC_PREFIXES.some(p => url.pathname.startsWith(p))) return;
+    if (url.origin !== self.location.origin) return;
+    if (req.mode === 'navigate') {
+        // Pages are always network-first; when the network is down show the offline page.
+        event.respondWith(fetch(req).catch(() => caches.match(OFFLINE_URL).then(hit => hit || Response.error())));
+        return;
+    }
+    if (!STATIC_PREFIXES.some(p => url.pathname.startsWith(p))) return;
 
     event.respondWith(caches.open(STATIC_CACHE).then(async cache => {
         const hit = await cache.match(req);

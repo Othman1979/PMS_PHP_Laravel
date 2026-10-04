@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Setting;
+use App\Services\DatabaseBackup;
 use App\Services\PmGenerator;
 use App\Services\RequestWorkflow;
 use Illuminate\Support\Facades\Artisan;
@@ -47,3 +48,12 @@ Artisan::command('pms:escalate-overdue', function (RequestWorkflow $workflow) {
 })->purpose('Alert staff and technicians about open requests past their SLA');
 
 Schedule::command('pms:escalate-overdue')->everyFifteenMinutes()->withoutOverlapping();
+
+Artisan::command('pms:backup', function (DatabaseBackup $backup) {
+    $dir = storage_path('app/backups');
+    $path = $backup->toFile($dir);
+    $pruned = $backup->prune($dir, max(1, (int) Setting::get(Setting::BACKUP_KEEP, '14')));
+    $this->info("Backup written to {$path} ({$pruned} old file(s) removed).");
+})->purpose('Write a SQL backup to storage/app/backups and prune old ones');
+
+Schedule::command('pms:backup')->dailyAt('02:30')->withoutOverlapping();

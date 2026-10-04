@@ -101,6 +101,7 @@
                 <x-nav-item route="priorities.index" :label="__('Priorities')" icon="flag" active="priorities.*" />
                 <x-nav-item route="fault-types.index" :label="__('FaultTypes')" icon="bolt" active="fault-types.*" />
                 <x-nav-item route="fault-causes.index" :label="__('FaultCauses')" icon="search" active="fault-causes.*" />
+                <x-nav-item route="settings.index" :label="__('GeneralSettings')" icon="settings" active="settings.*" />
             @endif
         </nav>
         <div class="navpane-backdrop" id="paneBackdrop"></div>

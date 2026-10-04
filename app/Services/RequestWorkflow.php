@@ -7,6 +7,7 @@ use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Enums\StockMovementType;
 use App\Events\RequestChanged;
+use App\Models\ActivityLog;
 use App\Models\ChecklistResult;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
@@ -66,6 +67,7 @@ class RequestWorkflow
         }
 
         $request->load(['equipment', 'department', 'priority']);
+        ActivityLog::record('request_created', $request, $request->request_number.' — '.Str::limit($description, 80), $user);
         RequestChanged::dispatch($request, true);
         $this->notifyNewRequest($request);
 
@@ -152,6 +154,7 @@ class RequestWorkflow
             ]);
         });
 
+        ActivityLog::record('request_transition', $request, $request->request_number.': '.$from->value.' → '.$to->value, $by);
         $this->afterTransition($request, $from, $to, $by, $note);
     }
 

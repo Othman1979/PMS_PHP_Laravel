@@ -44,10 +44,33 @@
         </div>
     </form>
 
+    @php $bulk = auth()->user()->canManage(); @endphp
+    @if ($bulk)
+        <form method="post" action="{{ route('requests.bulk') }}" id="bulkForm" class="bulk-bar d-none align-items-center gap-2 flex-wrap mb-2">
+            @csrf
+            <span class="fw-semibold"><span id="bulkCount">0</span> {{ __('Selected') }}</span>
+            <select name="action" class="form-select form-select-sm w-auto" id="bulkAction" required>
+                <option value="assign">{{ __('BulkAssign') }}</option>
+                <option value="cancel">{{ __('BulkCancel') }}</option>
+                <option value="close">{{ __('BulkClose') }}</option>
+            </select>
+            <select name="technician_id" class="form-select form-select-sm w-auto" id="bulkTech">
+                <option value="">{{ __('Technician') }}</option>
+                @foreach ($technicians as $t)
+                    <option value="{{ $t->id }}">{{ $t->full_name }}</option>
+                @endforeach
+            </select>
+            <input name="note" class="form-control form-control-sm w-auto" placeholder="{{ __('NoteOptional') }}" maxlength="1000">
+            <button class="btn btn-sm btn-primary">{{ __('Apply') }}</button>
+            <button type="button" class="btn btn-sm btn-link" id="bulkClear">{{ __('Cancel') }}</button>
+            <span id="bulkIds"></span>
+        </form>
+    @endif
     <div class="table-responsive">
         <table class="table table-hover align-middle table-cards">
             <thead>
                 <tr>
+                    @if ($bulk)<th class="c-check"><input type="checkbox" class="form-check-input" id="checkAll" aria-label="{{ __('SelectAll') }}"></th>@endif
                     <th>{{ __('RequestNumber') }}</th>
                     <th>{{ __('Description') }}</th>
                     <th>{{ __('Equipment') }}</th>
@@ -63,6 +86,7 @@
             <tbody id="requestRows">
                 @forelse ($requests as $r)
                     <tr id="req-{{ $r->id }}" data-status="{{ $r->status->value }}" data-updated="{{ $r->updated_at?->toIso8601String() }}">
+                        @if ($bulk)<td class="c-check"><input type="checkbox" class="form-check-input row-check" value="{{ $r->id }}" aria-label="{{ $r->request_number }}"></td>@endif
                         <td data-label="{{ __('RequestNumber') }}">
                             <a href="{{ route('requests.show', $r) }}">{{ $r->request_number }}</a>
                             @if ($r->is_preventive)
@@ -80,7 +104,7 @@
                         <td class="c-actions"><a class="btn btn-sm btn-outline-primary" href="{{ route('requests.show', $r) }}">{{ __('View') }}</a></td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="10" class="text-center text-muted">{{ __('NoData') }}</td></tr>
+                    <tr class="empty-row"><td colspan="{{ $bulk ? 11 : 10 }}" class="text-center text-muted">{{ __('NoData') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -88,6 +112,33 @@
     {{ $requests->links() }}
 
 <x-slot:scripts>
+@if ($bulk)
+<script>
+(function () {
+    const form = document.getElementById('bulkForm');
+    const ids = document.getElementById('bulkIds');
+    const count = document.getElementById('bulkCount');
+    const action = document.getElementById('bulkAction');
+    const tech = document.getElementById('bulkTech');
+    const all = document.getElementById('checkAll');
+    function selected() { return [...document.querySelectorAll('.row-check:checked')].map(c => c.value); }
+    function refresh() {
+        const s = selected();
+        count.textContent = s.length;
+        ids.innerHTML = s.map(id => '<input type="hidden" name="ids[]" value="' + id + '">').join('');
+        form.classList.toggle('d-none', s.length === 0);
+        form.classList.toggle('d-flex', s.length > 0);
+    }
+    function toggleTech() { tech.classList.toggle('d-none', action.value !== 'assign'); tech.required = action.value === 'assign'; }
+    document.getElementById('requestRows').addEventListener('change', e => { if (e.target.classList.contains('row-check')) refresh(); });
+    all.addEventListener('change', () => { document.querySelectorAll('.row-check').forEach(c => { c.checked = all.checked; }); refresh(); });
+    document.getElementById('bulkClear').addEventListener('click', () => { document.querySelectorAll('.row-check').forEach(c => { c.checked = false; }); all.checked = false; refresh(); });
+    action.addEventListener('change', toggleTech);
+    form.addEventListener('submit', e => { if (!confirm(@js(__('AreYouSure')))) e.preventDefault(); });
+    toggleTech();
+})();
+</script>
+@endif
 <script>
 (function () {
     const live = window.PmsLive;
@@ -98,6 +149,7 @@
     const channel = @js(auth()->user()->canManage() ? 'staff' : (auth()->user()->isTechnician() ? 'technician.'.auth()->id() : 'department.'.auth()->user()->department_id));
     const T = @js(['new' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('View'), 'preventive' => __('Preventive')]);
     const esc = live.esc, L = live.L;
+    const BULK = @js($bulk);
 
     function badge(cell, cls, label, style) {
         const b = cell.querySelector('.badge:not(.due-badge)') || cell.insertBefore(document.createElement('span'), cell.firstChild);
@@ -146,7 +198,8 @@
             tbody.querySelector('.empty-row')?.remove();
             tr = document.createElement('tr');
             tr.id = 'req-' + d.id;
-            tr.innerHTML = '<td data-label="' + esc(H.no) + '"><a href="' + esc(d.detailsUrl) + '">' + esc(d.requestNumber) + '</a></td>' +
+            tr.innerHTML = (BULK ? '<td class="c-check"><input type="checkbox" class="form-check-input row-check" value="' + d.id + '"></td>' : '') +
+                '<td data-label="' + esc(H.no) + '"><a href="' + esc(d.detailsUrl) + '">' + esc(d.requestNumber) + '</a></td>' +
                 '<td data-label="' + esc(H.desc) + '" class="text-truncate" style="max-width:260px">' + esc(d.description) + '</td>' +
                 '<td data-label="' + esc(H.equip) + '">' + esc(d.equipment || '-') + '</td><td data-label="' + esc(H.dept) + '">' + esc(L(d.department)) + '</td><td data-label="' + esc(H.by) + '"></td>' +
                 '<td data-label="' + esc(H.prio) + '" class="c-prio"></td><td data-label="' + esc(H.status) + '" class="c-status"></td><td data-label="' + esc(H.tech) + '" class="c-tech"></td>' +

@@ -696,3 +696,8 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .quick-scanner-frame { position: absolute; inset: 15%; border: 3px solid rgba(255,255,255,.9); border-radius: 1rem; box-shadow: 0 0 0 100vmax rgba(0,0,0,.35); pointer-events: none; }
 .quick-scanner-hint { position: absolute; bottom: .75rem; left: 0; right: 0; text-align: center; color: #fff; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,.8); padding: 0 1rem; }
 .quick-scanner-close { position: absolute; top: .5rem; inset-inline-end: .5rem; }
+
+/* Bulk actions */
+.bulk-bar { background: var(--pms-surface, #fff); border: 1px solid var(--pms-border, #dee2e6); border-radius: .75rem; padding: .5rem .75rem; }
+.table-cards td.c-check { width: 2.5rem; }
+@media (max-width: 767.98px) { .table-cards td.c-check::before { content: none; } .table-cards td.c-check { position: absolute; inset-inline-end: .75rem; top: .75rem; width: auto; padding: 0; border: 0; } .table-cards tr { position: relative; } }
