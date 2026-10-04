@@ -5,13 +5,13 @@
 ## المتطلبات
 
 - خطة استضافة Hostinger (Premium أو Business أو أعلى).
-- دومين أو دومين فرعي، مثلاً `pms.your-domain.com`.
+- دومين أو دومين فرعي، مثلاً `pms.triple7foodmasters.com`. (الأمثلة تحت بدومين `triple7foodmasters.com`: الأفضل تعمل دومين فرعي `pms.triple7foodmasters.com` وتخلّي الموقع الرئيسي متل ما هو.)
 - ملف `PMS-Laravel-hostinger.zip` (فيه النظام كامل مع مجلد `vendor`، فما بتحتاج Composer على السيرفر).
 
 ## 1. إعداد PHP والدومين
 
 1. من hPanel افتح **Websites ← Manage**.
-2. من **Advanced ← PHP Configuration** اختار **PHP 8.3** أو أحدث، وتأكد إنه الإضافات `pdo_mysql` و`mbstring` و`openssl` و`gmp` و`gd` (أو `imagick`) مفعّلة.
+2. من **Advanced ← PHP Configuration** اختار **PHP 8.3** أو أحدث، وتأكد إنه الإضافات `pdo_mysql` و`mbstring` و`openssl` و`gmp` و`gd` و`zip` و`xml` مفعّلة (`zip` و`gd` لازمين لتصدير Excel وPDF وقالب استيراد المعدات).
 3. إذا بدك دومين فرعي: **Domains ← Subdomains** واعمل `pms`.
 4. فعّل **SSL** المجاني للدومين من **Security ← SSL**. لازم يكون الموقع على `https`، لأنه إشعارات التلفون وتثبيت التطبيق ما بيشتغلوا بدونه.
 
@@ -30,10 +30,10 @@
    ```
    ssh -p 65002 u123456789@IP-السيرفر
    ```
-2. ارفع الملف `PMS-Laravel-hostinger.zip` على مجلد الدومين من **File Manager**، مثلاً `domains/pms.your-domain.com/`.
+2. ارفع الملف `PMS-Laravel-hostinger.zip` على مجلد الدومين من **File Manager**، مثلاً `domains/pms.triple7foodmasters.com/`.
 3. فك الضغط وخلّي `public_html` يأشّر على مجلد `public` تبع النظام:
    ```
-   cd ~/domains/pms.your-domain.com
+   cd ~/domains/pms.triple7foodmasters.com
    unzip PMS-Laravel-hostinger.zip -d pms
    mv public_html public_html_old
    ln -s pms/public public_html
@@ -55,8 +55,8 @@
 ```
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://pms.your-domain.com
-PMS_PUBLIC_URL=https://pms.your-domain.com
+APP_URL=https://pms.triple7foodmasters.com
+PMS_PUBLIC_URL=https://pms.triple7foodmasters.com
 
 DB_HOST=localhost
 DB_DATABASE=u123456789_pms
@@ -77,7 +77,7 @@ VAPID_SUBJECT=mailto:your-email@gmail.com
 ### مع SSH
 
 ```
-cd ~/domains/pms.your-domain.com/pms
+cd ~/domains/pms.triple7foodmasters.com/pms
 php artisan key:generate
 php artisan pms:vapid --write
 php artisan migrate --seed --force
@@ -92,7 +92,7 @@ php artisan view:cache
 2. بهاي الطريقة بينعمل المدير الأول باسم `admin` وكلمة سر `ChangeMe!2026`. غيّرها أول ما تدخل من **تغيير كلمة المرور**.
 3. `APP_KEY` ومفاتيح الإشعارات بينعملوا بأمر `php artisan`. بدون SSH بتشغّله مرة وحدة من **Advanced ← Cron Jobs**: ضيف مهمة كل دقيقة (`* * * * *`) فيها:
    ```
-   cd /home/u123456789/domains/pms.your-domain.com/public_html && /usr/bin/php artisan key:generate --force && /usr/bin/php artisan pms:vapid --write
+   cd /home/u123456789/domains/pms.triple7foodmasters.com/public_html && /usr/bin/php artisan key:generate --force && /usr/bin/php artisan pms:vapid --write
    ```
    استنى دقيقتين، وتأكد من File Manager إنه `APP_KEY` و`VAPID_PUBLIC_KEY` صار فيهم قيم بملف `.env`، وبعدين **امسح هاي المهمة فوراً**. إذا ضلّت، كل دقيقة بيتغيّر المفتاح وبيطلع كل المستخدمين من حساباتهم.
 
@@ -101,7 +101,7 @@ php artisan view:cache
 من **Advanced ← Cron Jobs** ضيف مهمة كل دقيقة (`* * * * *`):
 
 ```
-/usr/bin/php /home/u123456789/domains/pms.your-domain.com/pms/artisan schedule:run
+/usr/bin/php /home/u123456789/domains/pms.triple7foodmasters.com/pms/artisan schedule:run
 ```
 
 (بطريقة File Manager المسار بيكون `.../public_html/artisan`.) هاي المهمة بتعمل طلبات الصيانة الوقائية لحالها مرتين باليوم.
@@ -110,7 +110,7 @@ php artisan view:cache
 
 ## 7. أول دخول
 
-1. افتح `https://pms.your-domain.com` وادخل بحساب المدير.
+1. افتح `https://pms.triple7foodmasters.com` وادخل بحساب المدير.
 2. من **المستخدمين** ضيف المنسّق والفنيين (مع الاختصاص) والموظفين.
 3. من **الأقسام** و**المعدات** دخّل بيانات المطعم، وبعدين اطبع ملصقات الـ QR من قائمة المعدات.
 4. على كل تلفون: افتح الرابط، وضيفه على الشاشة الرئيسية (بالآيفون من Safari ← مشاركة ← إضافة إلى الشاشة الرئيسية)، وادخل، واضغط **تفعيل الإشعارات**.
@@ -135,3 +135,4 @@ php artisan view:cache
 | الإشعارات ما بتوصل للآيفون | لازم الموقع يكون `https`، والتطبيق مضاف على الشاشة الرئيسية، و`VAPID_SUBJECT` إيميل حقيقي. |
 | صورة كبيرة بتنرفض ("فشل رفع الصورة") | الملف `public/.user.ini` بيرفع الحد لـ 12MB. إذا ما زبط، من **Advanced ← PHP Configuration ← PHP Options** خلّي `upload_max_filesize` = 12M و`post_max_size` = 64M. التلفون كمان بيصغّر الصور لحاله قبل ما يرفعها. |
 | الصور المرفوعة ما بتطلع | الصور بتنحفظ بـ `public/uploads`. تأكد إنه المجلد موجود وقابل للكتابة. |
+| تصدير PDF بيعطي خطأ 500 | مجلد `storage/app/mpdf` لازم يكون قابل للكتابة (mPDF بيخزّن فيه ملفات الخط المؤقتة). |

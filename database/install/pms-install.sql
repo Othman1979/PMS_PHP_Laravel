@@ -1,3 +1,8 @@
+-- MySQL dump 10.13  Distrib 8.0.46, for Linux (x86_64)
+--
+-- Host: localhost    Database: pms_install
+-- ------------------------------------------------------
+-- Server version	8.0.46
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -9,6 +14,11 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `cache`
+--
+
 DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -21,8 +31,19 @@ CREATE TABLE `cache` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `cache`
+--
+
+LOCK TABLES `cache` WRITE;
 /*!40000 ALTER TABLE `cache` DISABLE KEYS */;
 /*!40000 ALTER TABLE `cache` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `cache_locks`
+--
+
 DROP TABLE IF EXISTS `cache_locks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -35,8 +56,19 @@ CREATE TABLE `cache_locks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `cache_locks`
+--
+
+LOCK TABLES `cache_locks` WRITE;
 /*!40000 ALTER TABLE `cache_locks` DISABLE KEYS */;
 /*!40000 ALTER TABLE `cache_locks` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_items`
+--
+
 DROP TABLE IF EXISTS `checklist_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -52,9 +84,20 @@ CREATE TABLE `checklist_items` (
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_items`
+--
+
+LOCK TABLES `checklist_items` WRITE;
 /*!40000 ALTER TABLE `checklist_items` DISABLE KEYS */;
 INSERT INTO `checklist_items` VALUES (1,1,'Check temperature is within safe range','فحص درجة الحرارة والتأكد من التزامها بالحد الآمن',1),(2,1,'Clean condenser from dust','تنظيف الكباس (المكثف) من الغبار',2),(3,1,'Inspect door gaskets and seals','فحص إحكام الأبواب وحلقات العزل',3),(4,1,'Check refrigerant level and compressor efficiency','فحص مستوى غاز التبريد وكفاءة الكمبروسر',4),(5,2,'Clean hood filters and grease traps','تنظيف مرشحات الشفاط ومصائد الشحوم',1),(6,2,'Inspect gas hoses and safety valves','فحص خراطيم الغاز وصمامات الأمان',2),(7,2,'Calibrate temperature settings','معايرة إعدادات الحرارة',3),(8,2,'Inspect electrical and mechanical safety components','فحص مكونات السلامة الكهربائية والميكانيكية',4),(9,3,'Test fire alarm and suppression systems','اختبار أنظمة إنذار وإطفاء الحريق',1),(10,3,'Test emergency lighting','اختبار الإضاءة الاحتياطية',2),(11,3,'Verify extinguisher pressure and expiry','التحقق من ضغط طفايات الحريق وصلاحيتها',3);
 /*!40000 ALTER TABLE `checklist_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_results`
+--
+
 DROP TABLE IF EXISTS `checklist_results`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -72,8 +115,19 @@ CREATE TABLE `checklist_results` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_results`
+--
+
+LOCK TABLES `checklist_results` WRITE;
 /*!40000 ALTER TABLE `checklist_results` DISABLE KEYS */;
 /*!40000 ALTER TABLE `checklist_results` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `checklists`
+--
+
 DROP TABLE IF EXISTS `checklists`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -88,9 +142,20 @@ CREATE TABLE `checklists` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklists`
+--
+
+LOCK TABLES `checklists` WRITE;
 /*!40000 ALTER TABLE `checklists` DISABLE KEYS */;
-INSERT INTO `checklists` VALUES (1,'Refrigeration Preventive Checklist','قائمة فحص الصيانة الوقائية للتبريد','Refrigeration','2026-10-01 14:59:15','2026-10-01 14:59:15'),(2,'Kitchen Equipment Preventive Checklist','قائمة فحص معدات المطبخ','KitchenEquipment','2026-10-01 14:59:15','2026-10-01 14:59:15'),(3,'Safety Systems Test Checklist','قائمة اختبار أنظمة السلامة','SafetySystems','2026-10-01 14:59:15','2026-10-01 14:59:15');
+INSERT INTO `checklists` VALUES (1,'Refrigeration Preventive Checklist','قائمة فحص الصيانة الوقائية للتبريد','Refrigeration','2026-10-04 18:20:55','2026-10-04 18:20:55'),(2,'Kitchen Equipment Preventive Checklist','قائمة فحص معدات المطبخ','KitchenEquipment','2026-10-04 18:20:55','2026-10-04 18:20:55'),(3,'Safety Systems Test Checklist','قائمة اختبار أنظمة السلامة','SafetySystems','2026-10-04 18:20:55','2026-10-04 18:20:55');
 /*!40000 ALTER TABLE `checklists` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `departments`
+--
+
 DROP TABLE IF EXISTS `departments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -105,9 +170,20 @@ CREATE TABLE `departments` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `departments`
+--
+
+LOCK TABLES `departments` WRITE;
 /*!40000 ALTER TABLE `departments` DISABLE KEYS */;
-INSERT INTO `departments` VALUES (1,'Kitchen','المطبخ',1,'2026-10-01 14:59:15','2026-10-01 14:59:15'),(2,'Bar','البار',1,'2026-10-01 14:59:15','2026-10-01 14:59:15'),(3,'Hall','الصالة',1,'2026-10-01 14:59:15','2026-10-01 14:59:15'),(4,'Warehouse','المستودع',1,'2026-10-01 14:59:15','2026-10-01 14:59:15'),(5,'Management','الإدارة',1,'2026-10-01 14:59:15','2026-10-01 14:59:15');
+INSERT INTO `departments` VALUES (1,'Kitchen','المطبخ',1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(2,'Bar','البار',1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(3,'Hall','الصالة',1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(4,'Warehouse','المستودع',1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(5,'Management','الإدارة',1,'2026-10-04 18:20:55','2026-10-04 18:20:55');
 /*!40000 ALTER TABLE `departments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `equipment`
+--
+
 DROP TABLE IF EXISTS `equipment`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -145,8 +221,77 @@ CREATE TABLE `equipment` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `equipment`
+--
+
+LOCK TABLES `equipment` WRITE;
 /*!40000 ALTER TABLE `equipment` DISABLE KEYS */;
 /*!40000 ALTER TABLE `equipment` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `fault_causes`
+--
+
+DROP TABLE IF EXISTS `fault_causes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `fault_causes` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name_en` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name_ar` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sort_order` smallint unsigned NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `fault_causes`
+--
+
+LOCK TABLES `fault_causes` WRITE;
+/*!40000 ALTER TABLE `fault_causes` DISABLE KEYS */;
+INSERT INTO `fault_causes` VALUES (1,'Power surge / overload','كهرباء زائدة / حمل زائد',1,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(2,'Manufacturing defect','سوء تصنيع',2,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(3,'Normal wear and tear','استهلاك طبيعي',3,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(4,'Misuse by staff','سوء استخدام',4,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(5,'Lack of cleaning / maintenance','قلة تنظيف / صيانة',5,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(6,'Water / humidity damage','ماء / رطوبة',6,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(7,'Blockage / dirt build-up','انسداد / تراكم أوساخ',7,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(8,'Unknown','غير معروف',8,1,'2026-10-04 18:20:55','2026-10-04 18:20:55');
+/*!40000 ALTER TABLE `fault_causes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `fault_types`
+--
+
+DROP TABLE IF EXISTS `fault_types`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `fault_types` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name_en` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name_ar` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sort_order` smallint unsigned NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `fault_types`
+--
+
+LOCK TABLES `fault_types` WRITE;
+/*!40000 ALTER TABLE `fault_types` DISABLE KEYS */;
+INSERT INTO `fault_types` VALUES (1,'Electrical','كهربائي',1,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(2,'Mechanical','ميكانيكي',2,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(3,'Cooling / Refrigerant','تبريد / غاز',3,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(4,'Gas','غاز الطهي',4,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(5,'Plumbing / Leak','سباكة / تسريب',5,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(6,'Electronic / Control board','إلكتروني / لوحة تحكم',6,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(7,'Other','أخرى',7,1,'2026-10-04 18:20:55','2026-10-04 18:20:55');
+/*!40000 ALTER TABLE `fault_types` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `goods_receipt_items`
+--
+
 DROP TABLE IF EXISTS `goods_receipt_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -169,8 +314,19 @@ CREATE TABLE `goods_receipt_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `goods_receipt_items`
+--
+
+LOCK TABLES `goods_receipt_items` WRITE;
 /*!40000 ALTER TABLE `goods_receipt_items` DISABLE KEYS */;
 /*!40000 ALTER TABLE `goods_receipt_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `goods_receipts`
+--
+
 DROP TABLE IF EXISTS `goods_receipts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -196,8 +352,19 @@ CREATE TABLE `goods_receipts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `goods_receipts`
+--
+
+LOCK TABLES `goods_receipts` WRITE;
 /*!40000 ALTER TABLE `goods_receipts` DISABLE KEYS */;
 /*!40000 ALTER TABLE `goods_receipts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `maintenance_requests`
+--
+
 DROP TABLE IF EXISTS `maintenance_requests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -208,7 +375,9 @@ CREATE TABLE `maintenance_requests` (
   `department_id` bigint unsigned NOT NULL,
   `created_by_id` bigint unsigned NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `priority` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Normal',
+  `priority_id` bigint unsigned DEFAULT NULL,
+  `fault_type_id` bigint unsigned DEFAULT NULL,
+  `fault_cause_id` bigint unsigned DEFAULT NULL,
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'New',
   `assigned_technician_id` bigint unsigned DEFAULT NULL,
   `assigned_at` datetime DEFAULT NULL,
@@ -234,16 +403,33 @@ CREATE TABLE `maintenance_requests` (
   KEY `maintenance_requests_preventive_maintenance_plan_id_foreign` (`preventive_maintenance_plan_id`),
   KEY `maintenance_requests_request_number_index` (`request_number`),
   KEY `maintenance_requests_status_index` (`status`),
+  KEY `maintenance_requests_priority_id_foreign` (`priority_id`),
+  KEY `maintenance_requests_fault_type_id_foreign` (`fault_type_id`),
+  KEY `maintenance_requests_fault_cause_id_foreign` (`fault_cause_id`),
   CONSTRAINT `maintenance_requests_assigned_technician_id_foreign` FOREIGN KEY (`assigned_technician_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `maintenance_requests_created_by_id_foreign` FOREIGN KEY (`created_by_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `maintenance_requests_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `maintenance_requests_equipment_id_foreign` FOREIGN KEY (`equipment_id`) REFERENCES `equipment` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `maintenance_requests_preventive_maintenance_plan_id_foreign` FOREIGN KEY (`preventive_maintenance_plan_id`) REFERENCES `preventive_maintenance_plans` (`id`) ON DELETE SET NULL
+  CONSTRAINT `maintenance_requests_fault_cause_id_foreign` FOREIGN KEY (`fault_cause_id`) REFERENCES `fault_causes` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `maintenance_requests_fault_type_id_foreign` FOREIGN KEY (`fault_type_id`) REFERENCES `fault_types` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `maintenance_requests_preventive_maintenance_plan_id_foreign` FOREIGN KEY (`preventive_maintenance_plan_id`) REFERENCES `preventive_maintenance_plans` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `maintenance_requests_priority_id_foreign` FOREIGN KEY (`priority_id`) REFERENCES `priorities` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `maintenance_requests`
+--
+
+LOCK TABLES `maintenance_requests` WRITE;
 /*!40000 ALTER TABLE `maintenance_requests` DISABLE KEYS */;
 /*!40000 ALTER TABLE `maintenance_requests` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `migrations`
+--
+
 DROP TABLE IF EXISTS `migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -252,12 +438,23 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `migrations`
+--
+
+LOCK TABLES `migrations` WRITE;
 /*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'2026_10_01_000001_create_pms_tables',1);
+INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'2026_10_01_000001_create_pms_tables',1),(4,'2026_10_04_170105_create_priorities_and_fault_lookups',1);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `preventive_maintenance_plans`
+--
+
 DROP TABLE IF EXISTS `preventive_maintenance_plans`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -282,8 +479,56 @@ CREATE TABLE `preventive_maintenance_plans` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `preventive_maintenance_plans`
+--
+
+LOCK TABLES `preventive_maintenance_plans` WRITE;
 /*!40000 ALTER TABLE `preventive_maintenance_plans` DISABLE KEYS */;
 /*!40000 ALTER TABLE `preventive_maintenance_plans` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `priorities`
+--
+
+DROP TABLE IF EXISTS `priorities`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `priorities` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name_en` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name_ar` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `hint_en` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `hint_ar` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `color` varchar(9) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#0dcaf0',
+  `rank` smallint unsigned NOT NULL DEFAULT '1',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0',
+  `is_critical` tinyint(1) NOT NULL DEFAULT '0',
+  `show_in_quick` tinyint(1) NOT NULL DEFAULT '1',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `priorities_code_unique` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `priorities`
+--
+
+LOCK TABLES `priorities` WRITE;
+/*!40000 ALTER TABLE `priorities` DISABLE KEYS */;
+INSERT INTO `priorities` VALUES (1,'Scheduled','Scheduled','مجدول',NULL,NULL,'#6c757d',0,0,0,0,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(2,'Normal','Normal','عادي','Works but has a problem','يعمل لكن فيه مشكلة','#22c55e',1,1,0,1,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(3,'Urgent','Urgent','مستعجل','Affects the work','يؤثر على العمل','#f59e0b',2,0,0,1,1,'2026-10-04 18:20:55','2026-10-04 18:20:55'),(4,'Critical','Critical (operations stopped)','طارئ','Equipment fully stopped','الجهاز متوقف تمامًا','#ef4444',3,0,1,1,1,'2026-10-04 18:20:55','2026-10-04 18:20:55');
+/*!40000 ALTER TABLE `priorities` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `purchase_request_items`
+--
+
 DROP TABLE IF EXISTS `purchase_request_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -305,8 +550,19 @@ CREATE TABLE `purchase_request_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `purchase_request_items`
+--
+
+LOCK TABLES `purchase_request_items` WRITE;
 /*!40000 ALTER TABLE `purchase_request_items` DISABLE KEYS */;
 /*!40000 ALTER TABLE `purchase_request_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `purchase_requests`
+--
+
 DROP TABLE IF EXISTS `purchase_requests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -330,8 +586,19 @@ CREATE TABLE `purchase_requests` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `purchase_requests`
+--
+
+LOCK TABLES `purchase_requests` WRITE;
 /*!40000 ALTER TABLE `purchase_requests` DISABLE KEYS */;
 /*!40000 ALTER TABLE `purchase_requests` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `push_subscriptions`
+--
+
 DROP TABLE IF EXISTS `push_subscriptions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -352,8 +619,19 @@ CREATE TABLE `push_subscriptions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `push_subscriptions`
+--
+
+LOCK TABLES `push_subscriptions` WRITE;
 /*!40000 ALTER TABLE `push_subscriptions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `push_subscriptions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `request_attachments`
+--
+
 DROP TABLE IF EXISTS `request_attachments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -373,8 +651,19 @@ CREATE TABLE `request_attachments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `request_attachments`
+--
+
+LOCK TABLES `request_attachments` WRITE;
 /*!40000 ALTER TABLE `request_attachments` DISABLE KEYS */;
 /*!40000 ALTER TABLE `request_attachments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `request_parts_used`
+--
+
 DROP TABLE IF EXISTS `request_parts_used`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -392,8 +681,19 @@ CREATE TABLE `request_parts_used` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `request_parts_used`
+--
+
+LOCK TABLES `request_parts_used` WRITE;
 /*!40000 ALTER TABLE `request_parts_used` DISABLE KEYS */;
 /*!40000 ALTER TABLE `request_parts_used` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `request_timelines`
+--
+
 DROP TABLE IF EXISTS `request_timelines`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -413,8 +713,19 @@ CREATE TABLE `request_timelines` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `request_timelines`
+--
+
+LOCK TABLES `request_timelines` WRITE;
 /*!40000 ALTER TABLE `request_timelines` DISABLE KEYS */;
 /*!40000 ALTER TABLE `request_timelines` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sessions`
+--
+
 DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -431,8 +742,19 @@ CREATE TABLE `sessions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `sessions`
+--
+
+LOCK TABLES `sessions` WRITE;
 /*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `spare_parts`
+--
+
 DROP TABLE IF EXISTS `spare_parts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -451,8 +773,19 @@ CREATE TABLE `spare_parts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `spare_parts`
+--
+
+LOCK TABLES `spare_parts` WRITE;
 /*!40000 ALTER TABLE `spare_parts` DISABLE KEYS */;
 /*!40000 ALTER TABLE `spare_parts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `stock_movements`
+--
+
 DROP TABLE IF EXISTS `stock_movements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -481,8 +814,19 @@ CREATE TABLE `stock_movements` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stock_movements`
+--
+
+LOCK TABLES `stock_movements` WRITE;
 /*!40000 ALTER TABLE `stock_movements` DISABLE KEYS */;
 /*!40000 ALTER TABLE `stock_movements` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `users`
+--
+
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -508,9 +852,15 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `users`
+--
+
+LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','مدير الصيانة',NULL,NULL,'$2y$12$jMAfbDNEI3RyZMlraxZZnuFAKGtLrd7TWtR6FIcPXBR74jJTjP9um','Admin',5,NULL,1,NULL,'2026-10-01 14:59:15','2026-10-01 14:59:15');
+INSERT INTO `users` VALUES (1,'admin','مدير الصيانة',NULL,NULL,'$2y$12$W.hgmAjUSBEK6a.3pCIFAOz6r64kxOdOJvU21p.rgfDbTgObHSUw2','Admin',5,NULL,1,NULL,'2026-10-04 18:20:55','2026-10-04 18:20:55');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -521,3 +871,4 @@ INSERT INTO `users` VALUES (1,'admin','مدير الصيانة',NULL,NULL,'$2y$1
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+-- Dump completed
