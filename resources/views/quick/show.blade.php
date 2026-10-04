@@ -123,7 +123,9 @@
                     preview.src = URL.createObjectURL(f);
                     preview.classList.remove('d-none');
                 });
-                document.getElementById('quickForm').addEventListener('submit', () => {
+                const hasOpen = @js($openRequests->isNotEmpty());
+                document.getElementById('quickForm').addEventListener('submit', e => {
+                    if (hasOpen && !confirm(@js(__('Quick_DuplicateConfirm')))) { e.preventDefault(); return; }
                     const b = document.getElementById('sendBtn');
                     setTimeout(() => { b.disabled = true; }, 0);
                 });

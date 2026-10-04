@@ -592,5 +592,16 @@
     "EscalateOverdue_Hint": "Notifies coordinators and the technician when the response time is exceeded.",
     "GeneralSettings": "General settings",
     "SettingsSaved": "Settings saved.",
-    "Tasks": "tasks"
+    "Tasks": "tasks",
+    "Quick_ScanButton": "Scan QR code with camera",
+    "Quick_ScanHint": "Point the camera at the QR label on the equipment",
+    "Quick_CameraUnavailable": "Camera is not available in this browser. Use your phone camera app or search by name.",
+    "Quick_MyRequests": "My open requests",
+    "Quick_AllMyRequests": "All my requests",
+    "Quick_NoRequests": "No requests yet.",
+    "Quick_DuplicateConfirm": "There is already an open request for this equipment. Send a new one anyway?",
+    "Quick_ConfirmNeeded": "Awaiting your confirmation",
+    "DraftRestored": "An unsaved draft was restored.",
+    "DiscardDraft": "Discard draft",
+    "SearchPartPlaceholder": "Search by name or part number…"
 }

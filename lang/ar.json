@@ -592,5 +592,16 @@
     "EscalateOverdue_Hint": "يرسل إشعاراً للمنسقين والفني عند تجاوز وقت الاستجابة.",
     "GeneralSettings": "الإعدادات العامة",
     "SettingsSaved": "تم حفظ الإعدادات.",
-    "Tasks": "مهام"
+    "Tasks": "مهام",
+    "Quick_ScanButton": "امسح رمز QR بالكاميرا",
+    "Quick_ScanHint": "وجّه الكاميرا نحو ملصق QR الموجود على الجهاز",
+    "Quick_CameraUnavailable": "الكاميرا غير متاحة على هذا الجهاز أو المتصفح. استخدم كاميرا الهاتف العادية أو ابحث بالاسم.",
+    "Quick_MyRequests": "طلباتي الجارية",
+    "Quick_AllMyRequests": "كل طلباتي",
+    "Quick_NoRequests": "لا توجد طلبات بعد.",
+    "Quick_DuplicateConfirm": "يوجد طلب مفتوح لهذا الجهاز بالفعل. هل تريد إرسال طلب جديد على أي حال؟",
+    "Quick_ConfirmNeeded": "بانتظار تأكيدك",
+    "DraftRestored": "تم استرجاع مسودة لم تُحفظ سابقاً.",
+    "DiscardDraft": "تجاهل المسودة",
+    "SearchPartPlaceholder": "ابحث بالاسم أو رقم القطعة…"
 }

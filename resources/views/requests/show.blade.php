@@ -261,7 +261,11 @@
                 <div class="card mb-3 border-success">
                     <div class="card-header bg-success text-white"><strong>{{ __('MarkComplete') }}</strong></div>
                     <div class="card-body">
-                        <form action="{{ route('requests.complete', $mr) }}" method="post">
+                        <form action="{{ route('requests.complete', $mr) }}" method="post" id="completeForm" data-draft-key="pms.draft.complete.{{ $mr->id }}">
+                            <div class="alert alert-info py-2 small d-none justify-content-between align-items-center" id="draftNotice">
+                                <span>{{ __('DraftRestored') }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="draftDiscard">{{ __('DiscardDraft') }}</button>
+                            </div>
                             @csrf
                             @if ($checklist)
                                 <h6>{{ __('FillChecklist') }}: {{ $checklist->localized_name }}</h6>
@@ -312,18 +316,21 @@
                             <div id="partsContainer">
                                 <div class="row g-2 mb-1 part-row">
                                     <div class="col-8">
-                                        <select name="parts[0][spare_part_id]" class="form-select form-select-sm">
-                                            <option value="">{{ __('SelectPart') }}</option>
-                                            @foreach ($spareParts as $sp)
-                                                <option value="{{ $sp->id }}" @disabled($sp->quantity <= 0)>{{ $sp->name }}{{ $sp->part_number ? ' ('.$sp->part_number.')' : '' }} — {{ __('InStock') }}: {{ $sp->quantity }}</option>
-                                            @endforeach
-                                        </select>
+                                        <input type="hidden" name="parts[0][spare_part_id]" class="part-id">
+                                        <input type="text" list="partsList" class="form-control form-control-sm part-search" placeholder="{{ __('SearchPartPlaceholder') }}" autocomplete="off">
                                     </div>
                                     <div class="col-4">
-                                        <input name="parts[0][quantity]" type="number" min="0" class="form-control form-control-sm" placeholder="{{ __('Quantity') }}">
+                                        <input name="parts[0][quantity]" type="number" min="0" class="form-control form-control-sm part-qty" placeholder="{{ __('Quantity') }}">
                                     </div>
                                 </div>
                             </div>
+                            <datalist id="partsList">
+                                @foreach ($spareParts as $sp)
+                                    @if ($sp->quantity > 0)
+                                        <option value="{{ $sp->name }}{{ $sp->part_number ? ' ('.$sp->part_number.')' : '' }} — {{ __('InStock') }}: {{ $sp->quantity }}" data-id="{{ $sp->id }}"></option>
+                                    @endif
+                                @endforeach
+                            </datalist>
                             <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="addPart">+ {{ __('AddPart') }}</button>
                             <button type="submit" class="btn btn-success btn-lg w-100">{{ __('MarkComplete') }}</button>
                         </form>
@@ -376,19 +383,83 @@
     <x-slot:scripts>
         <script>
             (function () {
-                const btn = document.getElementById('addPart');
-                if (!btn) return;
-                let i = 1;
-                btn.addEventListener('click', () => {
-                    const first = document.querySelector('#partsContainer .part-row');
-                    const row = first.cloneNode(true);
-                    row.querySelector('select').name = 'parts[' + i + '][spare_part_id]';
-                    row.querySelector('select').selectedIndex = 0;
-                    row.querySelector('input').name = 'parts[' + i + '][quantity]';
-                    row.querySelector('input').value = '';
-                    document.getElementById('partsContainer').appendChild(row);
+                const form = document.getElementById('completeForm');
+                if (!form) return;
+                const container = document.getElementById('partsContainer');
+                const options = [...document.querySelectorAll('#partsList option')];
+
+                /* searchable parts: map the typed label back to the spare-part id */
+                function wireRow(row) {
+                    const search = row.querySelector('.part-search');
+                    const id = row.querySelector('.part-id');
+                    const sync = () => {
+                        const hit = options.find(o => o.value === search.value.trim());
+                        id.value = hit ? hit.dataset.id : '';
+                        search.classList.toggle('is-invalid', search.value.trim() !== '' && !hit);
+                    };
+                    search.addEventListener('input', sync);
+                    search.addEventListener('change', sync);
+                }
+                container.querySelectorAll('.part-row').forEach(wireRow);
+                let i = container.querySelectorAll('.part-row').length;
+                function addRow() {
+                    const row = container.querySelector('.part-row').cloneNode(true);
+                    row.querySelector('.part-id').name = 'parts[' + i + '][spare_part_id]';
+                    row.querySelector('.part-id').value = '';
+                    row.querySelector('.part-search').value = '';
+                    row.querySelector('.part-search').classList.remove('is-invalid');
+                    row.querySelector('.part-qty').name = 'parts[' + i + '][quantity]';
+                    row.querySelector('.part-qty').value = '';
+                    container.appendChild(row);
+                    wireRow(row);
                     i++;
+                    return row;
+                }
+                document.getElementById('addPart').addEventListener('click', addRow);
+
+                /* draft autosave (phone may lock / tab may close mid-form) */
+                const key = form.dataset.draftKey;
+                const fields = ['fault_type_id', 'fault_cause_id', 'resolution_notes', 'technician_notes', 'cost_labor'];
+                const notice = document.getElementById('draftNotice');
+                function snapshot() {
+                    const d = {};
+                    fields.forEach(n => { const el = form.elements[n]; if (el) d[n] = el.value; });
+                    d.parts = [...container.querySelectorAll('.part-row')]
+                        .map(r => ({ s: r.querySelector('.part-search').value, q: r.querySelector('.part-qty').value }))
+                        .filter(p => p.s || p.q);
+                    return d;
+                }
+                function hasContent(d) {
+                    return fields.some(n => n !== 'cost_labor' && (d[n] || '') !== '') || (d.cost_labor && d.cost_labor !== '0') || d.parts.length > 0;
+                }
+                let saveTimer = null;
+                form.addEventListener('input', () => {
+                    clearTimeout(saveTimer);
+                    saveTimer = setTimeout(() => {
+                        const d = snapshot();
+                        try { hasContent(d) ? localStorage.setItem(key, JSON.stringify(d)) : localStorage.removeItem(key); } catch (e) { /* storage full / disabled */ }
+                    }, 300);
                 });
+                form.addEventListener('submit', () => { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } });
+                document.getElementById('draftDiscard').addEventListener('click', () => {
+                    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+                    form.reset();
+                    container.querySelectorAll('.part-row:not(:first-child)').forEach(r => r.remove());
+                    notice.classList.replace('d-flex', 'd-none');
+                });
+                try {
+                    const saved = JSON.parse(localStorage.getItem(key) || 'null');
+                    if (saved && hasContent(saved) && !hasContent(snapshot())) {
+                        fields.forEach(n => { const el = form.elements[n]; if (el && saved[n] !== undefined) el.value = saved[n]; });
+                        (saved.parts || []).forEach((p, idx) => {
+                            const row = idx === 0 ? container.querySelector('.part-row') : addRow();
+                            row.querySelector('.part-search').value = p.s || '';
+                            row.querySelector('.part-qty').value = p.q || '';
+                            row.querySelector('.part-search').dispatchEvent(new Event('change'));
+                        });
+                        notice.classList.replace('d-none', 'd-flex');
+                    }
+                } catch (e) { /* corrupt draft */ }
             })();
         </script>
     </x-slot:scripts>

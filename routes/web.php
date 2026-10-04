@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
     // QR quick request: opened by scanning the label on the equipment.
     Route::controller(QuickRequestController::class)->prefix('r')->name('quick.')->group(function () {
         Route::get('/', 'find')->name('find');
+        Route::get('/mine', 'mine')->name('mine');
         Route::get('/done/{maintenanceRequest}', 'done')->name('done');
         Route::get('/{code}', 'show')->name('show');
         Route::post('/{code}', 'store')->name('store');

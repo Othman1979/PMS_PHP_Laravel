@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
  * Admin-managed request priority. `code` is a stable key used only by the installer
  * (seeded rows) — admins rename/recolor rows freely; `rank` orders them (higher = more urgent).
  */
-#[Fillable(['code', 'name_en', 'name_ar', 'hint_en', 'hint_ar', 'color', 'rank', 'is_default', 'is_critical', 'show_in_quick', 'is_active'])]
+#[Fillable(['code', 'name_en', 'name_ar', 'hint_en', 'hint_ar', 'color', 'rank', 'sla_hours', 'is_default', 'is_critical', 'show_in_quick', 'is_active'])]
 class Priority extends Model
 {
     protected function casts(): array

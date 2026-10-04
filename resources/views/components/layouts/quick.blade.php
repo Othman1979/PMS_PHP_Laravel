@@ -14,12 +14,10 @@
         <div class="d-flex align-items-center gap-1">
             <x-culture-switcher />
             @auth
-                @unless (auth()->user()->isEmployee())
-                    <a class="quick-home" href="{{ route('requests.index') }}" title="{{ __('MyRequests') }}">
+                    <a class="quick-home" href="{{ auth()->user()->isEmployee() ? route('quick.mine') : route('requests.index') }}" title="{{ __('MyRequests') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
                         <span class="quick-home-label">{{ __('MyRequests') }}</span>
                     </a>
-                @endunless
                 <form action="{{ route('logout') }}" method="post" class="d-flex">
                     @csrf
                     <button type="submit" class="quick-home" title="{{ __('Logout') }}" aria-label="{{ __('Logout') }}">

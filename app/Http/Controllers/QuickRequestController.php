@@ -37,14 +37,31 @@ class QuickRequestController extends Controller
                 ->orderBy('name')->take(50)->get();
         }
 
-        return view('quick.find', ['results' => $results, 'q' => $q, 'notFound' => false]);
+        return view('quick.find', [
+            'results' => $results,
+            'q' => $q,
+            'notFound' => false,
+            'myRequests' => MaintenanceRequest::with(['equipment', 'assignedTechnician'])
+                ->where('created_by_id', $request->user()->id)
+                ->whereNotIn('status', RequestStatus::closed())
+                ->latest()->take(5)->get(),
+        ]);
+    }
+
+    public function mine(Request $request): View
+    {
+        return view('quick.mine', [
+            'requests' => MaintenanceRequest::with(['equipment', 'assignedTechnician'])
+                ->where('created_by_id', $request->user()->id)
+                ->latest()->paginate(20),
+        ]);
     }
 
     public function show(string $code): View
     {
         $equipment = $this->findEquipment($code);
         if ($equipment === null) {
-            return view('quick.find', ['results' => collect(), 'q' => $code, 'notFound' => true]);
+            return view('quick.find', ['results' => collect(), 'q' => $code, 'notFound' => true, 'myRequests' => collect()]);
         }
 
         return view('quick.show', [

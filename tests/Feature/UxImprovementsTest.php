@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\MaintenanceRequest;
 use App\Models\Priority;
 use App\Models\Setting;
+use App\Models\SparePart;
 use App\Models\User;
 use App\Services\RequestWorkflow;
 use Database\Seeders\DatabaseSeeder;
@@ -140,5 +141,29 @@ class UxImprovementsTest extends TestCase
         $this->assertSame(RequestStatus::Assigned, $mr->status);
         $this->assertNotNull($mr->assigned_technician_id);
         $this->assertSame(RequestStatus::Assigned, $mr->fresh()->status);
+    }
+
+    public function test_quick_screen_lists_employee_open_requests_and_full_history(): void
+    {
+        $mr = $this->newRequest();
+        $employee = $this->user('employee');
+
+        $this->actingAs($employee)->get('/r')->assertOk()->assertSee($mr->request_number)->assertSee(route('quick.mine'), false);
+        $this->get('/r/mine')->assertOk()->assertSee($mr->request_number);
+        $this->actingAs(User::factory()->create(['role' => Role::Employee]))->get('/r/mine')->assertOk()->assertDontSee($mr->request_number);
+    }
+
+    public function test_technician_complete_form_lists_only_in_stock_parts_in_searchable_list(): void
+    {
+        $mr = $this->newRequest();
+        $tech = $this->user('tech1');
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/assign", ['technician_id' => $tech->id])->assertRedirect();
+        $this->actingAs($tech)->post("/requests/{$mr->id}/accept-start")->assertRedirect();
+        $out = SparePart::query()->create(['name' => 'Empty part', 'quantity' => 0, 'unit_cost' => 1, 'unit' => 'pc', 'minimum_quantity' => 0]);
+
+        $this->get("/requests/{$mr->id}")->assertOk()
+            ->assertSee('id="partsList"', false)
+            ->assertSee('data-draft-key="pms.draft.complete.'.$mr->id.'"', false)
+            ->assertDontSee($out->name);
     }
 }
