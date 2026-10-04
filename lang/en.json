@@ -546,5 +546,13 @@
     "Error_503Message": "We will be back in a few minutes.",
     "Error_503Title": "System under maintenance",
     "Error_BackHome": "Home page",
-    "Error_StateChanged": "The request was just changed by another user. The page has been refreshed; review the new status and try again."
+    "Error_StateChanged": "The request was just changed by another user. The page has been refreshed; review the new status and try again.",
+    "Push_AssignedStaffTitle": "Request assigned",
+    "Push_RequesterAssignedTitle": "A technician was assigned to your request",
+    "Push_WaitingPartsTitle": "Waiting for spare parts",
+    "Push_ConfirmTitle": "Your request is done — please confirm",
+    "Push_ClosedTitle": "Request closed",
+    "Push_ReopenedTitle": "Request reopened",
+    "Push_NotResolvedTitle": "Department says: not resolved",
+    "Push_CancelledTitle": "Request cancelled"
 }

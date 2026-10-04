@@ -97,8 +97,8 @@ class PurchaseRequestController extends Controller
         });
 
         $adminIds = User::query()->where('role', Role::Admin)->where('is_active', true)->whereKeyNot($me->id)->pluck('id');
-        $this->push->sendToUsers($adminIds, __('Push_PurchaseNewTitle').' '.$pr->number,
-            Str::limit($me->full_name.' — '.$this->summary($items), 120), route('purchases.show', $pr, false), 'purchase-'.$pr->id);
+        $this->push->sendLocalized($adminIds, fn () => [__('Push_PurchaseNewTitle').' '.$pr->number,
+            Str::limit($me->full_name.' — '.$this->summary($items), 120)], route('purchases.show', $pr, false), 'purchase-'.$pr->id);
 
         return redirect()->route('purchases.show', $pr)->with('ok', __('Saved'));
     }
@@ -217,9 +217,9 @@ class PurchaseRequestController extends Controller
         });
 
         if ($purchase->created_by_id !== $me->id) {
-            $this->push->sendToUsers($purchase->created_by_id, __('Push_PurchaseReceivedTitle').' '.$purchase->number,
-                Str::limit($this->summary($receipt->items()->get(['part_name', 'quantity'])->toArray()), 120),
-                route('purchases.show', $purchase, false), 'purchase-'.$purchase->id);
+            $received = $receipt->items()->get(['part_name', 'quantity'])->toArray();
+            $this->push->sendLocalized($purchase->created_by_id, fn () => [__('Push_PurchaseReceivedTitle').' '.$purchase->number,
+                Str::limit($this->summary($received), 120)], route('purchases.show', $purchase, false), 'purchase-'.$purchase->id);
         }
 
         return redirect()->route('receipts.show', $receipt)->with('ok', __('Saved'));
@@ -251,8 +251,8 @@ class PurchaseRequestController extends Controller
             $recipients = $recipients->merge(User::query()->where('role', Role::Coordinator)->where('is_active', true)->pluck('id'));
         }
         $titleKey = $decision === PurchaseRequestStatus::Approved ? 'Push_PurchaseApprovedTitle' : 'Push_PurchaseRejectedTitle';
-        $this->push->sendToUsers($recipients->reject(fn ($id) => $id === $me->id)->unique()->values(),
-            __($titleKey).' '.$purchase->number, Str::limit($note ?? $purchase->reason ?? $purchase->number, 120),
+        $this->push->sendLocalized($recipients->reject(fn ($id) => $id === $me->id)->unique()->values(),
+            fn () => [__($titleKey).' '.$purchase->number, Str::limit($note ?? $purchase->reason ?? $purchase->number, 120)],
             route('purchases.show', $purchase, false), 'purchase-'.$purchase->id);
 
         return redirect()->route('purchases.show', $purchase)->with('ok', __('Saved'));

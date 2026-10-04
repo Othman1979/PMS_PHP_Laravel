@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\EquipmentCategory;
 use App\Enums\Role;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,9 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-#[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'is_active'])]
+#[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'locale', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements HasLocalePreference
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
@@ -64,6 +65,12 @@ class User extends Authenticatable
     public function isEmployee(): bool
     {
         return $this->role === Role::Employee;
+    }
+
+    /** Language the user last chose in the UI; notifications are written in it. */
+    public function preferredLocale(): string
+    {
+        return $this->locale ?: config('app.locale');
     }
 
     public function initial(): string

@@ -186,7 +186,6 @@ class MaintenanceRequestController extends Controller
             $note = $this->note($request);
             $maintenanceRequest->accepted_at = now();
             $this->workflow->transition($maintenanceRequest, RequestStatus::Accepted, $request->user(), $note);
-            $this->workflow->notifyStaff($maintenanceRequest->load('assignedTechnician'), 'Push_AcceptedTitle', $note, $request->user());
         }
 
         return $this->back($maintenanceRequest);
@@ -199,7 +198,6 @@ class MaintenanceRequestController extends Controller
             $note = $this->note($request);
             $maintenanceRequest->started_at ??= now();
             $this->workflow->transition($maintenanceRequest, RequestStatus::InProgress, $request->user(), $note);
-            $this->workflow->notifyStaff($maintenanceRequest->load('assignedTechnician'), 'Push_StartedTitle', $note, $request->user());
         }
 
         return $this->back($maintenanceRequest);

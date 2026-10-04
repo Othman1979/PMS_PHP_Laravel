@@ -546,5 +546,13 @@
     "Error_503Message": "سنعود خلال دقائق.",
     "Error_503Title": "النظام قيد الصيانة",
     "Error_BackHome": "الصفحة الرئيسية",
-    "Error_StateChanged": "تغيّرت حالة الطلب من مستخدم آخر قبل لحظات. تم تحديث الصفحة، راجع الحالة الجديدة ثم أعد المحاولة."
+    "Error_StateChanged": "تغيّرت حالة الطلب من مستخدم آخر قبل لحظات. تم تحديث الصفحة، راجع الحالة الجديدة ثم أعد المحاولة.",
+    "Push_AssignedStaffTitle": "تم إسناد الطلب",
+    "Push_RequesterAssignedTitle": "تم إسناد طلبك لفني",
+    "Push_WaitingPartsTitle": "بانتظار قطع غيار",
+    "Push_ConfirmTitle": "تم إنجاز طلبك — يرجى التأكيد",
+    "Push_ClosedTitle": "تم إغلاق الطلب",
+    "Push_ReopenedTitle": "أُعيد فتح الطلب",
+    "Push_NotResolvedTitle": "القسم: المشكلة لم تُحل",
+    "Push_CancelledTitle": "تم إلغاء الطلب"
 }

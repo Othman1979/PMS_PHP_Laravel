@@ -92,23 +92,16 @@ class RequestWorkflow
                 'note' => filled($note) ? trim($note) : null,
             ]);
         });
+
+        $this->afterTransition($request, $to, $by, $note);
     }
 
     public function assign(MaintenanceRequest $request, User $technician, User $by, ?string $note): void
     {
         $request->assigned_technician_id = $technician->id;
         $request->assigned_at = now();
-        $this->transition($request, RequestStatus::Assigned, $by, $note);
         $request->setRelation('assignedTechnician', $technician);
-
-        $what = $request->equipment?->name ?? $request->department?->localized_name;
-        $desc = Str::limit($request->description, 120);
-        $body = $what ? "{$what} — {$desc}" : $desc;
-        if (filled($note)) {
-            $body .= "\n".$note;
-        }
-        $this->push->sendToUsers($technician->id, __('Push_AssignedTitle').' '.$request->request_number,
-            $body, route('requests.show', $request, false), 'request-'.$request->id);
+        $this->transition($request, RequestStatus::Assigned, $by, $note);
     }
 
     /**
@@ -186,32 +179,91 @@ class RequestWorkflow
 
             $this->transition($request, RequestStatus::Completed, $by, $resolution);
         });
-
-        $this->notifyStaff($request, 'Push_CompletedTitle', $resolution, $by);
     }
 
-    public function notifyStaff(MaintenanceRequest $request, string $titleKey, ?string $note, ?User $except): void
+    /**
+     * One place decides who hears about every status change, so no party is left out:
+     * staff (admin/coordinator), the assigned technician and the requester side (requester + department managers).
+     */
+    private function afterTransition(MaintenanceRequest $request, RequestStatus $to, ?User $by, ?string $note): void
     {
-        $text = Str::limit(filled($note) ? $note : $request->description, 120);
-        $this->push->sendToUsers(
-            $this->staffIds($except?->id),
-            __($titleKey).' '.$request->request_number,
-            ($request->assignedTechnician?->full_name ?? '').' — '.$text,
-            route('requests.show', $request, false),
-            'request-'.$request->id,
-        );
+        $request->loadMissing(['equipment', 'department', 'assignedTechnician', 'priority']);
+        $actor = $by?->id;
+        $technician = $request->assigned_technician_id;
+        $staff = fn () => $this->staffIds($actor);
+        $tech = fn () => $technician !== null && $technician !== $actor ? [$technician] : [];
+        $requesterSide = fn () => array_values(array_diff($this->requesterSideIds($request), array_filter([$actor])));
+
+        match ($to) {
+            RequestStatus::Assigned => [
+                $this->notify($request, $tech(), 'Push_AssignedTitle', $note),
+                $this->notify($request, $staff(), 'Push_AssignedStaffTitle', $note, withTechnician: true),
+                $this->notify($request, $requesterSide(), 'Push_RequesterAssignedTitle', null, withTechnician: true),
+            ],
+            RequestStatus::Accepted => $this->notify($request, $staff(), 'Push_AcceptedTitle', $note, withTechnician: true),
+            RequestStatus::InProgress => [
+                $this->notify($request, $staff(), 'Push_StartedTitle', $note, withTechnician: true),
+                $this->notify($request, $requesterSide(), 'Push_StartedTitle', null, withTechnician: true),
+            ],
+            RequestStatus::WaitingParts => $this->notify($request, $staff(), 'Push_WaitingPartsTitle', $note, withTechnician: true),
+            RequestStatus::Completed => [
+                $this->notify($request, $staff(), 'Push_CompletedTitle', $note, withTechnician: true),
+                $this->notify($request, $requesterSide(), 'Push_ConfirmTitle', $note),
+            ],
+            RequestStatus::Closed => $this->notify($request, [...$tech(), ...$requesterSide()], 'Push_ClosedTitle', $note),
+            RequestStatus::Reopened => $this->notify(
+                $request,
+                [...$tech(), ...$staff()],
+                $request->department_confirmation === DepartmentConfirmation::NotResolved ? 'Push_NotResolvedTitle' : 'Push_ReopenedTitle',
+                $note,
+            ),
+            RequestStatus::Cancelled => $this->notify($request, [...$tech(), ...$staff(), ...$requesterSide()], 'Push_CancelledTitle', $note),
+            default => null,
+        };
+    }
+
+    /**
+     * Pushes one request notification; the text is built per recipient language.
+     *
+     * @param  list<int>  $userIds
+     */
+    private function notify(MaintenanceRequest $request, array $userIds, string $titleKey, ?string $note, bool $withTechnician = false, bool $withPriority = false): void
+    {
+        if ($userIds === []) {
+            return;
+        }
+
+        $this->push->sendLocalized($userIds, function () use ($request, $titleKey, $note, $withTechnician, $withPriority): array {
+            $title = __($titleKey).' '.$request->request_number;
+            if ($withPriority && ! $request->priority->is_default) {
+                $title = $request->priority->label().' — '.$title;
+            }
+
+            $what = $request->equipment?->name ?? $request->department?->localized_name;
+            $text = Str::limit(filled($note) ? trim($note) : $request->description, 120);
+            $body = $what ? "{$what} — {$text}" : $text;
+            if ($withTechnician && $request->assignedTechnician !== null) {
+                $body = $request->assignedTechnician->full_name.' | '.$body;
+            }
+
+            return [$title, $body];
+        }, route('requests.show', $request, false), 'request-'.$request->id);
     }
 
     private function notifyNewRequest(MaintenanceRequest $request): void
     {
-        $what = $request->equipment?->name ?? $request->department?->localized_name;
-        $desc = Str::limit($request->description, 120);
-        $title = __('Push_NewRequestTitle').' '.$request->request_number;
-        if (! $request->priority->is_default) {
-            $title = $request->priority->label().' — '.$title;
-        }
-        $this->push->sendToUsers($this->staffIds($request->created_by_id), $title,
-            $what ? "{$what} — {$desc}" : $desc, route('requests.show', $request, false), 'request-'.$request->id);
+        $this->notify($request, $this->staffIds($request->created_by_id), 'Push_NewRequestTitle', null, withPriority: true);
+    }
+
+    /** @return list<int> the requester and the active managers of the request's department */
+    public function requesterSideIds(MaintenanceRequest $request): array
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->where(fn ($q) => $q
+                ->whereKey($request->created_by_id)
+                ->orWhere(fn ($m) => $m->where('role', Role::DepartmentManager)->where('department_id', $request->department_id)))
+            ->pluck('id')->all();
     }
 
     /** @return list<int> active admins + coordinators */

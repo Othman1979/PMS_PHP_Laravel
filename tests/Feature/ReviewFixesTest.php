@@ -4,16 +4,19 @@ namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
 use App\Enums\Role;
+use App\Jobs\SendWebPushNotification;
 use App\Models\Department;
 use App\Models\FaultCause;
 use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
+use App\Models\PushSubscription;
 use App\Models\SparePart;
 use App\Models\User;
 use App\Services\RequestWorkflow;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -159,5 +162,71 @@ class ReviewFixesTest extends TestCase
             ->assertForbidden()->assertSee('غير مصرّح');
         $this->actingAs($this->user('employee'))->withUnencryptedCookie('pms_locale', 'en')->get('/parts')
             ->assertForbidden()->assertSee('Access denied');
+    }
+
+    private function subscribe(User $user, string $locale): void
+    {
+        $user->forceFill(['locale' => $locale])->save();
+        PushSubscription::create([
+            'user_id' => $user->id, 'endpoint' => 'https://push.example/'.$user->username,
+            'endpoint_hash' => hash('sha256', $user->username), 'p256dh' => 'k', 'auth' => 'a',
+        ]);
+    }
+
+    public function test_language_switch_is_remembered_on_the_user(): void
+    {
+        $this->actingAs($this->user('coord'))->post('/language', ['locale' => 'en', 'return' => '/'])->assertRedirect('/');
+
+        $this->assertSame('en', $this->user('coord')->locale);
+    }
+
+    public function test_push_notifications_are_written_in_each_recipients_language(): void
+    {
+        config(['pms.vapid.public_key' => 'pub', 'pms.vapid.private_key' => 'priv']);
+        Bus::fake();
+        $this->subscribe($this->user('admin'), 'ar');
+        $this->subscribe($this->user('coord'), 'en');
+
+        $this->newRequest();
+
+        $titles = collect(Bus::dispatchedAfterResponse(SendWebPushNotification::class))
+            ->map(fn (SendWebPushNotification $job) => json_decode($job->payload, true)['title'])
+            ->all();
+
+        $this->assertCount(2, $titles);
+        $this->assertTrue(collect($titles)->contains(fn (string $t) => str_contains($t, 'طلب صيانة جديد')));
+        $this->assertTrue(collect($titles)->contains(fn (string $t) => str_contains($t, 'New maintenance request')));
+    }
+
+    public function test_lifecycle_changes_notify_technician_requester_and_staff(): void
+    {
+        config(['pms.vapid.public_key' => 'pub', 'pms.vapid.private_key' => 'priv']);
+        Bus::fake();
+        foreach (['coord', 'tech1', 'employee', 'kitchen'] as $username) {
+            $this->subscribe($this->user($username), 'en');
+        }
+        $byTitle = fn (string $needle) => collect(Bus::dispatchedAfterResponse(SendWebPushNotification::class))
+            ->map(fn (SendWebPushNotification $job) => json_decode($job->payload, true))
+            ->filter(fn (array $p) => str_contains($p['title'], $needle))
+            ->flatMap(fn (array $p, int $i) => Bus::dispatchedAfterResponse(SendWebPushNotification::class)[$i]->subscriptionIds)
+            ->all();
+        $subscriptionOf = fn (string $username) => PushSubscription::where('user_id', $this->user($username)->id)->value('id');
+
+        $mr = $this->newRequest();
+        $this->runToCompletion($mr, '0', []);
+
+        $this->assertContains($subscriptionOf('tech1'), $byTitle('Request assigned to you'));
+        $this->assertContains($subscriptionOf('employee'), $byTitle('A technician was assigned'));
+        $this->assertContains($subscriptionOf('employee'), $byTitle('please confirm'));
+        $this->assertContains($subscriptionOf('kitchen'), $byTitle('please confirm'));
+        $this->assertContains($subscriptionOf('coord'), $byTitle('Work completed on'));
+
+        $this->actingAs($this->user('employee'))->post("/requests/{$mr->id}/confirm", ['resolved' => '0'])->assertRedirect();
+        $this->assertContains($subscriptionOf('tech1'), $byTitle('not resolved'));
+        $this->assertContains($subscriptionOf('coord'), $byTitle('not resolved'));
+
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel")->assertRedirect();
+        $this->assertContains($subscriptionOf('tech1'), $byTitle('Request cancelled'));
+        $this->assertContains($subscriptionOf('employee'), $byTitle('Request cancelled'));
     }
 }

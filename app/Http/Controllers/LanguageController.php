@@ -17,6 +17,8 @@ class LanguageController extends Controller
             $return = '/';
         }
 
+        $request->user()?->forceFill(['locale' => $locale])->save();
+
         return redirect($return)->withCookie(Cookie::forever(SetLocale::COOKIE, $locale));
     }
 }
