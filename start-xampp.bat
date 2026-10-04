@@ -35,10 +35,16 @@ if not exist "storage\installed.flag" (
   "%PHP%" artisan migrate --seed --force || (pause & exit /b 1)
   "%PHP%" artisan db:seed --class=DemoSeeder --force || (pause & exit /b 1)
   echo done> "storage\installed.flag"
+) else (
+  "%PHP%" artisan migrate --force || (pause & exit /b 1)
 )
+"%PHP%" artisan view:cache >nul
+
+start "PMS Realtime (Reverb)" /min "%PHP%" artisan reverb:start --host=0.0.0.0 --port=8085
+start "PMS Scheduler" /min "%PHP%" artisan schedule:work
 
 echo.
 echo PMS is running on http://localhost:8000  (admin / 1234)
-echo Close this window to stop it.
+echo Realtime (Reverb) and the scheduler run in two minimized windows; close all three to stop.
 start "" http://localhost:8000
 "%PHP%" -d upload_max_filesize=12M -d post_max_size=64M -S 0.0.0.0:8000 server.php
