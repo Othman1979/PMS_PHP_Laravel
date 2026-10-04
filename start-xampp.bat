@@ -19,7 +19,11 @@ if errorlevel 1 (
   pause & exit /b 1
 )
 
-if not exist ".env" copy ".env.xampp" ".env" >nul
+if not exist ".env" (
+  copy ".env.xampp" ".env" >nul
+  "%PHP%" artisan key:generate --force --no-interaction
+  "%PHP%" artisan pms:vapid --write --no-interaction
+)
 
 "%MYSQL%" -u root -e "CREATE DATABASE IF NOT EXISTS pms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 if errorlevel 1 (
