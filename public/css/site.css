@@ -701,3 +701,5 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .bulk-bar { background: var(--pms-surface, #fff); border: 1px solid var(--pms-border, #dee2e6); border-radius: .75rem; padding: .5rem .75rem; }
 .table-cards td.c-check { width: 2.5rem; }
 @media (max-width: 767.98px) { .table-cards td.c-check::before { content: none; } .table-cards td.c-check { position: absolute; inset-inline-end: .75rem; top: .75rem; width: auto; padding: 0; border: 0; } .table-cards tr { position: relative; } }
+
+.chart-box { position: relative; height: 170px; }

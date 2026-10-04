@@ -79,7 +79,9 @@
                         const p = parts.find(x => x.name === name.value.trim());
                         row.querySelector('.part-id').value = p ? p.id : '';
                         row.querySelector('.part-stock').textContent = p ? `${stockLabel}: ${p.quantity}` : '';
-                        row.querySelector('.part-stock').classList.toggle('text-danger', !!p && !p.unitCost);
+                        const missing = !!p && !p.unitCost;
+                        row.querySelector('.part-stock').classList.toggle('text-danger', missing);
+                        row.querySelector('.part-stock').classList.toggle('text-muted', !missing);
                         if (p && !p.unitCost) row.querySelector('.part-stock').textContent += ' — ' + priceMissing;
                         if (p) {
                             if (!row.querySelector('.part-number').value) row.querySelector('.part-number').value = p.partNumber || '';

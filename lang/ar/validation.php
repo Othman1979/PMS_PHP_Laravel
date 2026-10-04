@@ -79,6 +79,7 @@ return [
 
     'attributes' => [
         'attachment' => 'المرفق',
+        'backup_keep' => 'عدد النسخ الاحتياطية المحفوظة',
         'category' => 'الفئة',
         'code' => 'الرمز',
         'current_password' => 'كلمة المرور الحالية',

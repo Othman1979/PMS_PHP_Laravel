@@ -13,7 +13,7 @@ $file = realpath($publicPath.$uri);
 
 if ($uri !== '/' && $file !== false && str_starts_with($file, $publicPath.DIRECTORY_SEPARATOR) && is_file($file) && ! str_ends_with($file, '.php')) {
     $types = [
-        'css' => 'text/css; charset=UTF-8', 'js' => 'application/javascript; charset=UTF-8', 'mjs' => 'application/javascript; charset=UTF-8',
+        'html' => 'text/html; charset=UTF-8', 'css' => 'text/css; charset=UTF-8', 'js' => 'application/javascript; charset=UTF-8', 'mjs' => 'application/javascript; charset=UTF-8',
         'json' => 'application/json', 'webmanifest' => 'application/manifest+json', 'map' => 'application/json',
         'woff2' => 'font/woff2', 'woff' => 'font/woff', 'ttf' => 'font/ttf',
         'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'webp' => 'image/webp',
@@ -22,7 +22,7 @@ if ($uri !== '/' && $file !== false && str_starts_with($file, $publicPath.DIRECT
     $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
     $mtime = (int) filemtime($file);
     $etag = '"'.dechex($mtime).'-'.dechex((int) filesize($file)).'"';
-    $noCache = in_array($uri, ['/sw.js', '/manifest.webmanifest'], true) || str_starts_with($uri, '/uploads/');
+    $noCache = in_array($uri, ['/sw.js', '/manifest.webmanifest', '/offline.html'], true) || str_starts_with($uri, '/uploads/');
 
     header('Content-Type: '.($types[$ext] ?? 'application/octet-stream'));
     header('Last-Modified: '.gmdate('D, d M Y H:i:s', $mtime).' GMT');

@@ -63,13 +63,13 @@
     <div class="col-lg-5">
         <div class="card h-100">
             <div class="card-header"><strong>{{ __('Trend30Days') }}</strong></div>
-            <div class="card-body"><canvas id="chartTrend" height="170"></canvas></div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartTrend"></canvas></div></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-3">
         <div class="card h-100">
             <div class="card-header"><strong>{{ __('RequestsByStatus') }}</strong></div>
-            <div class="card-body"><canvas id="chartStatus" height="170"></canvas></div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartStatus"></canvas></div></div>
         </div>
     </div>
     <div class="col-md-6 col-lg-4">
@@ -77,8 +77,8 @@
             <div class="card-header"><strong>{{ __('AgingOpenRequests') }}</strong> <small class="text-muted">· {{ __('OpenByDepartment') }}</small></div>
             <div class="card-body">
                 <div class="row g-2">
-                    <div class="col-6"><canvas id="chartAging" height="170"></canvas></div>
-                    <div class="col-6"><canvas id="chartDept" height="170"></canvas></div>
+                    <div class="col-6"><div class="chart-box"><canvas id="chartAging"></canvas></div></div>
+                    <div class="col-6"><div class="chart-box"><canvas id="chartDept"></canvas></div></div>
                 </div>
             </div>
         </div>
@@ -189,8 +189,7 @@
     if (!window.Chart) return;
     const C = @js($charts);
     const rtl = document.documentElement.dir === 'rtl';
-    const font = { family: getComputedStyle(document.body).fontFamily };
-    Chart.defaults.font = font;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
     const palette = ['#0d6efd', '#6c757d', '#6610f2', '#20c997', '#fd7e14', '#dc3545', '#198754', '#ffc107', '#343a40', '#adb5bd'];
     const statusColors = { New: '#0d6efd', UnderReview: '#6c757d', Assigned: '#6610f2', Accepted: '#20c997', InProgress: '#fd7e14', WaitingParts: '#dc3545', Completed: '#198754', Reopened: '#ffc107', Closed: '#343a40', Cancelled: '#adb5bd' };
     const T = @js(['created' => __('Created'), 'completed' => __('Completed'), 'open' => __('OpenRequests')]);
