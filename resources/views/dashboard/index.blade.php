@@ -203,15 +203,16 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', rtl } }, scales: { x: { reverse: rtl, ticks: { maxTicksLimit: 8 } }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
     });
 
+    const countsFromDom = () => Object.fromEntries(Array.from(document.querySelectorAll('[data-status-count]')).map(el => [el.dataset.statusCount, parseInt(el.textContent, 10) || 0]));
+    const statusData = byStatus => C.status.keys.map(k => byStatus[k] || 0);
     const statusChart = new Chart(document.getElementById('chartStatus'), {
         type: 'doughnut',
-        data: { labels: C.status.labels, datasets: [{ data: C.status.keys.map(() => 0), backgroundColor: C.status.keys.map(k => statusColors[k] || '#999') }] },
+        data: { labels: C.status.labels, datasets: [{ data: statusData(countsFromDom()), backgroundColor: C.status.keys.map(k => statusColors[k] || '#999') }] },
         options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
     });
     window.PmsCharts = {
-        status(byStatus) { statusChart.data.datasets[0].data = C.status.keys.map(k => byStatus[k] || 0); statusChart.update('none'); }
+        status(byStatus) { statusChart.data.datasets[0].data = statusData(byStatus); statusChart.update(); }
     };
-    window.PmsCharts.status(Object.fromEntries(Array.from(document.querySelectorAll('[data-status-count]')).map(el => [el.dataset.statusCount, parseInt(el.textContent, 10) || 0])));
 
     new Chart(document.getElementById('chartAging'), {
         type: 'bar',
