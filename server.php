@@ -7,7 +7,7 @@
  * them with Cache-Control / Last-Modified and answers 304 when the browser already has them.
  * Everything else goes to Laravel's front controller.
  */
-$publicPath = __DIR__.'/public';
+$publicPath = (string) realpath(__DIR__.'/public');
 $uri = urldecode((string) parse_url((string) $_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $file = realpath($publicPath.$uri);
 
