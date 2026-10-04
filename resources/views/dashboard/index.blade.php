@@ -162,8 +162,12 @@
     const T = @js(['newRequest' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('ViewDetails'), 'live' => __('Live'), 'offline' => __('Offline')]);
     const STATS_URL = @js(route('dashboard.stats'));
     const RECENT_MAX = 8;
-    const POLL_MS = 15000;
+    const POLL_SLOW = 60000, POLL_FAST = 15000;
+    const CHANNEL = @js(auth()->user()->canManage() ? 'staff' : 'department.'.auth()->user()->department_id);
+    const live = window.PmsLive;
+    const L = live ? live.L : (x => (x && typeof x === 'object') ? (x[document.documentElement.lang] ?? '') : (x ?? ''));
     let since = @js($now);
+    let pollTimer = null;
 
     function esc(s) {
         return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -219,10 +223,10 @@
         tr.querySelector('td a').textContent = d.requestNumber;
         tr.cells[1].textContent = d.description;
         tr.querySelector('.c-equip').textContent = d.equipment || '-';
-        tr.querySelector('.c-dept').textContent = d.department || '-';
+        tr.querySelector('.c-dept').textContent = L(d.department) || '-';
         tr.querySelector('.c-tech').textContent = d.technician || '-';
-        setBadge(tr.querySelector('.prio-badge'), d.priorityBadge, d.priorityLabel, 'prio-badge', d.priorityStyle);
-        setBadge(tr.querySelector('.status-badge'), d.statusBadge, d.statusLabel, 'status-badge');
+        setBadge(tr.querySelector('.prio-badge'), d.priorityBadge, L(d.priorityLabel), 'prio-badge', d.priorityStyle);
+        setBadge(tr.querySelector('.status-badge'), d.statusBadge, L(d.statusLabel), 'status-badge');
         tr.querySelector('.c-date').textContent = d.createdAt;
         flash(tr);
     }
@@ -244,7 +248,7 @@
                 list.prepend(li);
             }
             li.querySelector('.c-desc').textContent = d.description;
-            setBadge(li.querySelector('.status-badge'), d.statusBadge, d.statusLabel, 'status-badge');
+            setBadge(li.querySelector('.status-badge'), d.statusBadge, L(d.statusLabel), 'status-badge');
             flash(li);
         }
         card.classList.toggle('d-none', list.children.length === 0);
@@ -256,6 +260,7 @@
         document.getElementById('liveText').textContent = on ? T.live : T.offline;
     }
 
+    const seen = new Set();
     async function poll() {
         try {
             const res = await fetch(STATS_URL + '?since=' + encodeURIComponent(since), { cache: 'no-store', headers: { 'Accept': 'application/json' } });
@@ -274,7 +279,8 @@
                 if (el.textContent !== v) { el.textContent = v; flash(el); }
             });
             for (const d of s.changes) {
-                showToast(d.isNew ? T.newRequest : T.updated + ' — ' + d.statusLabel, d);
+                if (seen.has(d.id + ':' + d.updatedAt)) continue;
+                showToast(d.isNew ? T.newRequest : T.updated + ' — ' + L(d.statusLabel), d);
                 upsertRow(d);
                 upsertCritical(d);
             }
@@ -283,9 +289,28 @@
         }
     }
 
+    function schedule(ms) {
+        clearInterval(pollTimer);
+        pollTimer = setInterval(() => { if (!document.hidden) poll(); }, ms);
+    }
+
     setLive(true);
-    setInterval(() => { if (!document.hidden) poll(); }, POLL_MS);
+    schedule(POLL_FAST);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+
+    // WebSocket path: changes arrive instantly; polling stays as a slow safety net and refreshes the counters.
+    if (live && live.enabled) {
+        let refresh = null;
+        live.on(CHANNEL, 'request.changed', d => {
+            seen.add(d.id + ':' + d.updatedAt);
+            showToast(d.isNew ? T.newRequest : T.updated + ' — ' + L(d.statusLabel), d);
+            upsertRow(d);
+            upsertCritical(d);
+            clearTimeout(refresh);
+            refresh = setTimeout(poll, 400);
+        });
+        live.onState(on => { setLive(true); schedule(on ? POLL_SLOW : POLL_FAST); });
+    }
 })();
 </script>
 </x-slot:scripts>

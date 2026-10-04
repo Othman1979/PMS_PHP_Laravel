@@ -554,5 +554,13 @@
     "Push_ClosedTitle": "Request closed",
     "Push_ReopenedTitle": "Request reopened",
     "Push_NotResolvedTitle": "Department says: not resolved",
-    "Push_CancelledTitle": "Request cancelled"
+    "Push_CancelledTitle": "Request cancelled",
+    "Notifications": "Notifications",
+    "MarkAllRead": "Mark all as read",
+    "NoNotifications": "No notifications",
+    "Live_Reloading": "This request was updated — refreshing",
+    "Live_Refresh": "Refresh now",
+    "Live_UpdatedElsewhere": "There is a new update for this page",
+    "RequestChanged": "Request changed",
+    "Push_NoteAddedTitle": "New technician note on"
 }

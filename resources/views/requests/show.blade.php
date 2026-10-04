@@ -9,7 +9,7 @@
     $fmt = fn ($d) => $d?->format('Y-m-d H:i');
 @endphp
 <x-layouts.app :title="__('RequestDetails')">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3" data-live-reload="request.{{ $mr->id }}">
         <h2 class="h4 mb-0">
             {{ $mr->request_number }}
             <x-status-badge :status="$status" class="fs-6" />

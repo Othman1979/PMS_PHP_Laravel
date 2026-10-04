@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
 use App\Enums\Role;
+use App\Events\RequestChanged;
 use App\Jobs\SendWebPushNotification;
 use App\Models\Department;
 use App\Models\FaultCause;
@@ -13,10 +14,12 @@ use App\Models\PushSubscription;
 use App\Models\SparePart;
 use App\Models\User;
 use App\Services\RequestWorkflow;
+use App\Support\Localized;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -228,5 +231,57 @@ class ReviewFixesTest extends TestCase
         $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel")->assertRedirect();
         $this->assertContains($subscriptionOf('tech1'), $byTitle('Request cancelled'));
         $this->assertContains($subscriptionOf('employee'), $byTitle('Request cancelled'));
+    }
+
+    public function test_in_app_notifications_are_stored_listed_and_marked_read(): void
+    {
+        $this->user('coord')->forceFill(['locale' => 'en'])->save();
+        $mr = $this->newRequest();
+
+        $json = $this->actingAs($this->user('coord'))->getJson('/notifications')->assertOk()->json();
+        $this->assertSame(1, $json['unread']);
+        $this->assertStringContainsString('New maintenance request', $json['items'][0]['title']);
+        $this->assertSame(route('requests.show', $mr, false), $json['items'][0]['url']);
+
+        $this->get('/notifications/'.$json['items'][0]['id'].'/open')->assertRedirect(route('requests.show', $mr, false));
+        $this->assertSame(0, $this->getJson('/notifications')->json('unread'));
+
+        $this->actingAs($this->user('employee'))->get('/notifications/'.$json['items'][0]['id'].'/open')->assertForbidden();
+    }
+
+    public function test_request_change_event_targets_staff_department_technician_requester_and_request_channels(): void
+    {
+        Event::fake([RequestChanged::class]);
+        $mr = $this->newRequest();
+        $tech = $this->user('tech1');
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/assign", ['technician_id' => $tech->id])->assertRedirect();
+
+        Event::assertDispatched(RequestChanged::class, fn (RequestChanged $e) => $e->isNew && $e->payload['id'] === $mr->id);
+        Event::assertDispatched(RequestChanged::class, function (RequestChanged $e) use ($mr, $tech) {
+            $channels = collect($e->broadcastOn())->map(fn ($c) => $c->name)->all();
+
+            return ! $e->isNew
+                && $e->payload['status'] === RequestStatus::Assigned->value
+                && $e->payload['statusLabel'] === Localized::all(fn () => RequestStatus::Assigned->label())
+                && $channels === ['private-staff', 'private-department.'.$mr->department_id, 'private-request.'.$mr->id,
+                    'private-technician.'.$tech->id, 'private-user.'.$mr->created_by_id];
+        });
+    }
+
+    public function test_private_channel_authorization_follows_request_visibility(): void
+    {
+        $mr = $this->newRequest();
+        config(['broadcasting.default' => 'reverb']);
+        require base_path('routes/channels.php');
+        $auth = fn (string $username, string $channel) => $this->actingAs($this->user($username))
+            ->postJson('/broadcasting/auth', ['channel_name' => $channel, 'socket_id' => '1.1']);
+
+        $auth('coord', 'private-staff')->assertOk();
+        $auth('employee', 'private-staff')->assertForbidden();
+        $auth('kitchen', 'private-department.'.$mr->department_id)->assertOk();
+        $auth('tech1', 'private-department.'.$mr->department_id)->assertForbidden();
+        $auth('employee', 'private-request.'.$mr->id)->assertOk();
+        $auth('tech2', 'private-request.'.$mr->id)->assertOk();
+        $auth('tech1', 'private-user.'.$this->user('employee')->id)->assertForbidden();
     }
 }

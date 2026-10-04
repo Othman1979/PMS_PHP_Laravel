@@ -10,6 +10,7 @@ use App\Http\Controllers\FaultCauseController;
 use App\Http\Controllers\FaultTypeController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MaintenanceRequestController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PreventiveMaintenanceController;
 use App\Http\Controllers\PriorityController;
@@ -34,6 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
     Route::get('/', [DashboardController::class, 'index'])->name('home');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats')->middleware('role:Admin,Coordinator,DepartmentManager');
 
     Route::controller(PushController::class)->prefix('push')->name('push.')->group(function () {

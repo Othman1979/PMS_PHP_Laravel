@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
+use App\Events\RequestChanged;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
 use App\Models\PreventiveMaintenancePlan;
@@ -60,24 +61,7 @@ class DashboardController extends Controller
             ->visibleTo($user)
             ->where('updated_at', '>', $since)
             ->orderBy('updated_at')->take(20)->get()
-            ->map(fn (MaintenanceRequest $r) => [
-                'id' => $r->id,
-                'isNew' => $r->created_at->gt($since),
-                'requestNumber' => $r->request_number,
-                'description' => str($r->description)->limit(100)->toString(),
-                'equipment' => $r->equipment?->name,
-                'department' => $r->department?->localized_name,
-                'technician' => $r->assignedTechnician?->full_name,
-                'priorityCritical' => $r->priority->is_critical,
-                'priorityLabel' => $r->priority->label(),
-                'priorityBadge' => $r->priority->badge(),
-                'priorityStyle' => $r->priority->badgeStyle(),
-                'status' => $r->status->value,
-                'statusLabel' => $r->status->label(),
-                'statusBadge' => $r->status->badge(),
-                'createdAt' => $r->created_at->format('Y-m-d H:i'),
-                'detailsUrl' => route('requests.show', $r),
-            ]);
+            ->map(fn (MaintenanceRequest $r) => RequestChanged::payload($r, false, $since));
 
         return response()->json([...$this->counters($user), 'changes' => $changes, 'now' => now()->toIso8601String()]);
     }

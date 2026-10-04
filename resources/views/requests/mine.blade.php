@@ -1,5 +1,5 @@
 <x-layouts.app :title="__('MyTasks')">
-    <h2 class="h4 mb-3">{{ __('MyTasks') }} <span class="badge bg-primary">{{ $tasks->count() }}</span></h2>
+    <h2 class="h4 mb-3" data-live-reload="technician.{{ auth()->id() }}">{{ __('MyTasks') }} <span class="badge bg-primary">{{ $tasks->count() }}</span></h2>
 
     @if ($tasks->isEmpty())
         <div class="alert alert-light border">{{ __('NoTasks') }}</div>

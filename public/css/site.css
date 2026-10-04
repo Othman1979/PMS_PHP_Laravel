@@ -629,3 +629,44 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 /* ===== Error pages ===== */
 .error-page { max-width: 460px; margin: 10vh auto; padding: 2rem 1.5rem; text-align: center; background: var(--pms-surface); border: 1px solid var(--pms-border); border-radius: var(--pms-radius); }
 .error-code { font-size: 3.5rem; font-weight: 700; color: var(--pms-primary); line-height: 1; margin-bottom: .75rem; font-variant-numeric: tabular-nums; }
+
+/* ---- notification bell ---- */
+#notifBell .notif-count {
+    position: absolute;
+    top: 2px;
+    inset-inline-end: 0;
+    font-size: .62rem;
+    padding: .2em .45em;
+    line-height: 1;
+}
+
+.notif-menu {
+    width: min(360px, 92vw);
+    padding: 0;
+}
+
+.notif-list {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.notif-item {
+    white-space: normal;
+    border-bottom: 1px solid var(--pms-border);
+    padding: .55rem 1rem;
+}
+
+.notif-item.unread {
+    background: color-mix(in srgb, var(--pms-primary) 8%, transparent);
+}
+
+.notif-item.unread .fw-semibold::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--pms-primary);
+    margin-inline-end: .4rem;
+    vertical-align: middle;
+}

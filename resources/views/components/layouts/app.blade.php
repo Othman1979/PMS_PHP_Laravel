@@ -35,6 +35,9 @@
                     <span class="push-label">{{ __('Push_Enable') }}</span>
                 </button>
             @endif
+            @if ($user)
+                <x-notification-bell />
+            @endif
             <x-culture-switcher />
             @if ($user)
                 <div class="dropdown">
@@ -127,6 +130,7 @@
         <script src="{{ asset('js/push.js') }}?v={{ filemtime(public_path('js/push.js')) }}"></script>
         <script src="{{ asset('js/navpane.js') }}?v={{ filemtime(public_path('js/navpane.js')) }}"></script>
     @endunless
+    <x-live-scripts />
     {{ $scripts ?? '' }}
 </body>
 </html>

@@ -554,5 +554,13 @@
     "Push_ClosedTitle": "تم إغلاق الطلب",
     "Push_ReopenedTitle": "أُعيد فتح الطلب",
     "Push_NotResolvedTitle": "القسم: المشكلة لم تُحل",
-    "Push_CancelledTitle": "تم إلغاء الطلب"
+    "Push_CancelledTitle": "تم إلغاء الطلب",
+    "Notifications": "الإشعارات",
+    "MarkAllRead": "تعليم الكل كمقروء",
+    "NoNotifications": "لا توجد إشعارات",
+    "Live_Reloading": "تم تحديث هذا الطلب — جارٍ تحديث الصفحة",
+    "Live_Refresh": "تحديث الآن",
+    "Live_UpdatedElsewhere": "هناك تحديث جديد على هذه الصفحة",
+    "RequestChanged": "تغيّر الطلب",
+    "Push_NoteAddedTitle": "ملاحظة جديدة من الفني على"
 }

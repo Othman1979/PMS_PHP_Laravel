@@ -33,8 +33,10 @@
         <x-flash />
         {{ $slot }}
     </main>
+    <div id="toastZone" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
     <script src="{{ asset('lib/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/image-resize.js') }}?v={{ filemtime(public_path('js/image-resize.js')) }}"></script>
+    <x-live-scripts />
     {{ $scripts ?? '' }}
 </body>
 </html>

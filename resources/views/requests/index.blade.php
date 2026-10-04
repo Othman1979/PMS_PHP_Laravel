@@ -45,9 +45,9 @@
                     <th></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="requestRows">
                 @forelse ($requests as $r)
-                    <tr>
+                    <tr id="req-{{ $r->id }}" data-updated="{{ $r->updated_at?->toIso8601String() }}">
                         <td>
                             <a href="{{ route('requests.show', $r) }}">{{ $r->request_number }}</a>
                             @if ($r->is_preventive)
@@ -58,17 +58,60 @@
                         <td>{{ $r->equipment?->name ?? '-' }}</td>
                         <td>{{ $r->department?->localized_name }}</td>
                         <td>{{ $r->createdBy?->full_name }}</td>
-                        <td><x-status-badge :status="$r->priority" /></td>
-                        <td><x-status-badge :status="$r->status" /></td>
-                        <td>{{ $r->assignedTechnician?->full_name }}</td>
+                        <td class="c-prio"><x-status-badge :status="$r->priority" /></td>
+                        <td class="c-status"><x-status-badge :status="$r->status" /></td>
+                        <td class="c-tech">{{ $r->assignedTechnician?->full_name }}</td>
                         <td>{{ $r->created_at->format('Y-m-d H:i') }}</td>
                         <td><a class="btn btn-sm btn-outline-primary" href="{{ route('requests.show', $r) }}">{{ __('View') }}</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="10" class="text-center text-muted">{{ __('NoData') }}</td></tr>
+                    <tr class="empty-row"><td colspan="10" class="text-center text-muted">{{ __('NoData') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
     {{ $requests->links() }}
+
+<x-slot:scripts>
+<script>
+(function () {
+    const live = window.PmsLive;
+    if (!live || !live.enabled) return;
+    const canInsert = @js($status === null && $departmentId === null && $createdBy === '' && $requests->onFirstPage());
+    const channel = @js(auth()->user()->canManage() ? 'staff' : (auth()->user()->isTechnician() ? 'technician.'.auth()->id() : 'department.'.auth()->user()->department_id));
+    const T = @js(['new' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('View'), 'preventive' => __('Preventive')]);
+    const esc = live.esc, L = live.L;
+
+    function badge(cell, cls, label, style) {
+        const b = cell.querySelector('.badge') || cell.appendChild(document.createElement('span'));
+        b.className = 'badge ' + cls;
+        b.textContent = label;
+        b.style.cssText = style || '';
+    }
+
+    live.on(channel, 'request.changed', d => {
+        let tr = document.getElementById('req-' + d.id);
+        if (!tr) {
+            if (!canInsert) return;
+            const tbody = document.getElementById('requestRows');
+            tbody.querySelector('.empty-row')?.remove();
+            tr = document.createElement('tr');
+            tr.id = 'req-' + d.id;
+            tr.innerHTML = '<td><a href="' + esc(d.detailsUrl) + '">' + esc(d.requestNumber) + '</a></td>' +
+                '<td class="text-truncate" style="max-width:260px">' + esc(d.description) + '</td>' +
+                '<td>' + esc(d.equipment || '-') + '</td><td>' + esc(L(d.department)) + '</td><td></td>' +
+                '<td class="c-prio"></td><td class="c-status"></td><td class="c-tech"></td>' +
+                '<td>' + esc(d.createdAt) + '</td>' +
+                '<td><a class="btn btn-sm btn-outline-primary" href="' + esc(d.detailsUrl) + '">' + esc(T.view) + '</a></td>';
+            tbody.prepend(tr);
+        }
+        badge(tr.querySelector('.c-prio'), d.priorityBadge, L(d.priorityLabel), d.priorityStyle);
+        badge(tr.querySelector('.c-status'), d.statusBadge, L(d.statusLabel));
+        tr.querySelector('.c-tech').textContent = d.technician || '';
+        tr.classList.remove('row-flash'); void tr.offsetWidth; tr.classList.add('row-flash');
+        live.toast(d.isNew ? T.new : T.updated + ' — ' + L(d.statusLabel), d.requestNumber + ' — ' + d.description, d.detailsUrl);
+    });
+})();
+</script>
+</x-slot:scripts>
 </x-layouts.app>

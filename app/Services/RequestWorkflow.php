@@ -6,6 +6,7 @@ use App\Enums\DepartmentConfirmation;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Enums\StockMovementType;
+use App\Events\RequestChanged;
 use App\Models\ChecklistResult;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
@@ -63,6 +64,7 @@ class RequestWorkflow
         }
 
         $request->load(['equipment', 'department', 'priority']);
+        RequestChanged::dispatch($request, true);
         $this->notifyNewRequest($request);
 
         return $request;
@@ -93,7 +95,7 @@ class RequestWorkflow
             ]);
         });
 
-        $this->afterTransition($request, $to, $by, $note);
+        $this->afterTransition($request, $from, $to, $by, $note);
     }
 
     public function assign(MaintenanceRequest $request, User $technician, User $by, ?string $note): void
@@ -185,9 +187,17 @@ class RequestWorkflow
      * One place decides who hears about every status change, so no party is left out:
      * staff (admin/coordinator), the assigned technician and the requester side (requester + department managers).
      */
-    private function afterTransition(MaintenanceRequest $request, RequestStatus $to, ?User $by, ?string $note): void
+    private function afterTransition(MaintenanceRequest $request, RequestStatus $from, RequestStatus $to, ?User $by, ?string $note): void
     {
         $request->loadMissing(['equipment', 'department', 'assignedTechnician', 'priority']);
+        RequestChanged::dispatch($request);
+
+        if ($from === $to) {
+            $this->notify($request, $this->staffIds($by?->id), 'Push_NoteAddedTitle', $note, withTechnician: true);
+
+            return;
+        }
+
         $actor = $by?->id;
         $technician = $request->assigned_technician_id;
         $staff = fn () => $this->staffIds($actor);
