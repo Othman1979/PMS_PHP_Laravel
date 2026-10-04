@@ -9,6 +9,7 @@
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <x-head :title="$title ?? null" />
+    {{ $styles ?? '' }}
 </head>
 <body class="{{ $inDialog ? 'in-dialog' : ($showPane ? 'has-pane' : '') }}" data-dialog-size="{{ $dialogSize ?? 'md' }}">
     @unless ($inDialog)
@@ -78,7 +79,7 @@
                 <div class="navpane-header">{{ __('PreventiveMaintenance') }}</div>
                 <x-nav-item route="pm.index" :label="__('PMPlans')" icon="calendar" active="pm.*" />
                 <x-nav-item route="checklists.index" :label="__('Checklists')" icon="checklist" active="checklists.*" />
-                <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" />
+                <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
             @endif
             @if ($user->hasRole(Role::Admin, Role::Coordinator, Role::Technician))
                 <div class="navpane-header">{{ __('SpareParts') }}</div>

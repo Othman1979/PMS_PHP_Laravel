@@ -106,7 +106,9 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{checklist}/items/{item}', 'deleteItem')->name('items.destroy')->scopeBindings();
         });
 
-        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports', [ReportController::class, 'show'])->name('reports.index');
+        Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show')->where('report', '[a-z-]+');
+        Route::get('/reports/{report}/export/{format}', [ReportController::class, 'export'])->name('reports.export')->where('report', '[a-z-]+')->whereIn('format', ['xlsx', 'pdf']);
 
         Route::controller(PurchaseRequestController::class)->group(function () {
             Route::prefix('purchases')->name('purchases.')->group(function () {

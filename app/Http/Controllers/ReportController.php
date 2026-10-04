@@ -2,102 +2,68 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\RequestStatus;
 use App\Enums\Role;
+use App\Enums\StockMovementType;
 use App\Models\Department;
 use App\Models\Equipment;
 use App\Models\FaultCause;
 use App\Models\FaultType;
-use App\Models\MaintenanceRequest;
+use App\Models\SparePart;
 use App\Models\User;
-use Carbon\CarbonImmutable;
+use App\Reports\ReportExporter;
+use App\Reports\ReportFilters;
+use App\Reports\ReportRegistry;
+use App\Reports\SummaryReport;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
 {
-    public function index(Request $request): View
+    public function show(Request $request, string $report = ReportRegistry::DEFAULT): View
     {
-        $from = $this->date($request->query('from')) ?? CarbonImmutable::today()->subMonth();
-        $to = $this->date($request->query('to')) ?? CarbonImmutable::today();
-        $state = in_array($request->query('state'), ['open', 'closed'], true) ? $request->query('state') : '';
-        $closed = RequestStatus::closed();
+        $definition = ReportRegistry::resolve($report);
+        $filters = ReportFilters::fromRequest($request, $definition->filterKeys(), $definition->defaultFrom());
 
-        $requests = MaintenanceRequest::with(['department', 'equipment', 'assignedTechnician', 'createdBy', 'priority', 'faultType', 'faultCause'])
-            ->whereBetween('created_at', [$from->startOfDay(), $to->endOfDay()])
-            ->when($request->filled('equipment_id'), fn ($q) => $q->where('equipment_id', $request->integer('equipment_id')))
-            ->when($request->filled('department_id'), fn ($q) => $q->where('department_id', $request->integer('department_id')))
-            ->when($request->filled('technician_id'), fn ($q) => $q->where('assigned_technician_id', $request->integer('technician_id')))
-            ->when($request->filled('fault_type_id'), fn ($q) => $q->where('fault_type_id', $request->integer('fault_type_id')))
-            ->when($request->filled('fault_cause_id'), fn ($q) => $q->where('fault_cause_id', $request->integer('fault_cause_id')))
-            ->when($state === 'open', fn ($q) => $q->whereNotIn('status', $closed))
-            ->when($state === 'closed', fn ($q) => $q->whereIn('status', $closed))
-            ->latest()
-            ->get();
+        $data = [
+            'report' => $definition,
+            'reports' => ReportRegistry::all(),
+            'filters' => $filters,
+            'query' => $filters->toQuery(),
+        ] + $this->lookups($filters);
 
-        $isClosed = fn (MaintenanceRequest $r) => in_array($r->status, $closed, true);
-        $cost = fn (MaintenanceRequest $r) => (float) $r->cost_labor + (float) $r->cost_parts;
-        $completed = $requests->filter(fn (MaintenanceRequest $r) => $r->completed_at !== null);
-        $started = $requests->filter(fn (MaintenanceRequest $r) => $r->started_at !== null);
+        if ($definition instanceof SummaryReport) {
+            return view('reports.summary', $data + $definition->build($filters));
+        }
 
-        return view('reports.index', [
-            'from' => $from,
-            'to' => $to,
-            'state' => $state,
-            'requests' => $requests,
-            'total' => $requests->count(),
-            'openCount' => $requests->reject($isClosed)->count(),
-            'closedCount' => $requests->filter($isClosed)->count(),
-            'totalCost' => $requests->sum($cost),
-            'avgResponseHours' => round((float) $started->avg(fn (MaintenanceRequest $r) => $r->created_at->diffInMinutes($r->started_at) / 60), 1),
-            'avgCompletionHours' => round((float) $completed->avg(fn (MaintenanceRequest $r) => $r->created_at->diffInMinutes($r->completed_at) / 60), 1),
-            'perDepartment' => $this->countBy($requests, fn (MaintenanceRequest $r) => $r->department?->localized_name ?? '-'),
-            'perEquipment' => $this->countBy($requests, fn (MaintenanceRequest $r) => $r->equipment?->name ?? '-'),
-            'perStatus' => $requests->countBy(fn (MaintenanceRequest $r) => $r->status->value),
-            'perPriority' => $this->countBy($requests, fn (MaintenanceRequest $r) => $r->priority->label()),
-            'perFaultType' => $this->countBy($requests->filter(fn (MaintenanceRequest $r) => ! $r->is_preventive), fn (MaintenanceRequest $r) => $r->faultType?->localized_name ?? __('NotSpecified')),
-            'perFaultCause' => $this->countBy($completed->filter(fn (MaintenanceRequest $r) => ! $r->is_preventive), fn (MaintenanceRequest $r) => $r->faultCause?->localized_name ?? __('NotSpecified')),
-            'technicianStats' => $completed->filter(fn (MaintenanceRequest $r) => $r->assignedTechnician !== null)
-                ->groupBy(fn (MaintenanceRequest $r) => $r->assignedTechnician->full_name)
-                ->map(fn (Collection $g) => [
-                    'count' => $g->count(),
-                    'hours' => round((float) $g->avg(fn (MaintenanceRequest $r) => $r->created_at->diffInMinutes($r->completed_at) / 60), 1),
-                ])
-                ->sortByDesc('count'),
-            'topFailing' => $requests->filter(fn (MaintenanceRequest $r) => $r->equipment !== null && ! $r->is_preventive)
-                ->groupBy('equipment_id')
-                ->map(fn (Collection $g) => ['equipment' => $g->first()->equipment, 'count' => $g->count()])
-                ->sortByDesc('count')->take(10),
-            'costPerDepartment' => $completed->groupBy(fn (MaintenanceRequest $r) => $r->department?->localized_name ?? '-')
-                ->map(fn (Collection $g) => $g->sum($cost))->sortDesc(),
-            'costPerEquipment' => $completed->filter(fn (MaintenanceRequest $r) => $r->equipment !== null)
-                ->groupBy(fn (MaintenanceRequest $r) => $r->equipment->name)
-                ->map(fn (Collection $g) => $g->sum($cost))->sortDesc(),
-            'equipmentList' => Equipment::query()->orderBy('code')->get(['id', 'code', 'name']),
-            'departments' => Department::active()->ordered()->get(),
-            'technicians' => User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']),
-            'faultTypes' => FaultType::query()->ordered()->get(),
-            'faultCauses' => FaultCause::query()->ordered()->get(),
+        $rows = $definition->rows($filters);
+
+        return view('reports.show', $data + [
+            'columns' => array_map(fn ($c) => $c->toArray(), $definition->columns()),
+            'rows' => $rows,
+            'totals' => $definition->totals($rows),
         ]);
     }
 
-    /** @return Collection<string, int> */
-    private function countBy(Collection $requests, callable $key): Collection
+    public function export(Request $request, string $report, string $format, ReportExporter $exporter): Response
     {
-        return $requests->countBy($key)->sortDesc();
+        $definition = ReportRegistry::resolve($report);
+        $filters = ReportFilters::fromRequest($request, $definition->filterKeys(), $definition->defaultFrom());
+
+        return $format === 'pdf' ? $exporter->pdf($definition, $filters) : $exporter->xlsx($definition, $filters);
     }
 
-    private function date(mixed $value): ?CarbonImmutable
+    /** @return array<string, mixed> */
+    private function lookups(ReportFilters $filters): array
     {
-        if (! is_string($value) || $value === '') {
-            return null;
-        }
-
-        try {
-            return CarbonImmutable::createFromFormat('Y-m-d', $value)->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
+        return [
+            'equipmentList' => $filters->has('equipment_id') ? Equipment::query()->orderBy('code')->get(['id', 'code', 'name']) : collect(),
+            'departments' => $filters->has('department_id') ? Department::active()->ordered()->get() : collect(),
+            'technicians' => $filters->has('technician_id') ? User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']) : collect(),
+            'faultTypes' => $filters->has('fault_type_id') ? FaultType::query()->ordered()->get() : collect(),
+            'faultCauses' => $filters->has('fault_cause_id') ? FaultCause::query()->ordered()->get() : collect(),
+            'spareParts' => $filters->has('spare_part_id') ? SparePart::query()->orderBy('name')->get(['id', 'name']) : collect(),
+            'movementTypes' => $filters->has('movement_type') ? StockMovementType::cases() : [],
+        ];
     }
 }
