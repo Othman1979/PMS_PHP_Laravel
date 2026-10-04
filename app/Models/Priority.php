@@ -66,7 +66,7 @@ class Priority extends Model
     /** SQL expression resolving a request's priority rank, for ORDER BY. */
     public static function rankSql(string $column = 'priority_id'): string
     {
-        return "(SELECT rank FROM priorities WHERE priorities.id = {$column})";
+        return "(SELECT `rank` FROM priorities WHERE priorities.id = {$column})";
     }
 
     public function label(): string
