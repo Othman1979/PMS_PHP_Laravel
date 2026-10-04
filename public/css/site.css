@@ -501,6 +501,7 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
   transform: scale(.97); transition: transform .14s ease, width .14s ease;
 }
 .fdialog[data-size="lg"] { width: min(1040px, 100%); }
+.fdialog[data-size="xl"] { width: min(1400px, 100%); }
 .fdialog-backdrop.show .fdialog { transform: none; }
 .fdialog-titlebar {
   display: flex; align-items: center; gap: .5rem;
@@ -522,7 +523,7 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .is-loading .fdialog-frame { visibility: hidden; }
 @media (max-width: 575.98px) {
   .fdialog-backdrop { padding: 0; align-items: stretch; }
-  .fdialog, .fdialog[data-size="lg"] { width: 100%; max-height: none; height: 100%; border-radius: 0; border: 0; }
+  .fdialog, .fdialog[data-size="lg"], .fdialog[data-size="xl"] { width: 100%; max-height: none; height: 100%; border-radius: 0; border: 0; }
 }
 
 .in-dialog { background: var(--pms-surface); }
@@ -601,3 +602,13 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .rg-print-filters { font-size: 9pt; color: #616161; margin-bottom: 8px; }
 .rg-print-filters span { margin-inline-end: 10px; }
 .rg-print-foot { font-size: 8pt; color: #616161; margin-top: 8px; }
+
+/* ===== Equipment: label selection + Excel import ===== */
+.label-check { width: 2.2rem; text-align: center; }
+.label-check .form-check-input { margin: 0; cursor: pointer; }
+.label-select-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .5rem .8rem; background: #fff7e6; border: 1px solid #ffd58a; border-radius: var(--pms-ctl-radius); }
+.import-steps { padding-inline-start: 1.2rem; color: var(--pms-muted); }
+.import-steps li { margin-bottom: .3rem; }
+.import-preview { max-height: 55vh; }
+.import-preview th, .import-preview td { white-space: nowrap; font-size: .85rem; }
+.import-preview th { position: sticky; top: 0; background: #fff; z-index: 1; }

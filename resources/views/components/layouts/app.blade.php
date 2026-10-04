@@ -3,7 +3,7 @@
     $user = auth()->user();
     $canManage = $user?->canManage() ?? false;
     $showPane = $user !== null && ! $user->isEmployee();
-    $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY);
+    $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY) || request()->boolean(\App\Http\Middleware\HandleFormDialog::INPUT);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">

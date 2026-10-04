@@ -5,6 +5,7 @@ use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\EquipmentImportController;
 use App\Http\Controllers\FaultCauseController;
 use App\Http\Controllers\FaultTypeController;
 use App\Http\Controllers\LanguageController;
@@ -73,6 +74,12 @@ Route::middleware('auth')->group(function () {
     Route::controller(EquipmentController::class)->prefix('equipment')->name('equipment.')->group(function () {
         Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,DepartmentManager');
         Route::get('/labels', 'labels')->name('labels')->middleware('role:Admin,Coordinator');
+        Route::controller(EquipmentImportController::class)->prefix('import')->name('import.')->middleware('role:Admin,Coordinator')->group(function () {
+            Route::get('/template', 'template')->name('template');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/preview', 'preview')->name('preview');
+            Route::post('/', 'store')->name('store');
+        });
         Route::middleware('role:Admin,Coordinator')->group(function () {
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');

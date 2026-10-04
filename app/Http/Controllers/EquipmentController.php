@@ -46,8 +46,11 @@ class EquipmentController extends Controller
 
     public function labels(Request $request): View
     {
-        $list = $request->filled('id')
-            ? Equipment::with('department')->whereKey($request->integer('id'))->get()
+        $ids = collect($request->input('ids', $request->filled('id') ? [$request->integer('id')] : []))
+            ->map(fn ($id) => (int) $id)->filter()->values();
+
+        $list = $ids->isNotEmpty()
+            ? Equipment::with('department')->whereKey($ids)->orderBy('code')->get()
             : $this->filter($request)->orderBy('code')->get();
 
         return view('equipment.labels', [
