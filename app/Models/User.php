@@ -60,6 +60,12 @@ class User extends Authenticatable
         return $this->role === Role::Technician;
     }
 
+    /** Restaurant staff: only the QR quick-request screen, no menus. */
+    public function isEmployee(): bool
+    {
+        return $this->role === Role::Employee;
+    }
+
     public function initial(): string
     {
         return mb_strtoupper(mb_substr($this->full_name ?: $this->username, 0, 1));

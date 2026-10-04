@@ -68,7 +68,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::controller(EquipmentController::class)->prefix('equipment')->name('equipment.')->group(function () {
-        Route::get('/', 'index')->name('index');
+        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,DepartmentManager');
         Route::get('/labels', 'labels')->name('labels')->middleware('role:Admin,Coordinator');
         Route::middleware('role:Admin,Coordinator')->group(function () {
             Route::get('/create', 'create')->name('create');

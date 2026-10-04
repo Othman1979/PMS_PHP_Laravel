@@ -13,12 +13,17 @@
             <div class="fw-bold">{{ $mr->equipment->name }}</div>
         @endif
         <p class="text-muted mt-2">{{ __('Quick_SentHint') }}</p>
+        @php($employee = auth()->user()->isEmployee())
         <div class="d-grid gap-2 mt-3">
-            <a class="btn btn-primary quick-send" href="{{ route('requests.show', $mr) }}">{{ __('Quick_Track') }}</a>
+            @unless ($employee)
+                <a class="btn btn-primary quick-send" href="{{ route('requests.show', $mr) }}">{{ __('Quick_Track') }}</a>
+            @endunless
             @if ($mr->equipment)
-                <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.show', $mr->equipment->code) }}">{{ __('Quick_Another') }}</a>
+                <a class="btn {{ $employee ? 'btn-primary quick-send' : 'btn-outline-secondary btn-lg' }}" href="{{ route('quick.show', $mr->equipment->code) }}">{{ __('Quick_Another') }}</a>
             @endif
-            <a class="btn btn-link" href="{{ route('requests.index') }}">{{ __('MyRequests') }}</a>
+            @unless ($employee)
+                <a class="btn btn-link" href="{{ route('requests.index') }}">{{ __('MyRequests') }}</a>
+            @endunless
         </div>
     </div>
 </x-layouts.quick>

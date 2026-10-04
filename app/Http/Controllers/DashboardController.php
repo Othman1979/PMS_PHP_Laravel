@@ -25,6 +25,11 @@ class DashboardController extends Controller
 
             return redirect()->route('requests.mine');
         }
+        if ($request->user()->isEmployee()) {
+            $request->session()->reflash();
+
+            return redirect()->route('quick.find');
+        }
 
         $with = ['equipment', 'department', 'assignedTechnician'];
 

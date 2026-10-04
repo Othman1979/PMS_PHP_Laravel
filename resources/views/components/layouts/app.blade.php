@@ -2,6 +2,7 @@
     use App\Enums\Role;
     $user = auth()->user();
     $canManage = $user?->canManage() ?? false;
+    $showPane = $user !== null && ! $user->isEmployee();
     $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY);
 @endphp
 <!DOCTYPE html>
@@ -9,10 +10,10 @@
 <head>
     <x-head :title="$title ?? null" />
 </head>
-<body class="{{ $inDialog ? 'in-dialog' : ($user ? 'has-pane' : '') }}" data-dialog-size="{{ $dialogSize ?? 'md' }}">
+<body class="{{ $inDialog ? 'in-dialog' : ($showPane ? 'has-pane' : '') }}" data-dialog-size="{{ $dialogSize ?? 'md' }}">
     @unless ($inDialog)
     <header class="titlebar">
-        @if ($user)
+        @if ($showPane)
             <button type="button" class="titlebar-btn" id="paneToggle" aria-label="{{ __('Menu') }}" title="{{ __('Menu') }}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
@@ -59,7 +60,7 @@
         </div>
     </header>
 
-    @if ($user)
+    @if ($showPane)
         <nav class="navpane" id="navPane" aria-label="{{ __('Menu') }}">
             @if ($user->isTechnician())
                 <x-nav-item route="requests.mine" :label="__('MyTasks')" icon="tasks" />

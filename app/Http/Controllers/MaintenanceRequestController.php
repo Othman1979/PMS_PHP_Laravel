@@ -23,8 +23,12 @@ class MaintenanceRequestController extends Controller
 {
     public function __construct(private RequestWorkflow $workflow) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
+        if ($request->user()->isEmployee()) {
+            return redirect()->route('quick.find');
+        }
+
         $user = $request->user();
         $status = RequestStatus::tryFrom((string) $request->query('status'));
         $departmentId = $request->integer('department_id') ?: null;
@@ -73,9 +77,12 @@ class MaintenanceRequestController extends Controller
         ]);
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
         $user = $request->user();
+        if ($user->isEmployee()) {
+            return redirect()->route('quick.find');
+        }
 
         return view('requests.create', [
             'departments' => Department::query()->where('is_active', true)
