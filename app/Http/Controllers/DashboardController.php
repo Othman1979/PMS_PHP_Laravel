@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EquipmentStatus;
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
@@ -31,13 +30,13 @@ class DashboardController extends Controller
             return redirect()->route('quick.find');
         }
 
-        $with = ['equipment', 'department', 'assignedTechnician'];
+        $with = ['equipment', 'department', 'assignedTechnician', 'priority'];
 
         return view('dashboard.index', [
             'stats' => $this->counters(),
             'recent' => MaintenanceRequest::with($with)->latest()->latest('id')->take(8)->get(),
             'critical' => MaintenanceRequest::with($with)
-                ->where('priority', RequestPriority::Critical)
+                ->whereHas('priority', fn ($q) => $q->where('is_critical', true))
                 ->whereNotIn('status', [RequestStatus::Closed, RequestStatus::Cancelled])
                 ->latest()->take(5)->get(),
             'warrantyExpiring' => Equipment::query()->where('has_warranty', true)
@@ -54,7 +53,7 @@ class DashboardController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $since = $request->date('since') ?? now()->subMinute();
-        $changes = MaintenanceRequest::with(['equipment', 'department', 'assignedTechnician'])
+        $changes = MaintenanceRequest::with(['equipment', 'department', 'assignedTechnician', 'priority'])
             ->where('updated_at', '>', $since)
             ->orderBy('updated_at')->take(20)->get()
             ->map(fn (MaintenanceRequest $r) => [
@@ -65,9 +64,10 @@ class DashboardController extends Controller
                 'equipment' => $r->equipment?->name,
                 'department' => $r->department?->localized_name,
                 'technician' => $r->assignedTechnician?->full_name,
-                'priority' => $r->priority->value,
+                'priorityCritical' => $r->priority->is_critical,
                 'priorityLabel' => $r->priority->label(),
                 'priorityBadge' => $r->priority->badge(),
+                'priorityStyle' => $r->priority->badgeStyle(),
                 'status' => $r->status->value,
                 'statusLabel' => $r->status->label(),
                 'statusBadge' => $r->status->badge(),

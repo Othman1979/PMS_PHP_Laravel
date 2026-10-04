@@ -26,13 +26,24 @@
                     <textarea id="description" name="description" class="form-control" rows="4" required maxlength="2000">{{ old('description') }}</textarea>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="priority">{{ __('Priority') }}</label>
-                    <select id="priority" name="priority" class="form-select">
-                        @foreach (\App\Enums\RequestPriority::cases() as $p)
-                            <option value="{{ $p->value }}" @selected(old('priority', 'Normal') === $p->value)>{{ $p->label() }}</option>
+                    <label class="form-label" for="priority_id">{{ __('Priority') }}</label>
+                    <select id="priority_id" name="priority_id" class="form-select">
+                        @foreach ($priorities as $p)
+                            <option value="{{ $p->id }}" @selected((int) old('priority_id', $defaultPriority->id) === $p->id)>{{ $p->label() }}</option>
                         @endforeach
                     </select>
                 </div>
+                @if ($faultTypes->isNotEmpty())
+                    <div class="mb-3">
+                        <label class="form-label" for="fault_type_id">{{ __('FaultType') }} {{ __('Optional') }}</label>
+                        <select id="fault_type_id" name="fault_type_id" class="form-select">
+                            <option value="">—</option>
+                            @foreach ($faultTypes as $t)
+                                <option value="{{ $t->id }}" @selected((int) old('fault_type_id') === $t->id)>{{ $t->localized_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div class="mb-3">
                     <label class="form-label" for="files">{{ __('AttachFiles') }} {{ __('Optional') }}</label>
                     <input id="files" name="files[]" type="file" class="form-control" multiple accept="image/*,.pdf">

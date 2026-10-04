@@ -3,13 +3,13 @@
 namespace App\Services;
 
 use App\Enums\DepartmentConfirmation;
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Enums\StockMovementType;
 use App\Models\ChecklistResult;
 use App\Models\Equipment;
 use App\Models\MaintenanceRequest;
+use App\Models\Priority;
 use App\Models\SparePart;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -25,15 +25,16 @@ class RequestWorkflow
 
     /** @param list<UploadedFile> $files */
     public function create(?User $user, ?Equipment $equipment, int $departmentId, string $description,
-        RequestPriority $priority, array $files = [], bool $preventive = false, ?int $planId = null): MaintenanceRequest
+        Priority $priority, array $files = [], bool $preventive = false, ?int $planId = null, ?int $faultTypeId = null): MaintenanceRequest
     {
-        $request = DB::transaction(function () use ($user, $equipment, $departmentId, $description, $priority, $preventive, $planId) {
+        $request = DB::transaction(function () use ($user, $equipment, $departmentId, $description, $priority, $preventive, $planId, $faultTypeId) {
             $request = MaintenanceRequest::create([
                 'equipment_id' => $equipment?->id,
                 'department_id' => $departmentId,
                 'created_by_id' => $user?->id ?? User::query()->where('role', Role::Admin)->value('id'),
                 'description' => $description,
-                'priority' => $priority,
+                'priority_id' => $priority->id,
+                'fault_type_id' => $faultTypeId,
                 'status' => RequestStatus::New,
                 'is_under_warranty' => $equipment?->isUnderWarranty() ?? false,
                 'is_preventive' => $preventive,
@@ -61,7 +62,7 @@ class RequestWorkflow
             }
         }
 
-        $request->load(['equipment', 'department']);
+        $request->load(['equipment', 'department', 'priority']);
         $this->notifyNewRequest($request);
 
         return $request;
@@ -113,9 +114,9 @@ class RequestWorkflow
      * @param  array<int, array{compliant: bool, note: ?string}>  $checklist  checklist_item_id => result
      */
     public function complete(MaintenanceRequest $request, User $by, string $resolution, ?string $technicianNotes,
-        float $laborCost, array $parts, array $checklist): void
+        float $laborCost, array $parts, array $checklist, ?int $faultTypeId = null, ?int $faultCauseId = null): void
     {
-        DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist) {
+        DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist, $faultTypeId, $faultCauseId) {
             $partsCost = 0.0;
             foreach ($parts as $partId => $qty) {
                 $qty = (int) $qty;
@@ -159,6 +160,8 @@ class RequestWorkflow
             $request->fill([
                 'resolution_notes' => $resolution,
                 'technician_notes' => $technicianNotes,
+                'fault_type_id' => $faultTypeId ?? $request->fault_type_id,
+                'fault_cause_id' => $faultCauseId,
                 'cost_labor' => $laborCost,
                 'cost_parts' => $partsCost,
                 'completed_at' => now(),
@@ -201,7 +204,7 @@ class RequestWorkflow
         $what = $request->equipment?->name ?? $request->department?->localized_name;
         $desc = Str::limit($request->description, 120);
         $title = __('Push_NewRequestTitle').' '.$request->request_number;
-        if ($request->priority->rank() >= RequestPriority::Urgent->rank()) {
+        if (! $request->priority->is_default) {
             $title = $request->priority->label().' — '.$title;
         }
         $this->push->sendToUsers($this->staffIds($request->created_by_id), $title,

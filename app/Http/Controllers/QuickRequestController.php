@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EquipmentStatus;
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Models\Equipment;
+use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
+use App\Models\Priority;
 use App\Services\RequestWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,9 @@ class QuickRequestController extends Controller
                 ->whereNotIn('status', RequestStatus::closed())
                 ->latest()->take(3)->get(),
             'issues' => array_values(array_filter(array_map('trim', explode('|', __('QuickIssues_'.$equipment->category->value))))),
+            'priorities' => Priority::query()->active()->where('show_in_quick', true)->ordered()->get(),
+            'defaultPriority' => Priority::default(),
+            'faultTypes' => FaultType::query()->active()->ordered()->get(),
         ]);
     }
 
@@ -62,7 +66,8 @@ class QuickRequestController extends Controller
 
         $data = $request->validate([
             'description' => ['required', 'string', 'max:2000'],
-            'priority' => ['nullable', Rule::in([RequestPriority::Normal->value, RequestPriority::Urgent->value, RequestPriority::Critical->value])],
+            'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
+            'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
             'photo' => ['nullable', 'image', 'max:'.config('pms.upload_max_kb')],
         ]);
 
@@ -71,8 +76,9 @@ class QuickRequestController extends Controller
             $equipment,
             $equipment->department_id,
             trim($data['description']),
-            RequestPriority::tryFrom($data['priority'] ?? '') ?? RequestPriority::Normal,
+            isset($data['priority_id']) ? Priority::findOrFail($data['priority_id']) : Priority::default(),
             array_filter([$request->file('photo')]),
+            faultTypeId: isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
         );
 
         return redirect()->route('quick.done', $maintenanceRequest);

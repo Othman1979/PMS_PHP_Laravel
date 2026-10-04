@@ -186,9 +186,10 @@
         toast.show();
     }
 
-    function setBadge(el, cls, label, base) {
+    function setBadge(el, cls, label, base, style) {
         el.className = 'badge ' + base + ' ' + cls;
         el.textContent = label;
+        el.style.cssText = style || '';
     }
 
     function flash(el) {
@@ -220,7 +221,7 @@
         tr.querySelector('.c-equip').textContent = d.equipment || '-';
         tr.querySelector('.c-dept').textContent = d.department || '-';
         tr.querySelector('.c-tech').textContent = d.technician || '-';
-        setBadge(tr.querySelector('.prio-badge'), d.priorityBadge, d.priorityLabel, 'prio-badge');
+        setBadge(tr.querySelector('.prio-badge'), d.priorityBadge, d.priorityLabel, 'prio-badge', d.priorityStyle);
         setBadge(tr.querySelector('.status-badge'), d.statusBadge, d.statusLabel, 'status-badge');
         tr.querySelector('.c-date').textContent = d.createdAt;
         flash(tr);
@@ -230,7 +231,7 @@
         const card = document.getElementById('criticalCard');
         const list = document.getElementById('criticalList');
         let li = document.getElementById('crit-' + d.id);
-        const active = d.priority === 'Critical' && d.status !== 'Closed' && d.status !== 'Cancelled';
+        const active = d.priorityCritical && d.status !== 'Closed' && d.status !== 'Cancelled';
         if (!active) {
             li?.remove();
         } else {

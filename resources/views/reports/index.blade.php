@@ -42,6 +42,24 @@
                 </select>
             </div>
             <div class="col-6 col-md-auto">
+                <label class="form-label mb-1">{{ __('FaultType') }}</label>
+                <select name="fault_type_id" class="form-select">
+                    <option value="">—</option>
+                    @foreach ($faultTypes as $t)
+                        <option value="{{ $t->id }}" @selected(request('fault_type_id') == $t->id)>{{ $t->localized_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-6 col-md-auto">
+                <label class="form-label mb-1">{{ __('FaultCause') }}</label>
+                <select name="fault_cause_id" class="form-select">
+                    <option value="">—</option>
+                    @foreach ($faultCauses as $c)
+                        <option value="{{ $c->id }}" @selected(request('fault_cause_id') == $c->id)>{{ $c->localized_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-6 col-md-auto">
                 <label class="form-label mb-1">{{ __('RequestState') }}</label>
                 <select name="state" class="form-select">
                     <option value="">—</option>
@@ -74,7 +92,7 @@
     </div>
 
     <div class="row g-4">
-        @foreach (['RequestsPerDepartment' => $perDepartment, 'RequestsPerEquipment' => $perEquipment] as $title => $rows)
+        @foreach (['RequestsPerDepartment' => $perDepartment, 'RequestsPerEquipment' => $perEquipment, 'RequestsPerPriority' => $perPriority, 'RequestsPerFaultType' => $perFaultType, 'RequestsPerFaultCause' => $perFaultCause] as $title => $rows)
             <div class="col-md-4">
                 <div class="card h-100">
                     <div class="card-header"><strong>{{ __($title) }}</strong></div>
@@ -148,7 +166,7 @@
                     <tr>
                         <th>{{ __('RequestNumber') }}</th><th>{{ __('Description') }}</th><th>{{ __('Equipment') }}</th>
                         <th>{{ __('Department') }}</th><th>{{ __('CreatedBy') }}</th><th>{{ __('Technician') }}</th>
-                        <th>{{ __('Priority') }}</th><th>{{ __('Status') }}</th><th>{{ __('CreatedAt') }}</th>
+                        <th>{{ __('Priority') }}</th><th>{{ __('FaultType') }}</th><th>{{ __('FaultCause') }}</th><th>{{ __('Status') }}</th><th>{{ __('CreatedAt') }}</th>
                         <th>{{ __('CompletedAt') }}</th><th>{{ __('Cost') }}</th>
                     </tr>
                 </thead>
@@ -162,6 +180,8 @@
                             <td>{{ $r->createdBy?->full_name }}</td>
                             <td>{{ $r->assignedTechnician?->full_name ?? '-' }}</td>
                             <td><x-status-badge :status="$r->priority" /></td>
+                            <td>{{ $r->faultType?->localized_name ?? '-' }}</td>
+                            <td>{{ $r->faultCause?->localized_name ?? '-' }}</td>
                             <td><x-status-badge :status="$r->status" /></td>
                             <td>{{ $r->created_at->format('Y-m-d') }}</td>
                             <td>{{ $r->completed_at?->format('Y-m-d') }}</td>

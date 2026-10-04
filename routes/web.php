@@ -5,10 +5,13 @@ use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\FaultCauseController;
+use App\Http\Controllers\FaultTypeController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MaintenanceRequestController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PreventiveMaintenanceController;
+use App\Http\Controllers\PriorityController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\QuickRequestController;
@@ -138,5 +141,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:Admin')->group(function () {
         Route::resource('departments', DepartmentController::class)->except('show');
         Route::resource('users', UserController::class)->except(['show', 'destroy']);
+        Route::resource('priorities', PriorityController::class)->except('show');
+        Route::resource('fault-types', FaultTypeController::class)->except('show');
+        Route::resource('fault-causes', FaultCauseController::class)->except('show');
     });
 });

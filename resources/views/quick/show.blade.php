@@ -1,10 +1,6 @@
 @php
-    $priorities = [
-        ['Normal', 'quick-prio-normal', 'Quick_Normal', 'Quick_NormalHint'],
-        ['Urgent', 'quick-prio-urgent', 'Quick_Urgent', 'Quick_UrgentHint'],
-        ['Critical', 'quick-prio-critical', 'Quick_Critical', 'Quick_CriticalHint'],
-    ];
-    $selected = old('priority', 'Normal');
+    $selected = (int) old('priority_id', $defaultPriority->id);
+    $selectedType = (int) old('fault_type_id');
 @endphp
 <x-layouts.quick :title="$equipment->name">
     <div class="quick-equip">
@@ -60,20 +56,36 @@
 
         <section class="quick-step">
             <h2 class="quick-step-title"><span class="quick-num">2</span>{{ __('Quick_Step2') }}</h2>
-            <div class="quick-prios">
-                @foreach ($priorities as [$value, $css, $titleKey, $hintKey])
-                    <label class="quick-prio {{ $css }}">
-                        <input type="radio" name="priority" value="{{ $value }}" @checked($selected === $value)>
+            <div class="quick-prios" style="grid-template-columns: repeat({{ min(3, max(1, $priorities->count())) }}, 1fr)">
+                @foreach ($priorities as $p)
+                    <label class="quick-prio" style="--prio-color: {{ $p->color }}">
+                        <input type="radio" name="priority_id" value="{{ $p->id }}" @checked($selected === $p->id)>
                         <span class="quick-prio-dot"></span>
-                        <span class="quick-prio-title">{{ __($titleKey) }}</span>
-                        <span class="quick-prio-hint">{{ __($hintKey) }}</span>
+                        <span class="quick-prio-title">{{ $p->label() }}</span>
+                        @if ($p->hint())
+                            <span class="quick-prio-hint">{{ $p->hint() }}</span>
+                        @endif
                     </label>
                 @endforeach
             </div>
         </section>
 
+        @if ($faultTypes->isNotEmpty())
+            <section class="quick-step">
+                <h2 class="quick-step-title"><span class="quick-num">3</span>{{ __('Quick_StepFaultType') }} <small class="text-muted fw-normal">{{ __('Optional') }}</small></h2>
+                <div class="quick-chips">
+                    @foreach ($faultTypes as $t)
+                        <label class="quick-chip quick-chip-radio">
+                            <input type="radio" name="fault_type_id" value="{{ $t->id }}" @checked($selectedType === $t->id)>
+                            {{ $t->localized_name }}
+                        </label>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         <section class="quick-step">
-            <h2 class="quick-step-title"><span class="quick-num">3</span>{{ __('Quick_Step3') }}</h2>
+            <h2 class="quick-step-title"><span class="quick-num">{{ $faultTypes->isNotEmpty() ? 4 : 3 }}</span>{{ __('Quick_Step3') }}</h2>
             <label class="quick-photo" id="photoLabel">
                 <input name="photo" type="file" accept="image/*" capture="environment" class="d-none" id="photoInput">
                 <img id="photoPreview" alt="" class="d-none">

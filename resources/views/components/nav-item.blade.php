@@ -14,6 +14,9 @@
         'cart' => '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.3a1 1 0 0 0 1 .7h9.6a1 1 0 0 0 1-.8L21 7H6"/>',
         'cartadd' => '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.3a1 1 0 0 0 1 .7h9.6a1 1 0 0 0 1-.8L21 7H6M13.5 9v4M11.5 11h4"/>',
         'movements' => '<path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/>',
+        'flag' => '<path d="M4 22V4a1 1 0 0 1 1-1h11l-1.5 4L16 11H5"/>',
+        'bolt' => '<path d="M13 2 3 14h8l-1 8 10-12h-8l1-8z"/>',
+        'search' => '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
         'building' => '<rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
         'users' => '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 3.13a4 4 0 0 1 0 7.75M22 21a7 7 0 0 0-5-6.7"/>',
     ];

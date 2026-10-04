@@ -6,6 +6,8 @@ use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Models\Department;
 use App\Models\Equipment;
+use App\Models\FaultCause;
+use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -22,11 +24,13 @@ class ReportController extends Controller
         $state = in_array($request->query('state'), ['open', 'closed'], true) ? $request->query('state') : '';
         $closed = RequestStatus::closed();
 
-        $requests = MaintenanceRequest::with(['department', 'equipment', 'assignedTechnician', 'createdBy'])
+        $requests = MaintenanceRequest::with(['department', 'equipment', 'assignedTechnician', 'createdBy', 'priority', 'faultType', 'faultCause'])
             ->whereBetween('created_at', [$from->startOfDay(), $to->endOfDay()])
             ->when($request->filled('equipment_id'), fn ($q) => $q->where('equipment_id', $request->integer('equipment_id')))
             ->when($request->filled('department_id'), fn ($q) => $q->where('department_id', $request->integer('department_id')))
             ->when($request->filled('technician_id'), fn ($q) => $q->where('assigned_technician_id', $request->integer('technician_id')))
+            ->when($request->filled('fault_type_id'), fn ($q) => $q->where('fault_type_id', $request->integer('fault_type_id')))
+            ->when($request->filled('fault_cause_id'), fn ($q) => $q->where('fault_cause_id', $request->integer('fault_cause_id')))
             ->when($state === 'open', fn ($q) => $q->whereNotIn('status', $closed))
             ->when($state === 'closed', fn ($q) => $q->whereIn('status', $closed))
             ->latest()
@@ -51,6 +55,9 @@ class ReportController extends Controller
             'perDepartment' => $this->countBy($requests, fn (MaintenanceRequest $r) => $r->department?->localized_name ?? '-'),
             'perEquipment' => $this->countBy($requests, fn (MaintenanceRequest $r) => $r->equipment?->name ?? '-'),
             'perStatus' => $requests->countBy(fn (MaintenanceRequest $r) => $r->status->value),
+            'perPriority' => $this->countBy($requests, fn (MaintenanceRequest $r) => $r->priority->label()),
+            'perFaultType' => $this->countBy($requests->filter(fn (MaintenanceRequest $r) => ! $r->is_preventive), fn (MaintenanceRequest $r) => $r->faultType?->localized_name ?? __('NotSpecified')),
+            'perFaultCause' => $this->countBy($completed->filter(fn (MaintenanceRequest $r) => ! $r->is_preventive), fn (MaintenanceRequest $r) => $r->faultCause?->localized_name ?? __('NotSpecified')),
             'technicianStats' => $completed->filter(fn (MaintenanceRequest $r) => $r->assignedTechnician !== null)
                 ->groupBy(fn (MaintenanceRequest $r) => $r->assignedTechnician->full_name)
                 ->map(fn (Collection $g) => [
@@ -70,6 +77,8 @@ class ReportController extends Controller
             'equipmentList' => Equipment::query()->orderBy('code')->get(['id', 'code', 'name']),
             'departments' => Department::active()->ordered()->get(),
             'technicians' => User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']),
+            'faultTypes' => FaultType::query()->ordered()->get(),
+            'faultCauses' => FaultCause::query()->ordered()->get(),
         ]);
     }
 

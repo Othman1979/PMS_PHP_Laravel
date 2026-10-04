@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Enums\DepartmentConfirmation;
 use App\Enums\EquipmentStatus;
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Models\Department;
 use App\Models\Equipment;
+use App\Models\FaultCause;
+use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
+use App\Models\Priority;
 use App\Models\SparePart;
 use App\Models\User;
 use App\Services\FileUploadService;
@@ -34,7 +36,7 @@ class MaintenanceRequestController extends Controller
         $departmentId = $request->integer('department_id') ?: null;
         $createdBy = trim((string) $request->query('user'));
 
-        $requests = MaintenanceRequest::with(['equipment', 'department', 'createdBy', 'assignedTechnician'])
+        $requests = MaintenanceRequest::with(['equipment', 'department', 'createdBy', 'assignedTechnician', 'priority'])
             ->visibleTo($user)
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
@@ -65,12 +67,12 @@ class MaintenanceRequestController extends Controller
         $active = [RequestStatus::Assigned, RequestStatus::Accepted, RequestStatus::InProgress, RequestStatus::WaitingParts];
 
         return view('requests.mine', [
-            'tasks' => MaintenanceRequest::with(['equipment', 'department'])
+            'tasks' => MaintenanceRequest::with(['equipment', 'department', 'priority'])
                 ->where('assigned_technician_id', $user->id)
                 ->whereIn('status', $active)
-                ->orderByRaw(RequestPriority::orderSql().' desc')->orderBy('assigned_at')
+                ->orderByRaw(Priority::rankSql().' desc')->orderBy('assigned_at')
                 ->get(),
-            'recentDone' => MaintenanceRequest::with(['equipment', 'department'])
+            'recentDone' => MaintenanceRequest::with(['equipment', 'department', 'priority'])
                 ->where('assigned_technician_id', $user->id)
                 ->whereIn('status', [RequestStatus::Completed, RequestStatus::Closed])
                 ->latest('completed_at')->take(5)->get(),
@@ -91,6 +93,9 @@ class MaintenanceRequestController extends Controller
             'equipment' => Equipment::query()->where('status', '!=', EquipmentStatus::OutOfService)->orderBy('code')->get(),
             'selectedEquipment' => $request->integer('equipment_id') ?: null,
             'defaultDepartment' => $user->department_id,
+            'priorities' => Priority::activeOrdered(),
+            'defaultPriority' => Priority::default(),
+            'faultTypes' => FaultType::query()->active()->ordered()->get(),
         ]);
     }
 
@@ -101,7 +106,8 @@ class MaintenanceRequestController extends Controller
             'department_id' => ['required', Rule::exists('departments', 'id')->where('is_active', true)],
             'equipment_id' => ['nullable', 'exists:equipment,id'],
             'description' => ['required', 'string', 'max:2000'],
-            'priority' => ['required', Rule::enum(RequestPriority::class)],
+            'priority_id' => ['required', Rule::exists('priorities', 'id')->where('is_active', true)],
+            'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
             'files' => ['nullable', 'array', 'max:5'],
             'files.*' => [FileUploadService::rule()],
         ]);
@@ -115,8 +121,9 @@ class MaintenanceRequestController extends Controller
             isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null,
             (int) $data['department_id'],
             trim($data['description']),
-            RequestPriority::from($data['priority']),
+            Priority::findOrFail($data['priority_id']),
             $request->file('files', []),
+            faultTypeId: isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
         );
 
         return redirect()->route('requests.show', $maintenanceRequest)->with('ok', 'Saved');
@@ -128,7 +135,7 @@ class MaintenanceRequestController extends Controller
         abort_unless($maintenanceRequest->isVisibleTo($user), 403);
 
         $maintenanceRequest->load([
-            'equipment', 'department', 'createdBy', 'assignedTechnician', 'attachments',
+            'equipment', 'department', 'createdBy', 'assignedTechnician', 'attachments', 'priority', 'faultType', 'faultCause',
             'timeline' => fn ($q) => $q->with('changedBy')->orderByDesc('changed_at')->orderByDesc('id'),
             'partsUsed.sparePart', 'checklistResults.checklistItem', 'plan.checklist.items',
         ]);
@@ -144,6 +151,8 @@ class MaintenanceRequestController extends Controller
             'suggested' => $technicians->first(fn (User $t) => $category !== null && $t->specialty === $category),
             'spareParts' => SparePart::query()->orderBy('name')->get(),
             'checklist' => $maintenanceRequest->plan?->checklist,
+            'faultTypes' => FaultType::query()->active()->ordered()->get(),
+            'faultCauses' => FaultCause::query()->active()->ordered()->get(),
         ]);
     }
 
@@ -235,7 +244,11 @@ class MaintenanceRequestController extends Controller
             return $this->back($maintenanceRequest);
         }
 
+        $hasTypes = FaultType::query()->active()->exists();
+        $hasCauses = FaultCause::query()->active()->exists();
         $data = $request->validate([
+            'fault_type_id' => [$hasTypes ? 'required' : 'nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
+            'fault_cause_id' => [$hasCauses ? 'required' : 'nullable', Rule::exists('fault_causes', 'id')->where('is_active', true)],
             'resolution_notes' => ['required', 'string', 'max:2000'],
             'technician_notes' => ['nullable', 'string', 'max:2000'],
             'cost_labor' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
@@ -260,7 +273,9 @@ class MaintenanceRequestController extends Controller
         }
 
         $this->workflow->complete($maintenanceRequest->load(['equipment', 'plan', 'assignedTechnician']), $request->user(),
-            trim($data['resolution_notes']), $data['technician_notes'] ?? null, (float) ($data['cost_labor'] ?? 0), $parts, $checklist);
+            trim($data['resolution_notes']), $data['technician_notes'] ?? null, (float) ($data['cost_labor'] ?? 0), $parts, $checklist,
+            isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
+            isset($data['fault_cause_id']) ? (int) $data['fault_cause_id'] : null);
 
         return $this->back($maintenanceRequest);
     }

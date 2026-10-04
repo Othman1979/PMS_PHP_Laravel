@@ -6,11 +6,14 @@ use App\Enums\EquipmentCategory;
 use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Department;
+use App\Models\FaultCause;
+use App\Models\FaultType;
+use App\Models\Priority;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
- * Base data needed by every installation: departments, standard checklists and the first admin account.
+ * Base data needed by every installation: departments, standard checklists, priorities, fault types/causes and the first admin account.
  * Demo users/equipment live in DemoSeeder.
  */
 class DatabaseSeeder extends Seeder
@@ -44,6 +47,39 @@ class DatabaseSeeder extends Seeder
                 ['Test emergency lighting', 'اختبار الإضاءة الاحتياطية'],
                 ['Verify extinguisher pressure and expiry', 'التحقق من ضغط طفايات الحريق وصلاحيتها'],
             ]);
+        }
+
+        if (Priority::query()->doesntExist()) {
+            foreach ([
+                ['Scheduled', 'Scheduled', 'مجدول', null, null, '#6c757d', 0, false, false, false],
+                ['Normal', 'Normal', 'عادي', 'Works but has a problem', 'يعمل لكن فيه مشكلة', '#22c55e', 1, true, false, true],
+                ['Urgent', 'Urgent', 'مستعجل', 'Affects the work', 'يؤثر على العمل', '#f59e0b', 2, false, false, true],
+                ['Critical', 'Critical (operations stopped)', 'طارئ', 'Equipment fully stopped', 'الجهاز متوقف تمامًا', '#ef4444', 3, false, true, true],
+            ] as [$code, $en, $ar, $hintEn, $hintAr, $color, $rank, $default, $critical, $quick]) {
+                Priority::create([
+                    'code' => $code, 'name_en' => $en, 'name_ar' => $ar, 'hint_en' => $hintEn, 'hint_ar' => $hintAr, 'color' => $color,
+                    'rank' => $rank, 'is_default' => $default, 'is_critical' => $critical, 'show_in_quick' => $quick,
+                ]);
+            }
+        }
+
+        if (FaultType::query()->doesntExist()) {
+            foreach ([
+                ['Electrical', 'كهربائي'], ['Mechanical', 'ميكانيكي'], ['Cooling / Refrigerant', 'تبريد / غاز'],
+                ['Gas', 'غاز الطهي'], ['Plumbing / Leak', 'سباكة / تسريب'], ['Electronic / Control board', 'إلكتروني / لوحة تحكم'], ['Other', 'أخرى'],
+            ] as $i => [$en, $ar]) {
+                FaultType::create(['name_en' => $en, 'name_ar' => $ar, 'sort_order' => $i + 1]);
+            }
+        }
+
+        if (FaultCause::query()->doesntExist()) {
+            foreach ([
+                ['Power surge / overload', 'كهرباء زائدة / حمل زائد'], ['Manufacturing defect', 'سوء تصنيع'], ['Normal wear and tear', 'استهلاك طبيعي'],
+                ['Misuse by staff', 'سوء استخدام'], ['Lack of cleaning / maintenance', 'قلة تنظيف / صيانة'], ['Water / humidity damage', 'ماء / رطوبة'],
+                ['Blockage / dirt build-up', 'انسداد / تراكم أوساخ'], ['Unknown', 'غير معروف'],
+            ] as $i => [$en, $ar]) {
+                FaultCause::create(['name_en' => $en, 'name_ar' => $ar, 'sort_order' => $i + 1]);
+            }
         }
 
         if (User::query()->where('role', Role::Admin)->doesntExist()) {

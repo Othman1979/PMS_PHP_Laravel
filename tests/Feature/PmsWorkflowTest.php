@@ -4,13 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\EquipmentCategory;
 use App\Enums\PurchaseRequestStatus;
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Enums\StockMovementType;
 use App\Models\Department;
 use App\Models\Equipment;
+use App\Models\FaultCause;
+use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
+use App\Models\Priority;
 use App\Models\PurchaseRequest;
 use App\Models\SparePart;
 use App\Models\User;
@@ -67,12 +69,13 @@ class PmsWorkflowTest extends TestCase
 
         $this->actingAs($this->user('employee'))->get('/r/EQ-FRZ-001')->assertOk()->assertSee($equipment->name);
 
-        $this->post('/r/EQ-FRZ-001', ['description' => 'لا يبرد', 'priority' => 'Urgent'])->assertRedirect();
+        $urgent = Priority::where('code', 'Urgent')->firstOrFail();
+        $this->post('/r/EQ-FRZ-001', ['description' => 'لا يبرد', 'priority_id' => $urgent->id])->assertRedirect();
 
         $mr = MaintenanceRequest::latest('id')->firstOrFail();
         $this->assertSame($equipment->id, $mr->equipment_id);
         $this->assertSame($equipment->department_id, $mr->department_id);
-        $this->assertSame(RequestPriority::Urgent, $mr->priority);
+        $this->assertSame($urgent->id, $mr->priority_id);
         $this->assertSame(RequestStatus::New, $mr->status);
     }
 
@@ -82,7 +85,6 @@ class PmsWorkflowTest extends TestCase
             ->withUnencryptedCookie('pms_locale', 'ar')
             ->from('/r/EQ-FRZ-001')
             ->post('/r/EQ-FRZ-001', [
-                'priority' => 'Urgent',
                 'photo' => UploadedFile::fake()->create('notes.txt', 5, 'text/plain'),
             ])
             ->assertRedirect('/r/EQ-FRZ-001')
@@ -107,6 +109,8 @@ class PmsWorkflowTest extends TestCase
         $this->assertSame(RequestStatus::InProgress, $mr->fresh()->status);
 
         $this->post("/requests/{$mr->id}/complete", [
+            'fault_type_id' => FaultType::firstOrFail()->id,
+            'fault_cause_id' => FaultCause::firstOrFail()->id,
             'resolution_notes' => 'تم تبديل القطعة',
             'cost_labor' => '10.5',
             'parts' => [['spare_part_id' => $part->id, 'quantity' => 2]],
@@ -132,6 +136,8 @@ class PmsWorkflowTest extends TestCase
         $mr->update(['status' => RequestStatus::InProgress, 'assigned_technician_id' => $tech->id]);
 
         $this->actingAs($tech)->post("/requests/{$mr->id}/complete", [
+            'fault_type_id' => FaultType::firstOrFail()->id,
+            'fault_cause_id' => FaultCause::firstOrFail()->id,
             'resolution_notes' => 'x',
             'parts' => [['spare_part_id' => $part->id, 'quantity' => $part->quantity + 1]],
         ])->assertSessionHasErrors('parts');
@@ -244,7 +250,7 @@ class PmsWorkflowTest extends TestCase
     private function newRequest(): MaintenanceRequest
     {
         $equipment = Equipment::where('code', 'EQ-FRZ-001')->firstOrFail();
-        $this->actingAs($this->user('employee'))->post('/r/EQ-FRZ-001', ['description' => 'تسريب ماء', 'priority' => 'Normal']);
+        $this->actingAs($this->user('employee'))->post('/r/EQ-FRZ-001', ['description' => 'تسريب ماء']);
         $this->post('/logout');
 
         return MaintenanceRequest::where('equipment_id', $equipment->id)->latest('id')->firstOrFail();

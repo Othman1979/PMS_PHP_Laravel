@@ -93,6 +93,10 @@
                 <div class="navpane-header">{{ __('Administration') }}</div>
                 <x-nav-item route="departments.index" :label="__('Departments')" icon="building" active="departments.*" />
                 <x-nav-item route="users.index" :label="__('Users')" icon="users" active="users.*" />
+                <div class="navpane-header">{{ __('SystemSettings') }}</div>
+                <x-nav-item route="priorities.index" :label="__('Priorities')" icon="flag" active="priorities.*" />
+                <x-nav-item route="fault-types.index" :label="__('FaultTypes')" icon="bolt" active="fault-types.*" />
+                <x-nav-item route="fault-causes.index" :label="__('FaultCauses')" icon="search" active="fault-causes.*" />
             @endif
         </nav>
         <div class="navpane-backdrop" id="paneBackdrop"></div>

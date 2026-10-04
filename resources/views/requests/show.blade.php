@@ -44,6 +44,9 @@
                             @endif
                         </td>
                     </tr>
+                    @if ($mr->faultType || $mr->faultCause)
+                        <tr><th>{{ __('FaultType') }} / {{ __('FaultCause') }}</th><td>{{ $mr->faultType?->localized_name ?? '-' }} / {{ $mr->faultCause?->localized_name ?? '-' }}</td></tr>
+                    @endif
                     <tr><th>{{ __('CreatedBy') }}</th><td>{{ $mr->createdBy?->full_name }}</td></tr>
                     <tr><th>{{ __('CreatedAt') }}</th><td>{{ $fmt($mr->created_at) }}</td></tr>
                     <tr><th>{{ __('AssignedTo') }}</th><td>{{ $mr->assignedTechnician?->full_name ?? '-' }} {{ $fmt($mr->assigned_at) }}</td></tr>
@@ -245,6 +248,28 @@
                                     </div>
                                 @endforeach
                                 <hr>
+                            @endif
+                            @if ($faultTypes->isNotEmpty())
+                                <div class="mb-2">
+                                    <label class="form-label" for="fault_type_id">{{ __('FaultType') }}</label>
+                                    <select id="fault_type_id" name="fault_type_id" class="form-select" required>
+                                        <option value="">—</option>
+                                        @foreach ($faultTypes as $t)
+                                            <option value="{{ $t->id }}" @selected((int) old('fault_type_id', $mr->fault_type_id) === $t->id)>{{ $t->localized_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                            @if ($faultCauses->isNotEmpty())
+                                <div class="mb-2">
+                                    <label class="form-label" for="fault_cause_id">{{ __('FaultCause') }}</label>
+                                    <select id="fault_cause_id" name="fault_cause_id" class="form-select" required>
+                                        <option value="">—</option>
+                                        @foreach ($faultCauses as $c)
+                                            <option value="{{ $c->id }}" @selected((int) old('fault_cause_id') === $c->id)>{{ $c->localized_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             @endif
                             <div class="mb-2">
                                 <label class="form-label" for="resolution_notes">{{ __('ResolutionNotes') }}</label>

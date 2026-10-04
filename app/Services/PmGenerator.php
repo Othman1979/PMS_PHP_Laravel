@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Models\Equipment;
 use App\Models\PreventiveMaintenancePlan;
+use App\Models\Priority;
 
 /** Converts due preventive maintenance plans into maintenance requests (run by the scheduler or manually). */
 class PmGenerator
@@ -34,7 +34,7 @@ class PmGenerator
                 $plan->equipment,
                 $plan->equipment->department_id,
                 "[PM] {$plan->task_description_en} / {$plan->task_description_ar}",
-                RequestPriority::Scheduled,
+                Priority::forPreventive(),
                 preventive: true,
                 planId: $plan->id,
             );

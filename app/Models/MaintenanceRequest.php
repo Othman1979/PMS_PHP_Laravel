@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\DepartmentConfirmation;
-use App\Enums\RequestPriority;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'priority', 'status',
+    'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'priority_id', 'fault_type_id', 'fault_cause_id', 'status',
     'assigned_technician_id', 'assigned_at', 'accepted_at', 'started_at', 'completed_at', 'closed_at',
     'is_under_warranty', 'is_preventive', 'preventive_maintenance_plan_id', 'cost_labor', 'cost_parts',
     'resolution_notes', 'technician_notes', 'department_confirmation',
@@ -24,7 +23,6 @@ class MaintenanceRequest extends Model
     protected function casts(): array
     {
         return [
-            'priority' => RequestPriority::class,
             'status' => RequestStatus::class,
             'department_confirmation' => DepartmentConfirmation::class,
             'assigned_at' => 'datetime',
@@ -47,6 +45,21 @@ class MaintenanceRequest extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function priority(): BelongsTo
+    {
+        return $this->belongsTo(Priority::class);
+    }
+
+    public function faultType(): BelongsTo
+    {
+        return $this->belongsTo(FaultType::class);
+    }
+
+    public function faultCause(): BelongsTo
+    {
+        return $this->belongsTo(FaultCause::class);
     }
 
     public function createdBy(): BelongsTo
