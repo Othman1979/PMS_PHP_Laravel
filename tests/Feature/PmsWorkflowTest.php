@@ -65,12 +65,12 @@ class PmsWorkflowTest extends TestCase
 
     public function test_qr_quick_request_creates_request_for_equipment(): void
     {
-        $equipment = Equipment::where('code', 'EQ-FRZ-001')->firstOrFail();
+        $equipment = Equipment::where('code', 'EQ-POS-001')->firstOrFail();
 
-        $this->actingAs($this->user('employee'))->get('/r/EQ-FRZ-001')->assertOk()->assertSee($equipment->name);
+        $this->actingAs($this->user('employee'))->get('/r/EQ-POS-001')->assertOk()->assertSee($equipment->name);
 
         $urgent = Priority::where('code', 'Urgent')->firstOrFail();
-        $this->post('/r/EQ-FRZ-001', ['description' => 'لا يبرد', 'priority_id' => $urgent->id])->assertRedirect();
+        $this->post('/r/EQ-POS-001', ['description' => 'لا يبرد', 'priority_id' => $urgent->id])->assertRedirect();
 
         $mr = MaintenanceRequest::latest('id')->firstOrFail();
         $this->assertSame($equipment->id, $mr->equipment_id);

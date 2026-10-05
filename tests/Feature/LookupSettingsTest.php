@@ -58,7 +58,7 @@ class LookupSettingsTest extends TestCase
     public function test_priority_in_use_cannot_be_deleted_and_renames_reflect_everywhere(): void
     {
         $normal = Priority::where('code', 'Normal')->firstOrFail();
-        $this->actingAs($this->user('employee'))->post('/r/EQ-FRZ-001', ['description' => 'x', 'priority_id' => $normal->id]);
+        $this->actingAs($this->user('employee'))->post('/r/EQ-POS-001', ['description' => 'x', 'priority_id' => $normal->id]);
         $mr = MaintenanceRequest::latest('id')->firstOrFail();
         $this->assertSame($normal->id, $mr->priority_id);
 

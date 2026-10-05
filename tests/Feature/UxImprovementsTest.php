@@ -35,7 +35,7 @@ class UxImprovementsTest extends TestCase
 
     private function newRequest(): MaintenanceRequest
     {
-        $this->actingAs($this->user('employee'))->post('/r/EQ-FRZ-001', ['description' => 'لا يعمل'])->assertRedirect();
+        $this->actingAs($this->user('employee'))->post('/r/EQ-POS-001', ['description' => 'لا يعمل'])->assertRedirect();
 
         return MaintenanceRequest::latest('id')->firstOrFail();
     }
