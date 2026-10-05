@@ -22,7 +22,13 @@
             <tbody>
                 @forelse ($parts as $p)
                     <tr class="{{ $p->isLow() ? 'table-warning' : '' }}">
-                        <td>{{ $p->name }} <span class="small text-muted">{{ $p->manufacturer }}</span></td>
+                        <td>
+                            {{ $p->name }} <span class="small text-muted">{{ $p->manufacturer }}</span>
+                            @if ($p->is_food_grade)
+                                <span class="badge bg-success-subtle text-success-emphasis border border-success" title="{{ __('FoodGradeHint') }}">{{ __('FoodGrade') }}</span>
+                                @if ($p->food_grade_certificate_url)<a href="{{ $p->food_grade_certificate_url }}" target="_blank" class="small">📄</a>@endif
+                            @endif
+                        </td>
                         <td>{{ $p->part_number }}</td>
                         <td>
                             {{ $p->quantity }} {{ $p->unit }}

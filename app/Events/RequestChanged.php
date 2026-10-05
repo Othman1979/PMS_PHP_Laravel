@@ -90,6 +90,7 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
             'updatedAt' => $r->updated_at?->toIso8601String(),
             'dueAt' => $r->due_at?->format('Y-m-d H:i'),
             'overdue' => $r->isOverdue(),
+            'foodSafety' => (bool) $r->food_safety_impact,
             'detailsUrl' => route('requests.show', $r),
         ];
     }

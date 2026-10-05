@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\DepartmentConfirmation;
+use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use App\Enums\StockMovementType;
@@ -17,6 +18,7 @@ use App\Models\SparePart;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,21 +30,35 @@ class RequestWorkflow
 
     /** @param list<UploadedFile> $files */
     public function create(?User $user, ?Equipment $equipment, int $departmentId, string $description,
-        Priority $priority, array $files = [], bool $preventive = false, ?int $planId = null, ?int $faultTypeId = null): MaintenanceRequest
+        Priority $priority, array $files = [], bool $preventive = false, ?int $planId = null, ?int $faultTypeId = null,
+        bool $foodSafetyImpact = false, ?int $followUpOfId = null, ?Carbon $dueAt = null): MaintenanceRequest
     {
-        $request = DB::transaction(function () use ($user, $equipment, $departmentId, $description, $priority, $preventive, $planId, $faultTypeId) {
+        // A fault on CCP/oPRP equipment always affects food safety; any food-safety fault jumps to the critical priority.
+        $foodSafetyImpact = $foodSafetyImpact || filled($equipment?->ccp_reference);
+        $escalatedFrom = null;
+        if ($foodSafetyImpact) {
+            $critical = Priority::criticalForFoodSafety();
+            if ($critical !== null && $critical->rank > $priority->rank) {
+                $escalatedFrom = $priority;
+                $priority = $critical;
+            }
+        }
+
+        $request = DB::transaction(function () use ($user, $equipment, $departmentId, $description, $priority, $preventive, $planId, $faultTypeId, $foodSafetyImpact, $followUpOfId, $dueAt, $escalatedFrom) {
             $request = MaintenanceRequest::create([
                 'equipment_id' => $equipment?->id,
                 'department_id' => $departmentId,
                 'created_by_id' => $user?->id ?? User::query()->where('role', Role::Admin)->value('id'),
                 'description' => $description,
                 'priority_id' => $priority->id,
-                'due_at' => $priority->sla_hours ? now()->addHours((int) $priority->sla_hours) : null,
+                'due_at' => $dueAt ?? ($priority->sla_hours ? now()->addHours((int) $priority->sla_hours) : null),
                 'fault_type_id' => $faultTypeId,
                 'status' => RequestStatus::New,
                 'is_under_warranty' => $equipment?->isUnderWarranty() ?? false,
                 'is_preventive' => $preventive,
                 'preventive_maintenance_plan_id' => $planId,
+                'food_safety_impact' => $foodSafetyImpact,
+                'follow_up_of_id' => $followUpOfId,
             ]);
             $request->update(['request_number' => sprintf('MR-%s-%05d', $request->created_at->format('Y'), $request->id)]);
             $request->timeline()->create([
@@ -50,6 +66,7 @@ class RequestWorkflow
                 'status_to' => RequestStatus::New,
                 'changed_by_id' => $user?->id,
                 'changed_at' => now(),
+                'note' => $escalatedFrom !== null ? str_replace('{0}', $escalatedFrom->label(), __('FoodSafetyEscalatedNote')) : null,
             ]);
 
             return $request;
@@ -70,6 +87,9 @@ class RequestWorkflow
         ActivityLog::record('request_created', $request, $request->request_number.' — '.Str::limit($description, 80), $user);
         RequestChanged::dispatch($request, true);
         $this->notifyNewRequest($request);
+        if ($foodSafetyImpact) {
+            $this->notify($request, $this->foodSafetyIds($request->created_by_id), 'Push_FoodSafetyTitle', null, withPriority: true);
+        }
 
         if (Setting::bool(Setting::AUTO_ASSIGN)) {
             $this->autoAssign($request);
@@ -132,6 +152,12 @@ class RequestWorkflow
     public function transition(MaintenanceRequest $request, RequestStatus $to, ?User $by, ?string $note = null): void
     {
         $from = $request->status;
+        if ($to === RequestStatus::Closed && $from !== $to) {
+            $request->loadMissing('equipment');
+            if ($request->requiresRelease() && ! $request->isReleased()) {
+                throw ValidationException::withMessages(['release' => __('Error_ReleaseRequired')]);
+            }
+        }
         $request->status = $to;
         if ($to === RequestStatus::Closed) {
             $request->closed_at ??= now();
@@ -174,14 +200,21 @@ class RequestWorkflow
      * @param  array<int, array{compliant: bool, note: ?string}>  $checklist  checklist_item_id => result
      */
     public function complete(MaintenanceRequest $request, User $by, string $resolution, ?string $technicianNotes,
-        float $laborCost, array $parts, array $checklist, ?int $faultTypeId = null, ?int $faultCauseId = null): void
+        float $laborCost, array $parts, array $checklist, ?int $faultTypeId = null, ?int $faultCauseId = null,
+        bool $temporaryRepair = false, ?Carbon $permanentRepairDue = null): void
     {
-        DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist, $faultTypeId, $faultCauseId) {
+        $request->loadMissing('equipment');
+        $foodContact = $request->equipment?->food_contact ?? false;
+
+        DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist, $faultTypeId, $faultCauseId, $temporaryRepair, $permanentRepairDue, $foodContact) {
             foreach ($parts as $partId => $qty) {
                 $qty = (int) $qty;
                 $spare = SparePart::query()->lockForUpdate()->find($partId);
                 if ($spare === null || $qty <= 0) {
                     continue;
+                }
+                if ($foodContact && ! $spare->is_food_grade) {
+                    throw ValidationException::withMessages(['parts' => str_replace('{0}', $spare->name, __('Error_NonFoodGradePart'))]);
                 }
                 if ($qty > $spare->quantity) {
                     throw ValidationException::withMessages([
@@ -224,10 +257,19 @@ class RequestWorkflow
                 'cost_parts' => (float) $request->partsUsed()->selectRaw('coalesce(sum(quantity * unit_cost_at_use), 0) as total')->value('total'),
                 'completed_at' => now(),
                 'department_confirmation' => DepartmentConfirmation::Pending,
+                'is_temporary_repair' => $temporaryRepair,
+                'permanent_repair_due' => $temporaryRepair ? $permanentRepairDue : null,
+                'released_at' => null,
+                'released_by_id' => null,
+                'release_checklist' => null,
+                'release_notes' => null,
             ]);
 
             $equipment = $request->equipment;
             $equipment?->update(['last_maintenance_date' => today()]);
+            if ($temporaryRepair && $equipment !== null && $equipment->status === EquipmentStatus::Working) {
+                $equipment->update(['status' => EquipmentStatus::WorkingWithIssues]);
+            }
 
             $plan = $request->plan;
             if ($request->is_preventive && $plan !== null) {
@@ -241,6 +283,67 @@ class RequestWorkflow
 
             $this->transition($request, RequestStatus::Completed, $by, $resolution);
         });
+
+        if ($temporaryRepair && $permanentRepairDue !== null) {
+            $this->createFollowUp($request, $by, $permanentRepairDue);
+        }
+    }
+
+    /** A temporary repair is not a fix: the permanent repair becomes its own open request due on the agreed date. */
+    private function createFollowUp(MaintenanceRequest $request, User $by, Carbon $permanentRepairDue): MaintenanceRequest
+    {
+        $followUp = $this->create(
+            $by,
+            $request->equipment,
+            $request->department_id,
+            str_replace(['{0}', '{1}'], [$request->request_number, Str::limit($request->resolution_notes ?? $request->description, 300)], __('FollowUpDescription')),
+            $request->priority,
+            faultTypeId: $request->fault_type_id,
+            foodSafetyImpact: $request->food_safety_impact,
+            followUpOfId: $request->id,
+            dueAt: $permanentRepairDue->copy()->endOfDay(),
+        );
+
+        $this->notify($request, array_values(array_unique([...$this->staffIds($by->id), ...$this->foodSafetyIds($by->id)])),
+            'Push_TemporaryRepairTitle', str_replace('{0}', $permanentRepairDue->toDateString(), __('TemporaryRepairNote')));
+
+        return $followUp;
+    }
+
+    /**
+     * Post-maintenance release of food-contact equipment: every checklist point must be confirmed before the request can close.
+     *
+     * @param  array<string, bool>  $checklist  item key => confirmed
+     */
+    public function release(MaintenanceRequest $request, User $by, array $checklist, ?string $notes): void
+    {
+        $missing = array_filter(MaintenanceRequest::RELEASE_CHECKLIST, fn (string $item) => empty($checklist[$item]));
+        if ($missing !== []) {
+            throw ValidationException::withMessages(['release' => __('Error_ReleaseChecklistIncomplete')]);
+        }
+
+        $request->fill([
+            'released_at' => now(),
+            'released_by_id' => $by->id,
+            'release_checklist' => array_fill_keys(MaintenanceRequest::RELEASE_CHECKLIST, true),
+            'release_notes' => filled($notes) ? trim($notes) : null,
+        ])->save();
+
+        ActivityLog::record('request_released', $request, $request->request_number.' — '.$by->full_name, $by);
+        $this->comment($request, $by, __('ReleaseSignedNote').(filled($notes) ? ' — '.trim($notes) : ''));
+    }
+
+    /** Food-safety officer's record of what product was affected and what was decided (hold, discard, release). */
+    public function recordFoodSafetyDecision(MaintenanceRequest $request, User $by, ?string $affectedProduct, string $decision): void
+    {
+        $request->fill([
+            'food_safety_impact' => true,
+            'affected_product' => filled($affectedProduct) ? trim($affectedProduct) : null,
+            'food_safety_decision' => trim($decision),
+        ])->save();
+
+        ActivityLog::record('food_safety_decision', $request, $request->request_number.' — '.Str::limit($decision, 80), $by);
+        $this->comment($request, $by, __('FoodSafetyDecisionNote').': '.trim($decision));
     }
 
     /**
@@ -254,7 +357,9 @@ class RequestWorkflow
 
         $actor = $by?->id;
         $technician = $request->assigned_technician_id;
-        $staff = fn () => $this->staffIds($actor);
+        $staff = fn () => $request->food_safety_impact
+            ? array_values(array_unique([...$this->staffIds($actor), ...$this->foodSafetyIds($actor)]))
+            : $this->staffIds($actor);
         $tech = fn () => $technician !== null && $technician !== $actor ? [$technician] : [];
         $requesterSide = fn () => array_values(array_diff($this->requesterSideIds($request), array_filter([$actor])));
 
@@ -334,6 +439,16 @@ class RequestWorkflow
             ->where(fn ($q) => $q
                 ->whereKey($request->created_by_id)
                 ->orWhere(fn ($m) => $m->where('role', Role::DepartmentManager)->where('department_id', $request->department_id)))
+            ->pluck('id')->all();
+    }
+
+    /** @return list<int> active food-safety officers */
+    public function foodSafetyIds(?int $except = null): array
+    {
+        return User::query()
+            ->where('role', Role::FoodSafety)
+            ->where('is_active', true)
+            ->when($except, fn ($q) => $q->whereKeyNot($except))
             ->pluck('id')->all();
     }
 

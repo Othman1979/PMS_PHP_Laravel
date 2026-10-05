@@ -85,6 +85,7 @@ class QuickRequestController extends Controller
             'description' => ['required', 'string', 'max:2000'],
             'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
             'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
+            'food_safety_impact' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image', 'max:'.config('pms.upload_max_kb')],
         ]);
 
@@ -96,6 +97,7 @@ class QuickRequestController extends Controller
             isset($data['priority_id']) ? Priority::findOrFail($data['priority_id']) : Priority::default(),
             array_filter([$request->file('photo')]),
             faultTypeId: isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
+            foodSafetyImpact: $request->boolean('food_safety_impact'),
         );
 
         return redirect()->route('quick.done', $maintenanceRequest);

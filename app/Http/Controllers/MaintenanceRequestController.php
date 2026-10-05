@@ -18,6 +18,7 @@ use App\Services\FileUploadService;
 use App\Services\RequestWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -26,7 +27,7 @@ class MaintenanceRequestController extends Controller
 {
     public function __construct(private RequestWorkflow $workflow) {}
 
-    private const FILTER_KEYS = ['status', 'department_id', 'user', 'overdue', 'q'];
+    private const FILTER_KEYS = ['status', 'department_id', 'user', 'overdue', 'food_safety', 'q'];
 
     public function index(Request $request): View|RedirectResponse
     {
@@ -44,6 +45,7 @@ class MaintenanceRequestController extends Controller
         $departmentId = (int) ($filters['department_id'] ?? 0) ?: null;
         $createdBy = trim((string) ($filters['user'] ?? ''));
         $overdue = (bool) ($filters['overdue'] ?? false);
+        $foodSafety = (bool) ($filters['food_safety'] ?? false);
         $search = trim((string) ($filters['q'] ?? ''));
 
         $base = MaintenanceRequest::query()->visibleTo($user)
@@ -58,10 +60,12 @@ class MaintenanceRequestController extends Controller
         $counts = (clone $base)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status')
             ->mapWithKeys(fn ($c, $status) => [$status instanceof RequestStatus ? $status->value : (string) $status => (int) $c]);
         $overdueCount = (clone $base)->overdue()->count();
+        $foodSafetyCount = (clone $base)->where('food_safety_impact', true)->whereNotIn('status', RequestStatus::closedValues())->count();
 
         $requests = (clone $base)->with(['equipment', 'department', 'createdBy', 'assignedTechnician', 'priority'])
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($overdue, fn ($q) => $q->overdue())
+            ->when($foodSafety, fn ($q) => $q->where('food_safety_impact', true)->whereNotIn('status', RequestStatus::closedValues()))
             ->latest()->latest('id')
             ->paginate(50)->appends($filters);
 
@@ -78,6 +82,8 @@ class MaintenanceRequestController extends Controller
             'departmentId' => $departmentId,
             'createdBy' => $createdBy,
             'overdue' => $overdue,
+            'foodSafety' => $foodSafety,
+            'foodSafetyCount' => $foodSafetyCount,
             'search' => $search,
             'filters' => $filters,
             'counts' => $counts,
@@ -163,8 +169,9 @@ class MaintenanceRequestController extends Controller
             'description' => ['required', 'string', 'max:2000'],
             'priority_id' => ['required', Rule::exists('priorities', 'id')->where('is_active', true)],
             'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
+            'food_safety_impact' => ['nullable', 'boolean'],
             'files' => ['nullable', 'array', 'max:5'],
-            'files.*' => [FileUploadService::rule()],
+            'files.*' => FileUploadService::rules(),
         ]);
 
         if ($user->role === Role::Employee && $user->department_id && (int) $data['department_id'] !== $user->department_id) {
@@ -179,6 +186,7 @@ class MaintenanceRequestController extends Controller
             Priority::findOrFail($data['priority_id']),
             $request->file('files', []),
             faultTypeId: isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
+            foodSafetyImpact: $request->boolean('food_safety_impact'),
         );
 
         return redirect()->route('requests.show', $maintenanceRequest)->with('ok', 'Saved');
@@ -193,6 +201,7 @@ class MaintenanceRequestController extends Controller
             'equipment', 'department', 'createdBy', 'assignedTechnician', 'attachments', 'priority', 'faultType', 'faultCause',
             'timeline' => fn ($q) => $q->with('changedBy')->orderByDesc('changed_at')->orderByDesc('id'),
             'partsUsed.sparePart', 'checklistResults.checklistItem', 'plan.checklist.items',
+            'releasedBy', 'followUpOf', 'followUps' => fn ($q) => $q->latest(),
         ]);
 
         $category = $maintenanceRequest->equipment?->category;
@@ -204,7 +213,9 @@ class MaintenanceRequestController extends Controller
             'user' => $user,
             'technicians' => $technicians,
             'suggested' => $technicians->first(fn (User $t) => $category !== null && $t->specialty === $category),
-            'spareParts' => SparePart::query()->orderBy('name')->get(),
+            'spareParts' => SparePart::query()
+                ->when($maintenanceRequest->equipment?->food_contact, fn ($q) => $q->where('is_food_grade', true))
+                ->orderBy('name')->get(),
             'checklist' => $maintenanceRequest->plan?->checklist,
             'faultTypes' => FaultType::query()->active()->ordered()->get(),
             'faultCauses' => FaultCause::query()->active()->ordered()->get(),
@@ -334,6 +345,8 @@ class MaintenanceRequestController extends Controller
             'parts' => ['nullable', 'array'],
             'parts.*.spare_part_id' => ['nullable', 'integer', 'exists:spare_parts,id'],
             'parts.*.quantity' => ['nullable', 'integer', 'min:0'],
+            'is_temporary_repair' => ['nullable', 'boolean'],
+            'permanent_repair_due' => ['nullable', 'required_if_accepted:is_temporary_repair', 'date', 'after:today'],
         ]);
 
         $parts = [];
@@ -354,9 +367,50 @@ class MaintenanceRequestController extends Controller
         $this->workflow->complete($maintenanceRequest->load(['equipment', 'plan', 'assignedTechnician']), $request->user(),
             trim($data['resolution_notes']), $data['technician_notes'] ?? null, (float) ($data['cost_labor'] ?? 0), $parts, $checklist,
             isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
-            isset($data['fault_cause_id']) ? (int) $data['fault_cause_id'] : null);
+            isset($data['fault_cause_id']) ? (int) $data['fault_cause_id'] : null,
+            $request->boolean('is_temporary_repair'),
+            $request->boolean('is_temporary_repair') ? Carbon::parse($data['permanent_repair_due']) : null);
 
         return $this->back($maintenanceRequest);
+    }
+
+    /** Post-maintenance release sign-off for food-contact equipment (manager / food-safety officer / admin). */
+    public function release(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($maintenanceRequest->canRelease($user), 403);
+        $maintenanceRequest->load('equipment');
+        if ($maintenanceRequest->status !== RequestStatus::Completed || ! $maintenanceRequest->requiresRelease() || $maintenanceRequest->isReleased()) {
+            return $this->back($maintenanceRequest);
+        }
+
+        $data = $request->validate([
+            'release' => ['nullable', 'array'],
+            'release.*' => ['boolean'],
+            'release_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $checklist = [];
+        foreach (MaintenanceRequest::RELEASE_CHECKLIST as $item) {
+            $checklist[$item] = $request->boolean('release.'.$item);
+        }
+
+        $this->workflow->release($maintenanceRequest, $user, $checklist, $data['release_notes'] ?? null);
+
+        return $this->back($maintenanceRequest)->with('ok', __('ReleaseSigned'));
+    }
+
+    public function foodSafety(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->canApproveFoodSafety(), 403);
+        $data = $request->validate([
+            'affected_product' => ['nullable', 'string', 'max:500'],
+            'food_safety_decision' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $this->workflow->recordFoodSafetyDecision($maintenanceRequest, $user, $data['affected_product'] ?? null, $data['food_safety_decision']);
+
+        return $this->back($maintenanceRequest)->with('ok', __('Saved'));
     }
 
     public function confirm(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse

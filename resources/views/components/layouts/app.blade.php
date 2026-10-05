@@ -83,6 +83,9 @@
                 <x-nav-item route="pm.index" :label="__('PMPlans')" icon="calendar" active="pm.*" />
                 <x-nav-item route="checklists.index" :label="__('Checklists')" icon="checklist" active="checklists.*" />
                 <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
+            @elseif ($user->isFoodSafety())
+                <div class="navpane-header">{{ __('FoodSafetySection') }}</div>
+                <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
             @endif
             @if ($user->hasRole(Role::Admin, Role::Coordinator, Role::Technician))
                 <div class="navpane-header">{{ __('SpareParts') }}</div>

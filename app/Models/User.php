@@ -61,6 +61,17 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->hasRole(Role::Admin, Role::Coordinator);
     }
 
+    /** Admin or the food-safety officer: signs equipment release, commissioning and food-safety decisions. */
+    public function canApproveFoodSafety(): bool
+    {
+        return $this->hasRole(Role::Admin, Role::FoodSafety);
+    }
+
+    public function isFoodSafety(): bool
+    {
+        return $this->role === Role::FoodSafety;
+    }
+
     public function isTechnician(): bool
     {
         return $this->role === Role::Technician;

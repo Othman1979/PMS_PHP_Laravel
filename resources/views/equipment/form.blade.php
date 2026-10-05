@@ -5,6 +5,9 @@
     $date = fn (string $f) => old($f, $equipment->{$f}?->format('Y-m-d'));
     $selCategory = old('category', $equipment->category?->value);
     $selStatus = old('status', $equipment->status?->value);
+    $flag = fn (string $f) => (bool) old($f, $equipment->{$f});
+    $isMeasuring = $flag('is_measuring_device');
+    $commissioned = $equipment->commissioned_at !== null;
 @endphp
 <x-layouts.app :title="$isEdit ? __('EditEquipment') : __('AddEquipment')" dialog-size="lg">
     <h2>{{ $isEdit ? __('EditEquipment') : __('AddEquipment') }}</h2>
@@ -115,6 +118,89 @@
             </div>
         </div>
 
+        <h5 class="mt-4">{{ __('FoodSafetySection') }} <small class="text-muted fw-normal">HACCP / FSSC 22000</small></h5>
+        <div class="row g-3" id="foodSafetyFields" data-commissioned="{{ $commissioned ? 1 : 0 }}">
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" id="food_contact" name="food_contact" value="1" @checked($flag('food_contact')) data-fs-flag>
+                    <label class="form-check-label" for="food_contact">{{ __('FoodContact') }}</label>
+                </div>
+                <div class="form-text">{{ __('FoodContactHint') }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" id="is_critical" name="is_critical" value="1" @checked($flag('is_critical')) data-fs-flag>
+                    <label class="form-check-label" for="is_critical">{{ __('CriticalEquipment') }}</label>
+                </div>
+                <div class="form-text">{{ __('CriticalEquipmentHint') }}</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="ccp_reference">{{ __('CcpReference') }}</label>
+                <input id="ccp_reference" name="ccp_reference" value="{{ $val('ccp_reference') }}" class="form-control" maxlength="100" placeholder="CCP-1 / oPRP-2" data-fs-flag>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" id="hygienic_design" name="hygienic_design" value="1" @checked($flag('hygienic_design'))>
+                    <label class="form-check-label" for="hygienic_design">{{ __('HygienicDesign') }}</label>
+                </div>
+                <div class="form-text">{{ __('HygienicDesignHint') }}</div>
+            </div>
+            <div class="col-12">
+                <div class="alert alert-warning small mb-0 d-none" id="commissioningHint">{{ __('CommissioningHint') }}</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="purchase_spec">{{ __('PurchaseSpec') }}</label>
+                <input id="purchase_spec" type="file" name="purchase_spec" class="form-control">
+                @error('purchase_spec')<span class="text-danger small">{{ $message }}</span>@enderror
+                @if ($equipment->purchase_spec_url)
+                    <a href="{{ $equipment->purchase_spec_url }}" target="_blank" class="small">{{ __('View') }}</a>
+                @endif
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="conformity_doc">{{ __('ConformityDoc') }}</label>
+                <input id="conformity_doc" type="file" name="conformity_doc" class="form-control">
+                @error('conformity_doc')<span class="text-danger small">{{ $message }}</span>@enderror
+                @if ($equipment->conformity_doc_url)
+                    <a href="{{ $equipment->conformity_doc_url }}" target="_blank" class="small">{{ __('View') }}</a>
+                @endif
+            </div>
+        </div>
+
+        <h5 class="mt-4">{{ __('Calibration') }}</h5>
+        <div class="form-check form-switch mb-2">
+            <input type="checkbox" class="form-check-input" id="isMeasuring" name="is_measuring_device" value="1" @checked($isMeasuring)>
+            <label class="form-check-label" for="isMeasuring">{{ __('MeasuringDevice') }}</label>
+            <div class="form-text">{{ __('MeasuringDeviceHint') }}</div>
+        </div>
+        <div class="row g-3 {{ $isMeasuring ? '' : 'd-none' }}" id="calibrationFields">
+            <div class="col-md-3">
+                <label class="form-label" for="calibration_interval_days">{{ __('CalibrationIntervalDays') }}</label>
+                <input id="calibration_interval_days" name="calibration_interval_days" type="number" min="1" max="3650" value="{{ $val('calibration_interval_days') }}" class="form-control @error('calibration_interval_days') is-invalid @enderror">
+                @error('calibration_interval_days')<span class="text-danger small">{{ $message }}</span>@enderror
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="last_calibration_date">{{ __('LastCalibration') }}</label>
+                <input id="last_calibration_date" name="last_calibration_date" type="date" value="{{ $date('last_calibration_date') }}" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="next_calibration_date">{{ __('NextCalibration') }}</label>
+                <input id="next_calibration_date" name="next_calibration_date" type="date" value="{{ $date('next_calibration_date') }}" class="form-control">
+                <div class="form-text">{{ __('NextCalibrationHint') }}</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="calibration_provider">{{ __('CalibrationProvider') }}</label>
+                <input id="calibration_provider" name="calibration_provider" value="{{ $val('calibration_provider') }}" class="form-control" maxlength="200">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="calibration_certificate">{{ __('CalibrationCertificate') }}</label>
+                <input id="calibration_certificate" type="file" name="calibration_certificate" class="form-control">
+                @error('calibration_certificate')<span class="text-danger small">{{ $message }}</span>@enderror
+                @if ($equipment->calibration_certificate_url)
+                    <a href="{{ $equipment->calibration_certificate_url }}" target="_blank" class="small">{{ __('View') }}</a>
+                @endif
+            </div>
+        </div>
+
         <h5 class="mt-4">{{ __('Attachments') }}</h5>
         <div class="row g-3">
             <div class="col-md-6">
@@ -150,6 +236,25 @@
                 const toggle = document.getElementById('hasWarranty');
                 const fields = document.getElementById('warrantyFields');
                 toggle.addEventListener('change', () => fields.classList.toggle('d-none', !toggle.checked));
+
+                const measuring = document.getElementById('isMeasuring');
+                const calibration = document.getElementById('calibrationFields');
+                measuring.addEventListener('change', () => calibration.classList.toggle('d-none', !measuring.checked));
+
+                const fs = document.getElementById('foodSafetyFields');
+                const status = document.getElementById('status');
+                const working = status.querySelector('option[value="Working"]');
+                const hint = document.getElementById('commissioningHint');
+                const commissioned = fs.dataset.commissioned === '1';
+                function refreshCommissioning() {
+                    const relevant = Array.from(fs.querySelectorAll('[data-fs-flag]')).some(el => el.type === 'checkbox' ? el.checked : el.value.trim() !== '');
+                    const locked = relevant && !commissioned;
+                    hint.classList.toggle('d-none', !locked);
+                    working.disabled = locked;
+                    if (locked && status.value === 'Working') { status.value = 'OutOfService'; }
+                }
+                fs.querySelectorAll('[data-fs-flag]').forEach(el => el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', refreshCommissioning));
+                refreshCommissioning();
             })();
         </script>
     </x-slot:scripts>

@@ -16,6 +16,8 @@ final class ReportRegistry
         FaultsReport::class,
         TopFailingReport::class,
         StockReport::class,
+        FoodSafetyReport::class,
+        CalibrationReport::class,
     ];
 
     public const DEFAULT = 'requests';

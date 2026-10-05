@@ -13,4 +13,5 @@ enum Role: string
     case Technician = 'Technician';
     case DepartmentManager = 'DepartmentManager';
     case Employee = 'Employee';
+    case FoodSafety = 'FoodSafety';
 }

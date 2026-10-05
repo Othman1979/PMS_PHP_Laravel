@@ -68,6 +68,26 @@
                     </label>
                 @endforeach
             </div>
+            @unless ($equipment->ccp_reference)
+                <div class="quick-fs mt-3">
+                    <div class="quick-fs-title">{{ __('FoodSafetyImpactQuestion') }}</div>
+                    <div class="quick-prios" style="grid-template-columns: 1fr 1fr">
+                        <label class="quick-prio" style="--prio-color: #16a34a">
+                            <input type="radio" name="food_safety_impact" value="0" @checked(! old('food_safety_impact'))>
+                            <span class="quick-prio-dot"></span>
+                            <span class="quick-prio-title">{{ __('No') }}</span>
+                        </label>
+                        <label class="quick-prio" style="--prio-color: #dc2626">
+                            <input type="radio" name="food_safety_impact" value="1" @checked((bool) old('food_safety_impact'))>
+                            <span class="quick-prio-dot"></span>
+                            <span class="quick-prio-title">{{ __('Yes') }}</span>
+                            <span class="quick-prio-hint">{{ __('FoodSafetyImpactHint') }}</span>
+                        </label>
+                    </div>
+                </div>
+            @else
+                <div class="quick-fs-notice mt-3">{{ __('CcpEquipmentNotice') }}</div>
+            @endunless
         </section>
 
         @if ($faultTypes->isNotEmpty())

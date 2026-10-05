@@ -6,7 +6,7 @@
     <h2>{{ $isEdit ? __('EditSparePart') : __('AddSparePart') }}</h2>
     <div class="row">
         <div class="col-lg-5">
-            <form method="post" action="{{ $isEdit ? route('parts.update', $part) : route('parts.store') }}">
+            <form method="post" action="{{ $isEdit ? route('parts.update', $part) : route('parts.store') }}" enctype="multipart/form-data">
                 @csrf
                 @if ($isEdit) @method('PUT') @endif
                 <div class="mb-3">
@@ -39,6 +39,19 @@
                 <div class="mb-3">
                     <label class="form-label" for="unit_cost">{{ __('UnitCost') }}</label>
                     <input id="unit_cost" name="unit_cost" type="number" step="0.01" min="0" value="{{ $val('unit_cost') }}" class="form-control" required>
+                </div>
+                <div class="border rounded p-3 mb-3 bg-light">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="is_food_grade" value="1" id="is_food_grade" @checked(old('is_food_grade', $part->is_food_grade))>
+                        <label class="form-check-label fw-semibold" for="is_food_grade">{{ __('FoodGrade') }}</label>
+                        <div class="form-text">{{ __('FoodGradeHint') }}</div>
+                    </div>
+                    <label class="form-label" for="food_grade_certificate">{{ __('FoodGradeCertificate') }}</label>
+                    <input id="food_grade_certificate" name="food_grade_certificate" type="file" class="form-control" accept=".pdf,image/*">
+                    @error('food_grade_certificate')<span class="text-danger small">{{ $message }}</span>@enderror
+                    @if ($part->food_grade_certificate_url)
+                        <a href="{{ $part->food_grade_certificate_url }}" target="_blank" class="small d-block mt-1">{{ __('ViewDocument') }}</a>
+                    @endif
                 </div>
                 <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
                 <a href="{{ route('parts.index') }}" class="btn btn-outline-secondary">{{ __('Cancel') }}</a>

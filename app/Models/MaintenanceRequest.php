@@ -17,9 +17,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'assigned_technician_id', 'assigned_at', 'due_at', 'escalated_at', 'accepted_at', 'started_at', 'completed_at', 'closed_at',
     'is_under_warranty', 'is_preventive', 'preventive_maintenance_plan_id', 'cost_labor', 'cost_parts',
     'resolution_notes', 'technician_notes', 'department_confirmation',
+    'food_safety_impact', 'affected_product', 'food_safety_decision', 'is_temporary_repair', 'permanent_repair_due', 'follow_up_of_id',
+    'released_at', 'released_by_id', 'release_checklist', 'release_notes',
 ])]
 class MaintenanceRequest extends Model
 {
+    /** Points signed off before food-contact equipment goes back into production (label keys: Release_<item>). */
+    public const RELEASE_CHECKLIST = ['tools_removed', 'cleaned', 'sanitized', 'function_checked'];
+
     protected function casts(): array
     {
         return [
@@ -34,6 +39,11 @@ class MaintenanceRequest extends Model
             'closed_at' => 'datetime',
             'is_under_warranty' => 'boolean',
             'is_preventive' => 'boolean',
+            'food_safety_impact' => 'boolean',
+            'is_temporary_repair' => 'boolean',
+            'permanent_repair_due' => 'date',
+            'released_at' => 'datetime',
+            'release_checklist' => 'array',
             'cost_labor' => 'decimal:2',
             'cost_parts' => 'decimal:2',
         ];
@@ -72,6 +82,22 @@ class MaintenanceRequest extends Model
     public function assignedTechnician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_technician_id');
+    }
+
+    /** The temporary-repair request this follow-up was generated from. */
+    public function followUpOf(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'follow_up_of_id');
+    }
+
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(self::class, 'follow_up_of_id');
+    }
+
+    public function releasedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'released_by_id');
     }
 
     public function plan(): BelongsTo
@@ -115,6 +141,30 @@ class MaintenanceRequest extends Model
         return $this->due_at !== null && $this->isOpen() && $this->due_at->isPast();
     }
 
+    /** Food-contact equipment must be cleaned, sanitized and signed off before the request can be closed. */
+    public function requiresRelease(): bool
+    {
+        return $this->equipment !== null && $this->equipment->food_contact;
+    }
+
+    public function isReleased(): bool
+    {
+        return $this->released_at !== null;
+    }
+
+    /** Open follow-up (permanent repair) still pending for a temporary repair. */
+    public function hasOpenFollowUp(): bool
+    {
+        return $this->followUps()->whereNotIn('status', RequestStatus::closedValues())->exists();
+    }
+
+    /** Admin, food-safety officer or the department's manager may sign the release checklist. */
+    public function canRelease(User $user): bool
+    {
+        return $user->canApproveFoodSafety()
+            || ($user->role === Role::DepartmentManager && $this->department_id === $user->department_id);
+    }
+
     #[Scope]
     protected function overdue(Builder $query): void
     {
@@ -126,7 +176,7 @@ class MaintenanceRequest extends Model
     protected function visibleTo(Builder $query, User $user): void
     {
         match ($user->role) {
-            Role::Admin, Role::Coordinator => null,
+            Role::Admin, Role::Coordinator, Role::FoodSafety => null,
             Role::DepartmentManager => $query->where('department_id', $user->department_id),
             Role::Technician => $query->where(fn (Builder $q) => $q
                 ->where('assigned_technician_id', $user->id)
@@ -138,7 +188,7 @@ class MaintenanceRequest extends Model
     public function isVisibleTo(User $user): bool
     {
         return match ($user->role) {
-            Role::Admin, Role::Coordinator => true,
+            Role::Admin, Role::Coordinator, Role::FoodSafety => true,
             Role::DepartmentManager => $this->department_id === $user->department_id,
             Role::Technician => $this->assigned_technician_id === $user->id
                 || in_array($this->status, [RequestStatus::New, RequestStatus::UnderReview], true),

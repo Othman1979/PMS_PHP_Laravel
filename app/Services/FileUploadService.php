@@ -33,9 +33,9 @@ class FileUploadService
         return ['url' => '/uploads/'.$folder.'/'.$name, 'name' => mb_substr($file->getClientOriginalName(), 0, 255)];
     }
 
-    /** Validation rule string shared by every upload field. */
-    public static function rule(): string
+    /** @return list<string> validation rules shared by every upload field (spread into the field's rule array) */
+    public static function rules(): array
     {
-        return 'file|max:'.config('pms.upload_max_kb').'|extensions:'.implode(',', config('pms.upload_extensions'));
+        return ['file', 'max:'.config('pms.upload_max_kb'), 'extensions:'.implode(',', config('pms.upload_extensions'))];
     }
 }

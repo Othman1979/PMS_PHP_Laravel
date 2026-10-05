@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CalibrationStatus;
 use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
+use App\Enums\Role;
 use App\Events\RequestChanged;
 use App\Models\Department;
 use App\Models\Equipment;
@@ -46,12 +48,30 @@ class DashboardController extends Controller
             'warrantyExpiring' => Equipment::query()->where('has_warranty', true)
                 ->whereBetween('warranty_end', [today(), today()->addDays(60)])
                 ->orderBy('warranty_end')->get(),
+            'foodSafety' => $user->hasRole(Role::Admin, Role::Coordinator, Role::FoodSafety) ? $this->foodSafety() : null,
             'pmDueSoon' => PreventiveMaintenancePlan::with('equipment')->where('is_active', true)
                 ->where('next_due_date', '<=', today()->addDays(14))
                 ->orderBy('next_due_date')->take(10)->get(),
             'now' => now()->toIso8601String(),
             'charts' => $this->charts($user),
         ]);
+    }
+
+    /** @return array<string, mixed> HACCP attention items: open food-safety faults, calibration due/expired, equipment awaiting commissioning, overdue permanent repairs */
+    private function foodSafety(): array
+    {
+        $measuring = Equipment::query()->measuringDevices()->get();
+
+        return [
+            'openFaults' => MaintenanceRequest::query()->where('food_safety_impact', true)->whereNotIn('status', RequestStatus::closedValues())->count(),
+            'awaitingRelease' => MaintenanceRequest::query()->where('status', RequestStatus::Completed)->whereNull('released_at')
+                ->whereHas('equipment', fn ($q) => $q->where('food_contact', true))->count(),
+            'calibrationExpired' => $measuring->filter(fn (Equipment $e) => $e->calibrationStatus() === CalibrationStatus::Expired)->count(),
+            'calibrationDueSoon' => $measuring->filter(fn (Equipment $e) => in_array($e->calibrationStatus(), [CalibrationStatus::DueSoon, CalibrationStatus::Missing], true))->count(),
+            'awaitingCommissioning' => Equipment::query()->foodSafetyRelevant()->whereNull('commissioned_at')->count(),
+            'permanentRepairOverdue' => MaintenanceRequest::query()->whereNotNull('follow_up_of_id')->whereNotIn('status', RequestStatus::closedValues())
+                ->where('due_at', '<', now())->count(),
+        ];
     }
 
     /** @return array<string, mixed> */

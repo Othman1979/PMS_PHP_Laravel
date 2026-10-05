@@ -9,6 +9,7 @@ use App\Models\PurchaseRequestItem;
 use App\Models\RequestPartUsed;
 use App\Models\SparePart;
 use App\Models\StockMovement;
+use App\Services\FileUploadService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,8 @@ use Illuminate\View\View;
 
 class SparePartController extends Controller
 {
+    public function __construct(private readonly FileUploadService $files) {}
+
     public function index(): View
     {
         return view('parts.index', ['parts' => SparePart::query()->orderBy('name')->get()]);
@@ -30,7 +33,7 @@ class SparePartController extends Controller
     public function store(Request $request): RedirectResponse
     {
         DB::transaction(function () use ($request) {
-            $part = SparePart::create($this->validated($request));
+            $part = SparePart::create([...$this->validated($request), ...$this->certificate($request)]);
             if ($part->quantity !== 0) {
                 $this->logAdjustment($part, $part->quantity, $request->user()->id, 'OpeningBalance');
             }
@@ -48,7 +51,7 @@ class SparePartController extends Controller
     {
         DB::transaction(function () use ($request, $part) {
             $previous = $part->quantity;
-            $part->update($this->validated($request));
+            $part->update([...$this->validated($request), ...$this->certificate($request)]);
             if ($part->quantity !== $previous) {
                 $this->logAdjustment($part, $part->quantity - $previous, $request->user()->id);
             }
@@ -130,7 +133,7 @@ class SparePartController extends Controller
     /** @return array<string, mixed> */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        return collect($request->validate([
             'name' => ['required', 'string', 'max:200'],
             'part_number' => ['nullable', 'string', 'max:100'],
             'manufacturer' => ['nullable', 'string', 'max:200'],
@@ -138,7 +141,21 @@ class SparePartController extends Controller
             'quantity' => ['required', 'integer', 'min:0'],
             'minimum_quantity' => ['required', 'integer', 'min:0'],
             'unit_cost' => ['required', 'numeric', 'min:0'],
-        ]);
+            'is_food_grade' => ['nullable', 'boolean'],
+            'food_grade_certificate' => ['nullable', ...FileUploadService::rules()],
+        ], [], ['food_grade_certificate' => __('FoodGradeCertificate')]))->except(['is_food_grade', 'food_grade_certificate'])->all();
+    }
+
+    /** @return array<string, mixed> */
+    private function certificate(Request $request): array
+    {
+        $data = ['is_food_grade' => $request->boolean('is_food_grade')];
+        $url = $this->files->save($request->file('food_grade_certificate'), 'food-grade')['url'] ?? null;
+        if ($url !== null) {
+            $data['food_grade_certificate_url'] = $url;
+        }
+
+        return $data;
     }
 
     private function logAdjustment(SparePart $part, int $delta, int $userId, ?string $note = null): void

@@ -8,11 +8,14 @@
         $tabStatuses = [\App\Enums\RequestStatus::New, \App\Enums\RequestStatus::UnderReview, \App\Enums\RequestStatus::Assigned, \App\Enums\RequestStatus::Accepted,
             \App\Enums\RequestStatus::InProgress, \App\Enums\RequestStatus::WaitingParts, \App\Enums\RequestStatus::Completed, \App\Enums\RequestStatus::Reopened,
             \App\Enums\RequestStatus::Closed, \App\Enums\RequestStatus::Cancelled];
-        $tabBase = collect($filters)->except(['status', 'overdue', 'page'])->all();
+        $tabBase = collect($filters)->except(['status', 'overdue', 'food_safety', 'page'])->all();
         $total = $counts->sum();
     @endphp
     <ul class="nav nav-pills status-tabs flex-nowrap overflow-auto mb-3" id="statusTabs">
-        <li class="nav-item"><a class="nav-link {{ $status === null && ! $overdue ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['all' => 1]) }}">{{ __('AllStatuses') }} <span class="badge rounded-pill text-bg-light" data-count="all">{{ $total }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {{ $status === null && ! $overdue && ! $foodSafety ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['all' => 1]) }}">{{ __('AllStatuses') }} <span class="badge rounded-pill text-bg-light" data-count="all">{{ $total }}</span></a></li>
+        @if ($foodSafetyCount > 0 || $foodSafety)
+            <li class="nav-item"><a class="nav-link text-danger {{ $foodSafety ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['food_safety' => 1]) }}">🛡 {{ __('FoodSafetyImpact') }} <span class="badge rounded-pill text-bg-danger" data-count="food_safety">{{ $foodSafetyCount }}</span></a></li>
+        @endif
         <li class="nav-item"><a class="nav-link text-danger {{ $overdue ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['overdue' => 1]) }}">⏰ {{ __('Overdue') }} <span class="badge rounded-pill text-bg-danger" data-count="overdue">{{ $overdueCount }}</span></a></li>
         @foreach ($tabStatuses as $s)
             <li class="nav-item"><a class="nav-link {{ $status === $s ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['status' => $s->value]) }}">{{ $s->label() }} <span class="badge rounded-pill text-bg-light" data-count="{{ $s->value }}">{{ $counts[$s->value] ?? 0 }}</span></a></li>
@@ -22,6 +25,7 @@
     <form method="get" class="row g-2 mb-3 align-items-center">
         @if ($status) <input type="hidden" name="status" value="{{ $status->value }}"> @endif
         @if ($overdue) <input type="hidden" name="overdue" value="1"> @endif
+        @if ($foodSafety) <input type="hidden" name="food_safety" value="1"> @endif
         <div class="col-12 col-md-4 col-lg-3">
             <input type="search" name="q" value="{{ $search }}" class="form-control" placeholder="{{ __('SearchRequestsPlaceholder') }}">
         </div>
@@ -92,6 +96,12 @@
                             @if ($r->is_preventive)
                                 <span class="badge bg-info text-dark">{{ __('Preventive') }}</span>
                             @endif
+                            @if ($r->food_safety_impact)
+                                <span class="badge bg-danger fs-badge" title="{{ __('FoodSafetyImpactHint') }}">🛡 {{ __('FoodSafetyShort') }}</span>
+                            @endif
+                            @if ($r->is_temporary_repair)
+                                <span class="badge bg-warning text-dark">{{ __('TemporaryRepair') }}</span>
+                            @endif
                         </td>
                         <td data-label="{{ __('Description') }}" class="text-truncate" style="max-width:260px">{{ $r->description }}</td>
                         <td data-label="{{ __('Equipment') }}">{{ $r->equipment?->name ?? '-' }}</td>
@@ -143,11 +153,11 @@
 (function () {
     const live = window.PmsLive;
     if (!live || !live.enabled) return;
-    const F = @js(['status' => $status?->value, 'overdue' => $overdue, 'departmentId' => $departmentId, 'countable' => $createdBy === '' && $search === '']);
-    const canInsert = @js($status === null && ! $overdue && $departmentId === null && $createdBy === '' && $search === '' && $requests->onFirstPage());
+    const F = @js(['status' => $status?->value, 'overdue' => $overdue, 'foodSafety' => $foodSafety, 'departmentId' => $departmentId, 'countable' => $createdBy === '' && $search === '']);
+    const canInsert = @js($status === null && ! $overdue && ! $foodSafety && $departmentId === null && $createdBy === '' && $search === '' && $requests->onFirstPage());
     const H = @js(['no' => __('RequestNumber'), 'desc' => __('Description'), 'equip' => __('Equipment'), 'dept' => __('Department'), 'by' => __('CreatedBy'), 'prio' => __('Priority'), 'status' => __('Status'), 'tech' => __('Technician'), 'at' => __('CreatedAt'), 'overdue' => __('Overdue')]);
     const channel = @js(auth()->user()->canManage() ? 'staff' : (auth()->user()->isTechnician() ? 'technician.'.auth()->id() : 'department.'.auth()->user()->department_id));
-    const T = @js(['new' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('View'), 'preventive' => __('Preventive')]);
+    const T = @js(['new' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('View'), 'preventive' => __('Preventive'), 'foodSafety' => __('FoodSafetyShort')]);
     const esc = live.esc, L = live.L;
     const BULK = @js($bulk);
 
@@ -178,6 +188,7 @@
         if (d.isNew) {
             bump('all', 1);
             bump(d.status, 1);
+            if (d.foodSafety) bump('food_safety', 1);
         } else if (d.fromStatus && d.fromStatus !== d.status) {
             bump(d.fromStatus, -1);
             bump(d.status, 1);
@@ -187,7 +198,7 @@
     live.on(channel, 'request.changed', d => {
         bumpCounters(d);
         let tr = document.getElementById('req-' + d.id);
-        if (tr && ((F.status && d.status !== F.status) || (F.overdue && !d.overdue))) {
+        if (tr && ((F.status && d.status !== F.status) || (F.overdue && !d.overdue) || (F.foodSafety && !d.foodSafety))) {
             tr.remove();
             live.toast(T.updated + ' — ' + L(d.statusLabel), d.requestNumber + ' — ' + d.description, d.detailsUrl);
             return;
@@ -199,7 +210,7 @@
             tr = document.createElement('tr');
             tr.id = 'req-' + d.id;
             tr.innerHTML = (BULK ? '<td class="c-check"><input type="checkbox" class="form-check-input row-check" value="' + d.id + '"></td>' : '') +
-                '<td data-label="' + esc(H.no) + '"><a href="' + esc(d.detailsUrl) + '">' + esc(d.requestNumber) + '</a></td>' +
+                '<td data-label="' + esc(H.no) + '"><a href="' + esc(d.detailsUrl) + '">' + esc(d.requestNumber) + '</a>' + (d.foodSafety ? ' <span class="badge bg-danger fs-badge">🛡 ' + esc(T.foodSafety) + '</span>' : '') + '</td>' +
                 '<td data-label="' + esc(H.desc) + '" class="text-truncate" style="max-width:260px">' + esc(d.description) + '</td>' +
                 '<td data-label="' + esc(H.equip) + '">' + esc(d.equipment || '-') + '</td><td data-label="' + esc(H.dept) + '">' + esc(L(d.department)) + '</td><td data-label="' + esc(H.by) + '"></td>' +
                 '<td data-label="' + esc(H.prio) + '" class="c-prio"></td><td data-label="' + esc(H.status) + '" class="c-status"></td><td data-label="' + esc(H.tech) + '" class="c-tech"></td>' +

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Setting;
+use App\Services\CalibrationReminder;
 use App\Services\DatabaseBackup;
 use App\Services\PmGenerator;
 use App\Services\RequestWorkflow;
@@ -57,3 +58,9 @@ Artisan::command('pms:backup', function (DatabaseBackup $backup) {
 })->purpose('Write a SQL backup to storage/app/backups and prune old ones');
 
 Schedule::command('pms:backup')->dailyAt('02:30')->withoutOverlapping();
+
+Artisan::command('pms:calibration-reminders', function (CalibrationReminder $reminder) {
+    $this->info('Notified about '.$reminder->send().' measuring device(s) with calibration due or expired.');
+})->purpose('Alert maintenance staff and food-safety officers about calibration due soon / expired');
+
+Schedule::command('pms:calibration-reminders')->dailyAt('07:00')->withoutOverlapping();

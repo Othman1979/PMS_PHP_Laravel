@@ -6,12 +6,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'part_number', 'manufacturer', 'unit', 'quantity', 'unit_cost', 'minimum_quantity'])]
+#[Fillable(['name', 'part_number', 'manufacturer', 'unit', 'quantity', 'unit_cost', 'minimum_quantity', 'is_food_grade', 'food_grade_certificate_url'])]
 class SparePart extends Model
 {
     protected function casts(): array
     {
-        return ['unit_cost' => 'decimal:2', 'quantity' => 'integer', 'minimum_quantity' => 'integer'];
+        return ['unit_cost' => 'decimal:2', 'quantity' => 'integer', 'minimum_quantity' => 'integer', 'is_food_grade' => 'boolean'];
     }
 
     public function movements(): HasMany

@@ -56,6 +56,12 @@ class Priority extends Model
             ?? static::query()->active()->ordered()->firstOrFail();
     }
 
+    /** Priority a food-safety fault is escalated to: the most urgent active one flagged critical (or simply the most urgent). */
+    public static function criticalForFoodSafety(): ?Priority
+    {
+        return static::query()->active()->orderByDesc('is_critical')->orderByDesc('rank')->first();
+    }
+
     /** Priority used for auto-generated preventive-maintenance requests: the lowest-ranked active one. */
     public static function forPreventive(): Priority
     {

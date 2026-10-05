@@ -152,6 +152,31 @@
             </ul>
         </div>
 
+        @if ($foodSafety !== null)
+            @php $fsTotal = array_sum($foodSafety); @endphp
+            <div class="card mb-4 {{ $fsTotal > 0 ? 'border-danger' : '' }}">
+                <div class="card-header d-flex justify-content-between align-items-center {{ $fsTotal > 0 ? 'bg-danger text-white' : '' }}">
+                    <strong>{{ __('FoodSafetySection') }}</strong>
+                    <a class="small {{ $fsTotal > 0 ? 'text-white' : '' }}" href="{{ route('reports.show', 'food-safety') }}">{{ __('Reports') }}</a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    @foreach ([
+                        ['openFaults', 'OpenFoodSafetyFaults', route('requests.index', ['food_safety' => 1]), 'bg-danger'],
+                        ['awaitingRelease', 'AwaitingRelease', route('requests.index', ['status' => 'Completed']), 'bg-warning text-dark'],
+                        ['calibrationExpired', 'Calibration_Expired', route('reports.show', 'calibration'), 'bg-danger'],
+                        ['calibrationDueSoon', 'Calibration_DueSoon', route('reports.show', 'calibration'), 'bg-warning text-dark'],
+                        ['awaitingCommissioning', 'AwaitingCommissioning', route('reports.show', 'food-safety'), 'bg-warning text-dark'],
+                        ['permanentRepairOverdue', 'PermanentRepairOverdue', route('requests.index', ['overdue' => 1]), 'bg-danger'],
+                    ] as [$key, $label, $url, $class])
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                            <a class="text-reset text-decoration-none" href="{{ $url }}">{{ __($label) }}</a>
+                            <span class="badge {{ $foodSafety[$key] > 0 ? $class : 'bg-light text-muted' }}">{{ $foodSafety[$key] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="card mb-4">
             <div class="card-header"><strong>{{ __('WarrantyExpiring') }}</strong></div>
             <ul class="list-group list-group-flush">

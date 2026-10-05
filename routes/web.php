@@ -39,7 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats')->middleware('role:Admin,Coordinator,DepartmentManager');
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats')->middleware('role:Admin,Coordinator,DepartmentManager,FoodSafety');
 
     Route::controller(PushController::class)->prefix('push')->name('push.')->group(function () {
         Route::get('/public-key', 'publicKey')->name('public-key');
@@ -76,13 +76,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/{maintenanceRequest}/complete', 'complete')->name('complete');
         Route::post('/{maintenanceRequest}/confirm', 'confirm')->name('confirm');
         Route::post('/{maintenanceRequest}/close', 'close')->name('close')->middleware('role:Admin,Coordinator');
+        Route::post('/{maintenanceRequest}/release', 'release')->name('release')->middleware('role:Admin,DepartmentManager,FoodSafety');
+        Route::post('/{maintenanceRequest}/food-safety', 'foodSafety')->name('food-safety')->middleware('role:Admin,FoodSafety');
         Route::post('/{maintenanceRequest}/reopen', 'reopen')->name('reopen');
         Route::post('/{maintenanceRequest}/cancel', 'cancel')->name('cancel');
     });
 
     Route::controller(EquipmentController::class)->prefix('equipment')->name('equipment.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,DepartmentManager');
+        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,DepartmentManager,FoodSafety');
         Route::get('/labels', 'labels')->name('labels')->middleware('role:Admin,Coordinator');
+        Route::post('/{equipment}/calibrations', 'calibrate')->name('calibrate')->middleware('role:Admin,Coordinator,FoodSafety');
+        Route::post('/{equipment}/commission', 'commission')->name('commission')->middleware('role:Admin,FoodSafety');
         Route::controller(EquipmentImportController::class)->prefix('import')->name('import.')->middleware('role:Admin,Coordinator')->group(function () {
             Route::get('/template', 'template')->name('template');
             Route::get('/create', 'create')->name('create');
@@ -98,6 +102,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{equipment}', 'destroy')->name('destroy')->middleware('role:Admin');
         Route::get('/{equipment}/qr.svg', 'qr')->name('qr');
         Route::get('/{equipment}', 'show')->name('show');
+    });
+
+    Route::middleware('role:Admin,Coordinator,FoodSafety')->group(function () {
+        Route::get('/reports', [ReportController::class, 'show'])->name('reports.index');
+        Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show')->where('report', '[a-z-]+');
+        Route::get('/reports/{report}/export/{format}', [ReportController::class, 'export'])->name('reports.export')->where('report', '[a-z-]+')->whereIn('format', ['xlsx', 'pdf']);
     });
 
     Route::middleware('role:Admin,Coordinator')->group(function () {
@@ -122,10 +132,6 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{checklist}/items/{item}', 'deleteItem')->name('items.destroy')->scopeBindings();
         });
 
-        Route::get('/reports', [ReportController::class, 'show'])->name('reports.index');
-        Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show')->where('report', '[a-z-]+');
-        Route::get('/reports/{report}/export/{format}', [ReportController::class, 'export'])->name('reports.export')->where('report', '[a-z-]+')->whereIn('format', ['xlsx', 'pdf']);
-
         Route::controller(PurchaseRequestController::class)->group(function () {
             Route::prefix('purchases')->name('purchases.')->group(function () {
                 Route::get('/', 'index')->name('index');
@@ -145,7 +151,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::controller(SparePartController::class)->prefix('parts')->name('parts.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician');
+        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,FoodSafety');
         Route::middleware('role:Admin,Coordinator')->group(function () {
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');

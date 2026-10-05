@@ -68,7 +68,10 @@
                         <td>{{ $e->category->label() }}</td>
                         <td>{{ $e->department?->localized_name }}</td>
                         <td>{{ $e->location }}</td>
-                        <td><x-status-badge :status="$e->status" /></td>
+                        <td>
+                            <x-status-badge :status="$e->status" />
+                            <x-food-safety-badges :equipment="$e" />
+                        </td>
                         <td>
                             @if ($e->isUnderWarranty())
                                 <span class="badge bg-success">{{ $e->warranty_end->format('Y-m-d') }}</span>

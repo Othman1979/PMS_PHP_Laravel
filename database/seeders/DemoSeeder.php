@@ -28,6 +28,7 @@ class DemoSeeder extends Seeder
             ['tech1', 'فني التبريد', Role::Technician, $management, EquipmentCategory::Refrigeration],
             ['tech2', 'فني معدات المطبخ', Role::Technician, $management, EquipmentCategory::KitchenEquipment],
             ['tech3', 'فني الأجهزة والأنظمة', Role::Technician, $management, EquipmentCategory::Administrative],
+            ['foodsafety', 'مسؤول سلامة الغذاء', Role::FoodSafety, $management, null],
             ['kitchen', 'مشرف المطبخ', Role::DepartmentManager, $kitchen, null],
             ['employee', 'موظف المطبخ', Role::Employee, $kitchen, null],
         ] as [$username, $name, $role, $dept, $specialty]) {
@@ -51,12 +52,20 @@ class DemoSeeder extends Seeder
             'serial_number' => 'SN-8842100', 'purchase_date' => today()->subYear(), 'vendor' => 'CoolTech Supplies',
             'has_warranty' => true, 'warranty_start' => today()->subYear(), 'warranty_end' => today()->addMonths(2),
             'warranty_provider' => 'Manufacturer', 'status' => EquipmentStatus::Working,
+            'is_critical' => true, 'hygienic_design' => true,
+            'is_measuring_device' => true, 'calibration_interval_days' => 180, 'last_calibration_date' => today()->subDays(170),
+            'next_calibration_date' => today()->addDays(10), 'calibration_provider' => 'Metrology Lab Co.',
+            'commissioned_at' => today()->subYear(), 'commissioning_notes' => 'Trial run 48h at -20°C, passed.',
         ]);
         Equipment::create([
             'code' => 'EQ-OVN-001', 'name' => 'Convection Oven', 'category' => EquipmentCategory::KitchenEquipment,
             'department_id' => $kitchen->id, 'location' => 'Main Kitchen', 'manufacturer' => 'Rational', 'model' => 'iCombi Pro',
             'purchase_date' => today()->subYears(2), 'has_warranty' => true, 'warranty_start' => today()->subYears(2),
             'warranty_end' => today()->subYear(), 'status' => EquipmentStatus::WorkingWithIssues,
+            'food_contact' => true, 'is_critical' => true, 'ccp_reference' => 'CCP-2 Cooking ≥ 75°C core', 'hygienic_design' => true,
+            'is_measuring_device' => true, 'calibration_interval_days' => 365,
+            'last_calibration_date' => today()->subDays(400), 'next_calibration_date' => today()->subDays(35),
+            'commissioned_at' => today()->subYears(2),
         ]);
         Equipment::create([
             'code' => 'EQ-POS-001', 'name' => 'POS Terminal - Front Counter', 'category' => EquipmentCategory::Administrative,
@@ -74,10 +83,10 @@ class DemoSeeder extends Seeder
         $freezer->update(['next_maintenance_date' => today()->addDays(5)]);
 
         foreach ([
-            ['Door Gasket (Universal)', 10, 45, 3], ['Hood Filter', 6, 120, 2],
-            ['Compressor Relay', 4, 85, 1], ['Fryer Thermostat', 3, 150, 1],
-        ] as [$name, $qty, $cost, $min]) {
-            SparePart::create(['name' => $name, 'quantity' => $qty, 'unit_cost' => $cost, 'minimum_quantity' => $min]);
+            ['Door Gasket (Universal)', 10, 45, 3, true], ['Hood Filter', 6, 120, 2, false],
+            ['Compressor Relay', 4, 85, 1, false], ['Fryer Thermostat', 3, 150, 1, true],
+        ] as [$name, $qty, $cost, $min, $foodGrade]) {
+            SparePart::create(['name' => $name, 'quantity' => $qty, 'unit_cost' => $cost, 'minimum_quantity' => $min, 'is_food_grade' => $foodGrade]);
         }
     }
 }

@@ -6,6 +6,10 @@
     $isRequesterSide = $mr->isRequesterSide($user);
     $canComplete = $isAssignedTech && in_array($status, [S::InProgress, S::WaitingParts], true);
     $canAddNote = $isAssignedTech && in_array($status, [S::Accepted, S::InProgress, S::WaitingParts], true);
+    $requiresRelease = $mr->requiresRelease();
+    $canRelease = $requiresRelease && ! $mr->isReleased() && $status === S::Completed && $mr->canRelease($user);
+    $releaseBlocksClose = $requiresRelease && ! $mr->isReleased();
+    $canDecideFoodSafety = $mr->food_safety_impact && $user->canApproveFoodSafety();
     $fmt = fn ($d) => $d?->format('Y-m-d H:i');
 @endphp
 <x-layouts.app :title="__('RequestDetails')">
@@ -18,9 +22,30 @@
             @if ($mr->is_preventive)
                 <span class="badge bg-info text-dark fs-6">{{ __('Preventive') }}</span>
             @endif
+            @if ($mr->food_safety_impact)
+                <span class="badge bg-danger fs-6" title="{{ __('FoodSafetyImpactHint') }}">{{ __('FoodSafetyImpact') }}</span>
+            @endif
+            @if ($mr->is_temporary_repair)
+                <span class="badge bg-warning text-dark fs-6">{{ __('TemporaryRepair') }}</span>
+            @endif
+            @if ($mr->followUpOf)
+                <a class="badge bg-secondary fs-6 text-decoration-none" href="{{ route('requests.show', $mr->followUpOf) }}">{{ __('FollowUpOf') }} {{ $mr->followUpOf->request_number }}</a>
+            @endif
         </h2>
         <a href="{{ $user->isTechnician() ? route('requests.mine') : route('requests.index') }}" class="btn btn-outline-secondary">{{ __('Back') }}</a>
     </div>
+
+    @if ($mr->equipment?->isCalibrationExpired())
+        <div class="alert alert-danger"><strong>{{ __('Calibration_Expired') }}:</strong> {{ str_replace('{0}', $mr->equipment->next_calibration_date->format('Y-m-d'), __('CalibrationExpiredNotice')) }}</div>
+    @endif
+    @if ($mr->is_temporary_repair && $mr->followUps->isNotEmpty())
+        <div class="alert alert-warning">
+            {{ str_replace('{0}', $mr->permanent_repair_due?->format('Y-m-d') ?? '-', __('TemporaryRepairNote')) }}
+            @foreach ($mr->followUps as $f)
+                — <a href="{{ route('requests.show', $f) }}">{{ $f->request_number }}</a> <x-status-badge :status="$f->status" />
+            @endforeach
+        </div>
+    @endif
 
     @if ($mr->is_under_warranty || $mr->equipment?->isUnderWarranty())
         <div class="alert alert-warning">{{ str_replace('{0}', $mr->equipment?->warranty_end?->format('Y-m-d') ?? '-', __('AutoWarrantyNotice')) }}</div>
@@ -40,6 +65,7 @@
                             @if ($mr->equipment)
                                 <a href="{{ route('equipment.show', $mr->equipment) }}">{{ $mr->equipment->name }}</a>
                                 <x-status-badge :status="$mr->equipment->status" />
+                                <x-food-safety-badges :equipment="$mr->equipment" />
                                 @if ($mr->equipment->location)
                                     <div class="small text-muted">📍 {{ __('Location') }}: <strong>{{ $mr->equipment->location }}</strong></div>
                                 @endif
@@ -74,6 +100,31 @@
                     @endif
                     @if ($mr->technician_notes)
                         <tr><th>{{ __('TechnicianNotes') }}</th><td style="white-space:pre-line">{{ $mr->technician_notes }}</td></tr>
+                    @endif
+                    @if ($mr->food_safety_impact)
+                        <tr>
+                            <th>{{ __('FoodSafetyDecision') }}</th>
+                            <td>
+                                @if ($mr->affected_product)<div><strong>{{ __('AffectedProduct') }}:</strong> {{ $mr->affected_product }}</div>@endif
+                                @if ($mr->food_safety_decision)<div style="white-space:pre-line">{{ $mr->food_safety_decision }}</div>@else<span class="text-muted">{{ __('AwaitingFoodSafetyDecision') }}</span>@endif
+                            </td>
+                        </tr>
+                    @endif
+                    @if ($mr->is_temporary_repair)
+                        <tr><th>{{ __('TemporaryRepair') }}</th><td>{{ __('PermanentRepairDue') }}: <strong>{{ $mr->permanent_repair_due?->format('Y-m-d') ?? '-' }}</strong></td></tr>
+                    @endif
+                    @if ($requiresRelease)
+                        <tr>
+                            <th>{{ __('EquipmentRelease') }}</th>
+                            <td>
+                                @if ($mr->isReleased())
+                                    <span class="badge bg-success">{{ __('Released') }}</span> {{ $mr->releasedBy?->full_name }} — {{ $fmt($mr->released_at) }}
+                                    @if ($mr->release_notes)<div class="small text-muted">{{ $mr->release_notes }}</div>@endif
+                                @else
+                                    <span class="badge bg-warning text-dark">{{ __('AwaitingRelease') }}</span>
+                                @endif
+                            </td>
+                        </tr>
                     @endif
                     @if (in_array($status, [S::Completed, S::Closed], true) && $mr->department_confirmation)
                         <tr><th>{{ __('DepartmentConfirmation') }}</th><td>{{ $mr->department_confirmation->label() }}</td></tr>
@@ -236,8 +287,11 @@
                     @if ($isCoordinator && in_array($status, [S::Completed, S::Reopened], true))
                         <form action="{{ route('requests.close', $mr) }}" method="post" class="d-inline">
                             @csrf
-                            <button class="btn btn-dark btn-sm mb-2">{{ __('CloseRequest') }}</button>
+                            <button class="btn btn-dark btn-sm mb-2" @disabled($releaseBlocksClose) title="{{ $releaseBlocksClose ? __('Error_ReleaseRequired') : '' }}">{{ __('CloseRequest') }}</button>
                         </form>
+                        @if ($releaseBlocksClose)
+                            <div class="small text-warning-emphasis mb-2">{{ __('Error_ReleaseRequired') }}</div>
+                        @endif
                     @endif
 
                     @if ($status === S::Closed && ($isRequesterSide || $isCoordinator))
@@ -256,6 +310,51 @@
                     @endif
                 </div>
             </div>
+
+            @if ($requiresRelease && ($canRelease || $mr->isReleased()))
+                <div class="card mb-3 {{ $mr->isReleased() ? 'border-success' : 'border-warning' }}">
+                    <div class="card-header {{ $mr->isReleased() ? 'bg-success text-white' : 'bg-warning' }}"><strong>{{ __('EquipmentRelease') }}</strong> <small>HACCP</small></div>
+                    <div class="card-body">
+                        @if ($mr->isReleased())
+                            <ul class="list-unstyled mb-1">
+                                @foreach (\App\Models\MaintenanceRequest::RELEASE_CHECKLIST as $item)
+                                    <li>✅ {{ __('Release_'.$item) }}</li>
+                                @endforeach
+                            </ul>
+                            <div class="small text-muted">{{ $mr->releasedBy?->full_name }} — {{ $fmt($mr->released_at) }}</div>
+                        @else
+                            <p class="small text-muted">{{ __('ReleaseHint') }}</p>
+                            <form action="{{ route('requests.release', $mr) }}" method="post">
+                                @csrf
+                                @foreach (\App\Models\MaintenanceRequest::RELEASE_CHECKLIST as $item)
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" name="release[{{ $item }}]" value="1" id="release_{{ $item }}" required>
+                                        <label class="form-check-label" for="release_{{ $item }}">{{ __('Release_'.$item) }}</label>
+                                    </div>
+                                @endforeach
+                                <input name="release_notes" class="form-control form-control-sm my-2" maxlength="1000" placeholder="{{ __('NoteOptional') }}" value="{{ old('release_notes') }}">
+                                <button class="btn btn-success w-100">{{ __('SignRelease') }}</button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            @if ($canDecideFoodSafety)
+                <div class="card mb-3 border-danger">
+                    <div class="card-header bg-danger text-white"><strong>{{ __('FoodSafetyDecision') }}</strong></div>
+                    <div class="card-body">
+                        <form action="{{ route('requests.food-safety', $mr) }}" method="post">
+                            @csrf
+                            <label class="form-label" for="affected_product">{{ __('AffectedProduct') }}</label>
+                            <input id="affected_product" name="affected_product" class="form-control mb-2" maxlength="500" value="{{ old('affected_product', $mr->affected_product) }}" placeholder="{{ __('AffectedProductPlaceholder') }}">
+                            <label class="form-label" for="food_safety_decision">{{ __('FoodSafetyDecision') }}</label>
+                            <textarea id="food_safety_decision" name="food_safety_decision" class="form-control mb-2" rows="3" required maxlength="1000" placeholder="{{ __('FoodSafetyDecisionPlaceholder') }}">{{ old('food_safety_decision', $mr->food_safety_decision) }}</textarea>
+                            <button class="btn btn-danger w-100">{{ __('Save') }}</button>
+                        </form>
+                    </div>
+                </div>
+            @endif
 
             @if ($canComplete)
                 <div class="card mb-3 border-success">
@@ -312,7 +411,20 @@
                                 <label class="form-label" for="cost_labor">{{ __('CostLabor') }}</label>
                                 <input id="cost_labor" name="cost_labor" type="number" step="0.01" min="0" class="form-control" value="{{ old('cost_labor', 0) }}">
                             </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_temporary_repair" value="1" id="isTemporaryRepair" @checked(old('is_temporary_repair'))>
+                                <label class="form-check-label" for="isTemporaryRepair">{{ __('TemporaryRepair') }}</label>
+                                <div class="form-text">{{ __('TemporaryRepairHint') }}</div>
+                            </div>
+                            <div class="mb-2 {{ old('is_temporary_repair') ? '' : 'd-none' }}" id="permanentDueBox">
+                                <label class="form-label" for="permanent_repair_due">{{ __('PermanentRepairDue') }}</label>
+                                <input id="permanent_repair_due" name="permanent_repair_due" type="date" min="{{ today()->addDay()->toDateString() }}" class="form-control @error('permanent_repair_due') is-invalid @enderror" value="{{ old('permanent_repair_due') }}">
+                                @error('permanent_repair_due')<div class="text-danger small">{{ $message }}</div>@enderror
+                            </div>
                             <label class="form-label">{{ __('SparePartsUsed') }}</label>
+                            @if ($mr->equipment?->food_contact)
+                                <div class="form-text mb-1">{{ __('FoodGradeOnlyHint') }}</div>
+                            @endif
                             <div id="partsContainer">
                                 <div class="row g-2 mb-1 part-row">
                                     <div class="col-8">
@@ -386,6 +498,13 @@
                 const form = document.getElementById('completeForm');
                 if (!form) return;
                 const container = document.getElementById('partsContainer');
+                const tempToggle = document.getElementById('isTemporaryRepair');
+                const dueBox = document.getElementById('permanentDueBox');
+                const dueInput = document.getElementById('permanent_repair_due');
+                const syncTemporary = () => { dueBox.classList.toggle('d-none', !tempToggle.checked); dueInput.required = tempToggle.checked; };
+                tempToggle.addEventListener('change', syncTemporary);
+                syncTemporary();
+
                 const options = [...document.querySelectorAll('#partsList option')];
 
                 /* searchable parts: map the typed label back to the spare-part id */

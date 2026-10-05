@@ -17,7 +17,9 @@ class ActivityLog extends Model
     public const ACTIONS = [
         'login', 'login_failed', 'logout',
         'request_created', 'request_transition',
-        'equipment_created', 'equipment_updated', 'equipment_deleted',
+        'equipment_created', 'equipment_updated', 'equipment_deleted', 'equipment_calibrated',
+        'calibration_reminder', 'equipment_commissioned',
+        'request_released', 'food_safety_decision',
         'user_created', 'user_updated',
         'purchase_decided', 'stock_adjusted',
         'settings_updated', 'backup_downloaded',
