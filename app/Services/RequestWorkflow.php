@@ -33,8 +33,8 @@ class RequestWorkflow
         Priority $priority, array $files = [], bool $preventive = false, ?int $planId = null, ?int $faultTypeId = null,
         bool $foodSafetyImpact = false, ?int $followUpOfId = null, ?Carbon $dueAt = null): MaintenanceRequest
     {
-        // A fault on CCP/oPRP equipment always affects food safety; any food-safety fault jumps to the critical priority.
-        $foodSafetyImpact = $foodSafetyImpact || filled($equipment?->ccp_reference);
+        // A fault on CCP/oPRP or critical equipment always affects food safety; any food-safety fault jumps to the critical priority.
+        $foodSafetyImpact = $foodSafetyImpact || ($equipment?->autoEscalatesFoodSafety() ?? false);
         $escalatedFrom = null;
         if ($foodSafetyImpact) {
             $critical = Priority::criticalForFoodSafety();

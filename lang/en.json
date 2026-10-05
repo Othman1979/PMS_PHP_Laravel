@@ -699,6 +699,7 @@
     "FoodSafetyImpactQuestion": "Does this fault affect food safety?",
     "FoodSafetyImpactHint": "Temperature out of range, contamination risk, food-contact surface damaged... The request is escalated and the food-safety officer is notified.",
     "CcpEquipmentNotice": "This equipment is a CCP/oPRP control point: the request is automatically treated as a food-safety fault.",
+    "CriticalEquipmentNotice": "This equipment is classified as critical for food safety: the request is automatically treated as a food-safety fault.",
     "FoodSafetyEscalatedNote": "Priority raised from {0} because the fault affects food safety.",
     "Push_FoodSafetyTitle": "Food-safety fault reported",
     "AffectedProduct": "Affected product",

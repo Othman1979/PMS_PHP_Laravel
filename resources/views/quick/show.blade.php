@@ -68,7 +68,7 @@
                     </label>
                 @endforeach
             </div>
-            @unless ($equipment->ccp_reference)
+            @unless ($equipment->autoEscalatesFoodSafety())
                 <div class="quick-fs mt-3">
                     <div class="quick-fs-title">{{ __('FoodSafetyImpactQuestion') }}</div>
                     <div class="quick-prios" style="grid-template-columns: 1fr 1fr">
@@ -86,7 +86,7 @@
                     </div>
                 </div>
             @else
-                <div class="quick-fs-notice mt-3">{{ __('CcpEquipmentNotice') }}</div>
+                <div class="quick-fs-notice mt-3">{{ __($equipment->ccp_reference ? 'CcpEquipmentNotice' : 'CriticalEquipmentNotice') }}</div>
             @endunless
         </section>
 

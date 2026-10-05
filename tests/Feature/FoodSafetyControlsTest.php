@@ -86,6 +86,20 @@ class FoodSafetyControlsTest extends TestCase
         $this->get('/')->assertOk()->assertSee(__('OpenFoodSafetyFaults'));
     }
 
+    public function test_request_on_critical_equipment_is_escalated_without_asking(): void
+    {
+        $pos = Equipment::where('code', 'EQ-POS-001')->firstOrFail();
+        $pos->update(['is_critical' => true]);
+
+        $this->actingAs($this->user('employee'))->get('/r/'.$pos->code)->assertOk()
+            ->assertSee(__('CriticalEquipmentNotice'))->assertDontSee('name="food_safety_impact"', false);
+
+        $mr = $this->requestOn($pos, ['priority_id' => Priority::where('is_default', true)->firstOrFail()->id]);
+
+        $this->assertTrue($mr->food_safety_impact);
+        $this->assertSame(Priority::criticalForFoodSafety()->id, $mr->priority_id);
+    }
+
     public function test_employee_can_flag_food_safety_impact_on_ordinary_equipment(): void
     {
         $pos = Equipment::where('code', 'EQ-POS-001')->firstOrFail();

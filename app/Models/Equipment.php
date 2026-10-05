@@ -79,6 +79,12 @@ class Equipment extends Model
         return $this->food_contact || $this->is_critical || filled($this->ccp_reference);
     }
 
+    /** CCP/oPRP or critical equipment: every fault is treated as a food-safety fault without asking the reporter. */
+    public function autoEscalatesFoodSafety(): bool
+    {
+        return $this->is_critical || filled($this->ccp_reference);
+    }
+
     /** New or modified food-safety-relevant equipment needs a trial run and sign-off before it may be "Working". */
     public function requiresCommissioning(): bool
     {
