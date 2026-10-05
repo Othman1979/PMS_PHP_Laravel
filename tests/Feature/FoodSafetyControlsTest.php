@@ -16,6 +16,7 @@ use App\Models\SparePart;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Services\CalibrationReminder;
+use App\Services\RequestWorkflow;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -291,5 +292,46 @@ class FoodSafetyControlsTest extends TestCase
         $auth('foodsafety', 'private-staff')->assertOk();
         $auth('foodsafety', 'private-department.'.$this->user('kitchen')->department_id)->assertOk();
         $auth('tech1', 'private-staff')->assertForbidden();
+    }
+
+    public function test_calibration_form_has_no_raw_blade_and_rejects_future_dates_in_arabic(): void
+    {
+        $oven = $this->oven();
+        $coord = $this->user('coord');
+
+        $this->actingAs($coord)->get("/equipment/{$oven->id}")->assertOk()
+            ->assertDontSee("has('calibrated_at')")
+            ->assertDontSee('<details open>', false);
+
+        $response = $this->actingAs($coord)->withCookie('pms_locale', 'ar')
+            ->from("/equipment/{$oven->id}")
+            ->post("/equipment/{$oven->id}/calibrations", ['calibrated_at' => today()->addDay()->toDateString(), 'result' => 'Pass']);
+        $response->assertRedirect("/equipment/{$oven->id}")->assertSessionHasErrors('calibrated_at');
+
+        $message = session('errors')->first('calibrated_at');
+        $this->assertStringContainsString('تاريخ المعايرة', $message);
+        $this->assertStringNotContainsString('today', $message);
+        $this->assertStringNotContainsString('calibrated', $message);
+        $this->assertSame(0, $oven->calibrations()->count());
+
+        $this->actingAs($coord)->withCookie('pms_locale', 'ar')->from("/equipment/{$oven->id}")->followingRedirects()
+            ->post("/equipment/{$oven->id}/calibrations", ['calibrated_at' => today()->addDay()->toDateString(), 'result' => 'Pass'])
+            ->assertOk()->assertSee('<details open>', false)->assertSee('تاريخ المعايرة');
+    }
+
+    public function test_admin_who_created_the_request_gets_one_started_notification(): void
+    {
+        $admin = $this->user('admin');
+        $tech = $this->user('tech3');
+        $pos = Equipment::where('code', 'EQ-POS-001')->firstOrFail();
+        $workflow = app(RequestWorkflow::class);
+
+        $mr = $workflow->create($admin, $pos, $pos->department_id, 'الشاشة لا تعمل', Priority::default());
+        $workflow->assign($mr, $tech, $admin, null);
+        $before = UserNotification::where('user_id', $admin->id)->count();
+
+        $workflow->transition($mr, RequestStatus::InProgress, $tech);
+
+        $this->assertSame($before + 1, UserNotification::where('user_id', $admin->id)->count());
     }
 }

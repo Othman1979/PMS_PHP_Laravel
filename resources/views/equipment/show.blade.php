@@ -175,7 +175,7 @@
                     @endif
                     @if ($canCalibrate)
                         <div class="card-body border-top">
-                            <details @open($errors->has('calibrated_at') || $errors->has('next_due_date') || $errors->has('result'))>
+                            <details {{ $errors->hasAny(['calibrated_at', 'next_due_date', 'result']) ? 'open' : '' }}>
                                 <summary class="fw-semibold mb-2" style="cursor:pointer">{{ __('RecordCalibration') }}</summary>
                                 <form action="{{ route('equipment.calibrate', $equipment) }}" method="post" enctype="multipart/form-data" class="row g-2">
                                     @csrf

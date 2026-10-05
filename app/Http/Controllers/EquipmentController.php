@@ -129,7 +129,7 @@ class EquipmentController extends Controller
     public function calibrate(Request $request, Equipment $equipment): RedirectResponse
     {
         $data = $request->validate([
-            'calibrated_at' => ['required', 'date', 'before_or_equal:today'],
+            'calibrated_at' => ['required', 'date', 'before_or_equal:'.today()->toDateString()],
             'next_due_date' => ['nullable', 'date', 'after:calibrated_at'],
             'result' => ['required', Rule::enum(CalibrationResult::class)],
             'provider' => ['nullable', 'string', 'max:200'],

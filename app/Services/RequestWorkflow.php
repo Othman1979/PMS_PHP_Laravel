@@ -377,10 +377,7 @@ class RequestWorkflow
                 $this->notify($request, $requesterSide(), 'Push_RequesterAssignedTitle', null, withTechnician: true),
             ],
             RequestStatus::Accepted => $this->notify($request, $staff(), 'Push_AcceptedTitle', $note, withTechnician: true),
-            RequestStatus::InProgress => [
-                $this->notify($request, $staff(), 'Push_StartedTitle', $note, withTechnician: true),
-                $this->notify($request, $requesterSide(), 'Push_StartedTitle', null, withTechnician: true),
-            ],
+            RequestStatus::InProgress => $this->notify($request, array_values(array_unique([...$staff(), ...$requesterSide()])), 'Push_StartedTitle', $note, withTechnician: true),
             RequestStatus::WaitingParts => $this->notify($request, $staff(), 'Push_WaitingPartsTitle', $note, withTechnician: true),
             RequestStatus::Completed => [
                 $this->notify($request, $staff(), 'Push_CompletedTitle', $note, withTechnician: true),

@@ -346,7 +346,7 @@ class MaintenanceRequestController extends Controller
             'parts.*.spare_part_id' => ['nullable', 'integer', 'exists:spare_parts,id'],
             'parts.*.quantity' => ['nullable', 'integer', 'min:0'],
             'is_temporary_repair' => ['nullable', 'boolean'],
-            'permanent_repair_due' => ['nullable', 'required_if_accepted:is_temporary_repair', 'date', 'after:today'],
+            'permanent_repair_due' => ['nullable', 'required_if_accepted:is_temporary_repair', 'date', 'after:'.today()->toDateString()],
         ]);
 
         $parts = [];
