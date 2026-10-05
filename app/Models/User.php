@@ -62,6 +62,12 @@ class User extends Authenticatable implements HasLocalePreference
     }
 
     /** Admin or the food-safety officer: signs equipment release, commissioning and food-safety decisions. */
+    /** Sees every request regardless of department, so subscribes to the staff-wide channel. */
+    public function canWatchAllRequests(): bool
+    {
+        return $this->canManage() || $this->isFoodSafety();
+    }
+
     public function canApproveFoodSafety(): bool
     {
         return $this->hasRole(Role::Admin, Role::FoodSafety);

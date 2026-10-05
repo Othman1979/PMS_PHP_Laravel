@@ -156,7 +156,7 @@
     const F = @js(['status' => $status?->value, 'overdue' => $overdue, 'foodSafety' => $foodSafety, 'departmentId' => $departmentId, 'countable' => $createdBy === '' && $search === '']);
     const canInsert = @js($status === null && ! $overdue && ! $foodSafety && $departmentId === null && $createdBy === '' && $search === '' && $requests->onFirstPage());
     const H = @js(['no' => __('RequestNumber'), 'desc' => __('Description'), 'equip' => __('Equipment'), 'dept' => __('Department'), 'by' => __('CreatedBy'), 'prio' => __('Priority'), 'status' => __('Status'), 'tech' => __('Technician'), 'at' => __('CreatedAt'), 'overdue' => __('Overdue')]);
-    const channel = @js(auth()->user()->canManage() ? 'staff' : (auth()->user()->isTechnician() ? 'technician.'.auth()->id() : 'department.'.auth()->user()->department_id));
+    const channel = @js(auth()->user()->canWatchAllRequests() ? 'staff' : (auth()->user()->isTechnician() ? 'technician.'.auth()->id() : 'department.'.auth()->user()->department_id));
     const T = @js(['new' => __('NewRequest'), 'updated' => __('RequestUpdated'), 'view' => __('View'), 'preventive' => __('Preventive'), 'foodSafety' => __('FoodSafetyShort')]);
     const esc = live.esc, L = live.L;
     const BULK = @js($bulk);

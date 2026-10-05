@@ -266,4 +266,16 @@ class FoodSafetyControlsTest extends TestCase
         $this->get('/')->assertOk()->assertSee(__('FoodSafetySection'));
         $this->get('/users')->assertForbidden();
     }
+
+    public function test_food_safety_officer_subscribes_to_staff_channel(): void
+    {
+        config(['broadcasting.default' => 'reverb']);
+        require base_path('routes/channels.php');
+        $auth = fn (string $username, string $channel) => $this->actingAs($this->user($username))
+            ->postJson('/broadcasting/auth', ['channel_name' => $channel, 'socket_id' => '1.1']);
+
+        $auth('foodsafety', 'private-staff')->assertOk();
+        $auth('foodsafety', 'private-department.'.$this->user('kitchen')->department_id)->assertOk();
+        $auth('tech1', 'private-staff')->assertForbidden();
+    }
 }

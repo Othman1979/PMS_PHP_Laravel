@@ -257,7 +257,7 @@
     const STATS_URL = @js(route('dashboard.stats'));
     const RECENT_MAX = 8;
     const POLL_SLOW = 60000, POLL_FAST = 15000;
-    const CHANNEL = @js(auth()->user()->canManage() ? 'staff' : 'department.'.auth()->user()->department_id);
+    const CHANNEL = @js(auth()->user()->canWatchAllRequests() ? 'staff' : 'department.'.auth()->user()->department_id);
     const live = window.PmsLive;
     const L = live ? live.L : (x => (x && typeof x === 'object') ? (x[document.documentElement.lang] ?? '') : (x ?? ''));
     let since = @js($now);
