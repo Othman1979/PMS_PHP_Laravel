@@ -66,7 +66,7 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
      */
     public static function payload(MaintenanceRequest $r, bool $isNew, ?CarbonInterface $since = null): array
     {
-        $r->loadMissing(['equipment', 'department', 'assignedTechnician', 'priority']);
+        $r->loadMissing(['equipment', 'department', 'assignedTechnician', 'createdBy', 'priority']);
 
         return [
             'id' => $r->id,
@@ -79,6 +79,7 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
             'technician' => $r->assignedTechnician?->full_name,
             'technicianId' => $r->assigned_technician_id,
             'createdById' => $r->created_by_id,
+            'createdBy' => $r->createdBy?->full_name,
             'priorityCritical' => $r->priority->is_critical,
             'priorityLabel' => Localized::all(fn () => $r->priority->label()),
             'priorityBadge' => $r->priority->badge(),

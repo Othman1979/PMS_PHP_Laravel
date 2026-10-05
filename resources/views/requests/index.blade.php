@@ -212,7 +212,7 @@
             tr.innerHTML = (BULK ? '<td class="c-check"><input type="checkbox" class="form-check-input row-check" value="' + d.id + '"></td>' : '') +
                 '<td data-label="' + esc(H.no) + '"><a href="' + esc(d.detailsUrl) + '">' + esc(d.requestNumber) + '</a>' + (d.foodSafety ? ' <span class="badge bg-danger fs-badge">🛡 ' + esc(T.foodSafety) + '</span>' : '') + '</td>' +
                 '<td data-label="' + esc(H.desc) + '" class="text-truncate" style="max-width:260px">' + esc(d.description) + '</td>' +
-                '<td data-label="' + esc(H.equip) + '">' + esc(d.equipment || '-') + '</td><td data-label="' + esc(H.dept) + '">' + esc(L(d.department)) + '</td><td data-label="' + esc(H.by) + '"></td>' +
+                '<td data-label="' + esc(H.equip) + '">' + esc(d.equipment || '-') + '</td><td data-label="' + esc(H.dept) + '">' + esc(L(d.department)) + '</td><td data-label="' + esc(H.by) + '">' + esc(d.createdBy || '') + '</td>' +
                 '<td data-label="' + esc(H.prio) + '" class="c-prio"></td><td data-label="' + esc(H.status) + '" class="c-status"></td><td data-label="' + esc(H.tech) + '" class="c-tech"></td>' +
                 '<td data-label="' + esc(H.at) + '">' + esc(d.createdAt) + '</td>' +
                 '<td class="c-actions"><a class="btn btn-sm btn-outline-primary" href="' + esc(d.detailsUrl) + '">' + esc(T.view) + '</a></td>';

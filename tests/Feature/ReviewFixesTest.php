@@ -256,7 +256,7 @@ class ReviewFixesTest extends TestCase
         $tech = $this->user('tech1');
         $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/assign", ['technician_id' => $tech->id])->assertRedirect();
 
-        Event::assertDispatched(RequestChanged::class, fn (RequestChanged $e) => $e->isNew && $e->payload['id'] === $mr->id);
+        Event::assertDispatched(RequestChanged::class, fn (RequestChanged $e) => $e->isNew && $e->payload['id'] === $mr->id && $e->payload['createdBy'] === $mr->createdBy->full_name);
         Event::assertDispatched(RequestChanged::class, function (RequestChanged $e) use ($mr, $tech) {
             $channels = collect($e->broadcastOn())->map(fn ($c) => $c->name)->all();
 
