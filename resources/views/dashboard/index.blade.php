@@ -60,7 +60,7 @@
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-lg-5">
+    <div class="col-lg-4">
         <div class="card h-100">
             <div class="card-header"><strong>{{ __('Trend30Days') }}</strong></div>
             <div class="card-body"><div class="chart-box"><canvas id="chartTrend"></canvas></div></div>
@@ -72,7 +72,7 @@
             <div class="card-body"><div class="chart-box"><canvas id="chartStatus"></canvas></div></div>
         </div>
     </div>
-    <div class="col-md-6 col-lg-4">
+    <div class="col-md-6 col-lg-5">
         <div class="card h-100">
             <div class="card-header"><strong>{{ __('AgingOpenRequests') }}</strong> <small class="text-muted">· {{ __('OpenByDepartment') }}</small></div>
             <div class="card-body">
@@ -245,13 +245,21 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { reverse: rtl }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
     });
     const wrapLabel = function (v) {
+        const ctx = this.ctx, budget = this.chart.width * 0.5 - 14;
+        ctx.font = Chart.helpers.toFont(this.options.ticks.font).string;
+        const fits = t => ctx.measureText(t).width <= budget;
+        const words = [];
+        for (const w of String(this.getLabelForValue(v)).split(/\s+/)) {
+            let rest = w;
+            while (rest && !fits(rest)) { let n = rest.length - 1; while (n > 1 && !fits(rest.slice(0, n))) n--; words.push(rest.slice(0, n)); rest = rest.slice(n); }
+            if (rest) words.push(rest);
+        }
         const lines = [];
         let line = '';
-        for (const word of String(this.getLabelForValue(v)).split(/\s+/)) {
-            if (line && (line + ' ' + word).length > 10) { lines.push(line); line = word; } else { line = line ? line + ' ' + word : word; }
-        }
+        for (const w of words) { const t = line ? line + ' ' + w : w; if (line && !fits(t)) { lines.push(line); line = w; } else { line = t; } }
         if (line) lines.push(line);
-        return lines.slice(0, 3);
+        if (lines.length > 2) { let t = lines[1]; while (t && !fits(t + '…')) t = t.slice(0, -1); lines.length = 2; lines[1] = t + '…'; }
+        return lines;
     };
     new Chart(document.getElementById('chartDept'), {
         type: 'bar',
