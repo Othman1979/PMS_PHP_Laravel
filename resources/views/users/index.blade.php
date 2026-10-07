@@ -10,15 +10,15 @@
                 @foreach ($users as $u)
                     <tr>
                         <td>{{ $u->full_name }}</td>
-                        <td>{{ $u->username }}</td>
+                        <td class="text-nowrap">{{ $u->username }}</td>
                         <td>{{ $u->department?->localized_name }}</td>
-                        <td>
+                        <td class="text-nowrap">
                             <span class="badge bg-secondary">{{ $u->role->label() }}</span>
                             @if ($u->specialty)
                                 <span class="badge bg-info text-dark">{{ $u->specialty->label() }}</span>
                             @endif
                         </td>
-                        <td><span class="badge {{ $u->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $u->is_active ? __('Active') : __('Inactive') }}</span></td>
+                        <td class="text-nowrap"><span class="badge {{ $u->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $u->is_active ? __('Active') : __('Inactive') }}</span></td>
                         <td><a class="btn btn-sm btn-outline-secondary" href="{{ route('users.edit', $u) }}">{{ __('Edit') }}</a></td>
                     </tr>
                 @endforeach

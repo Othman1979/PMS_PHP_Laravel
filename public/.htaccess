@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # Whole-project upload layout (see docs/DEPLOY-HOSTINGER.md): if the browser
+    # asked for /public/... explicitly, redirect to the clean URL.
+    RewriteCond %{THE_REQUEST} \s/+public/([^\s?]*) [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

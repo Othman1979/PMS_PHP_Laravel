@@ -244,10 +244,19 @@
         data: { labels: C.aging.labels, datasets: [{ label: T.open, data: C.aging.values, backgroundColor: ['#198754', '#0d6efd', '#fd7e14', '#dc3545'] }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { reverse: rtl }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
     });
+    const wrapLabel = function (v) {
+        const lines = [];
+        let line = '';
+        for (const word of String(this.getLabelForValue(v)).split(/\s+/)) {
+            if (line && (line + ' ' + word).length > 10) { lines.push(line); line = word; } else { line = line ? line + ' ' + word : word; }
+        }
+        if (line) lines.push(line);
+        return lines.slice(0, 3);
+    };
     new Chart(document.getElementById('chartDept'), {
         type: 'bar',
         data: { labels: C.departments.labels, datasets: [{ label: T.open, data: C.departments.values, backgroundColor: palette }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 }, reverse: rtl }, y: { position: rtl ? 'right' : 'left' } } }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 }, reverse: rtl }, y: { position: rtl ? 'right' : 'left', ticks: { callback: wrapLabel } } } }
     });
 })();
 </script>

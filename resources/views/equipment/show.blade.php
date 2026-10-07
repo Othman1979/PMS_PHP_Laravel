@@ -98,7 +98,7 @@
                 </table>
             </div>
             <div class="card mb-3 {{ $equipment->requiresCommissioning() ? 'border-warning' : '' }}">
-                <div class="card-header"><strong>{{ __('FoodSafetySection') }}</strong> <small class="text-muted">HACCP / FSSC 22000</small></div>
+                <div class="card-header"><strong>{{ __('FoodSafetySection') }}</strong></div>
                 <table class="table mb-0">
                     <tr><th style="width:45%">{{ __('FoodContact') }}</th><td>{{ $equipment->food_contact ? __('Yes') : __('No') }}</td></tr>
                     <tr><th>{{ __('CriticalEquipment') }}</th><td>{{ $equipment->is_critical ? __('Yes') : __('No') }}</td></tr>
