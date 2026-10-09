@@ -78,6 +78,7 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->role === Role::FoodSafety;
     }
 
+    /** Field technician: only the tasks assigned to them, no menus or browsing. */
     public function isTechnician(): bool
     {
         return $this->role === Role::Technician;
@@ -87,6 +88,12 @@ class User extends Authenticatable implements HasLocalePreference
     public function isEmployee(): bool
     {
         return $this->role === Role::Employee;
+    }
+
+    /** Whether the side navigation pane is shown; technicians and employees get a single focused screen. */
+    public function hasNavPane(): bool
+    {
+        return ! $this->isEmployee() && ! $this->isTechnician();
     }
 
     /** Language the user last chose in the UI; notifications are written in it. */

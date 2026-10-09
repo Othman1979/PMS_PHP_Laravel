@@ -35,7 +35,7 @@ class EquipmentLabelsTest extends TestCase
             ->assertSee(route('equipment.labels'), false)
             ->assertSee(route('equipment.import.template'), false);
 
-        $this->actingAs($this->user('tech1'))->get('/equipment')
+        $this->actingAs($this->user('kitchen'))->get('/equipment')
             ->assertOk()
             ->assertDontSee('data-select-all', false)
             ->assertDontSee('name="ids[]"', false);

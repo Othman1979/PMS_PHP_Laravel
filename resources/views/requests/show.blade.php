@@ -63,7 +63,11 @@
                         <th>{{ __('Equipment') }}</th>
                         <td>
                             @if ($mr->equipment)
-                                <a href="{{ route('equipment.show', $mr->equipment) }}">{{ $mr->equipment->name }}</a>
+                                @if ($user->isTechnician())
+                                    {{ $mr->equipment->name }}
+                                @else
+                                    <a href="{{ route('equipment.show', $mr->equipment) }}">{{ $mr->equipment->name }}</a>
+                                @endif
                                 <x-status-badge :status="$mr->equipment->status" />
                                 <x-food-safety-badges :equipment="$mr->equipment" />
                                 @if ($mr->equipment->location)

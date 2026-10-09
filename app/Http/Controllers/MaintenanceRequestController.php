@@ -34,6 +34,9 @@ class MaintenanceRequestController extends Controller
         if ($request->user()->isEmployee()) {
             return redirect()->route('quick.find');
         }
+        if ($request->user()->isTechnician()) {
+            return redirect()->route('requests.mine');
+        }
 
         $user = $request->user();
         $filters = $this->rememberFilters($request);
@@ -146,6 +149,9 @@ class MaintenanceRequestController extends Controller
         if ($user->isEmployee()) {
             return redirect()->route('quick.find');
         }
+        if ($user->isTechnician()) {
+            return redirect()->route('requests.mine');
+        }
 
         return view('requests.create', [
             'departments' => Department::query()->where('is_active', true)
@@ -163,6 +169,7 @@ class MaintenanceRequestController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
+        abort_if($user->isTechnician(), 403);
         $data = $request->validate([
             'department_id' => ['required', Rule::exists('departments', 'id')->where('is_active', true)],
             'equipment_id' => ['nullable', 'exists:equipment,id'],
