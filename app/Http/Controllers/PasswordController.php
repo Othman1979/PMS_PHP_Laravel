@@ -17,7 +17,7 @@ class PasswordController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'string', 'min:'.($request->user()->isEmployee() ? 4 : 8), 'confirmed'],
+            'password' => ['required', 'string', 'min:4', 'confirmed'],
         ]);
 
         $request->user()->update(['password' => $data['password']]);

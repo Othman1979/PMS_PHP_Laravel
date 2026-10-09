@@ -120,20 +120,25 @@ class ReviewFixesTest extends TestCase
         app(RequestWorkflow::class)->transition($stale, RequestStatus::UnderReview, $this->user('coord'));
     }
 
-    public function test_staff_password_must_be_at_least_eight_characters_but_employees_keep_short_pins(): void
+    public function test_all_users_may_use_short_numeric_passwords_with_a_four_character_floor(): void
     {
         $this->actingAs($this->user('coord'))->put('/password', [
             'current_password' => '1234', 'password' => '5678', 'password_confirmation' => '5678',
-        ])->assertSessionHasErrors('password');
+        ])->assertSessionHasNoErrors()->assertSessionHas('ok', 'PasswordChanged');
 
         $this->actingAs($this->user('employee'))->put('/password', [
             'current_password' => '1234', 'password' => '5678', 'password_confirmation' => '5678',
         ])->assertSessionHasNoErrors()->assertSessionHas('ok', 'PasswordChanged');
 
         $this->actingAs($this->user('admin'))->post('/users', [
-            'full_name' => 'x', 'username' => 'coord2', 'role' => Role::Coordinator->value, 'password' => 'short', 'is_active' => '1',
+            'full_name' => 'x', 'username' => 'coord2', 'role' => Role::Coordinator->value, 'password' => '123', 'is_active' => '1',
         ])->assertSessionHasErrors('password');
         $this->assertDatabaseMissing('users', ['username' => 'coord2']);
+
+        $this->actingAs($this->user('admin'))->post('/users', [
+            'full_name' => 'x', 'username' => 'coord2', 'role' => Role::Coordinator->value, 'password' => '1234', 'is_active' => '1',
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('users', ['username' => 'coord2']);
     }
 
     public function test_employee_sees_password_changed_message_on_quick_screen(): void

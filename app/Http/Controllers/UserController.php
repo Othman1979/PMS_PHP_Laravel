@@ -75,7 +75,7 @@ class UserController extends Controller
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
             'role' => ['required', Rule::enum(Role::class)],
             'specialty' => ['nullable', Rule::enum(EquipmentCategory::class)],
-            'password' => [$user === null ? 'required' : 'nullable', 'string', 'min:'.($request->input('role') === Role::Employee->value ? 4 : 8)],
+            'password' => [$user === null ? 'required' : 'nullable', 'string', 'min:4'],
             'is_active' => ['boolean'],
         ]);
         $data['username'] = trim($data['username']);
