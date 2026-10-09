@@ -9,10 +9,10 @@ use chillerlan\QRCode\QROptions;
 
 class QrCodeService
 {
-    /** Absolute link encoded in the equipment QR label; uses PMS_PUBLIC_URL when configured. */
+    /** Absolute link encoded in the equipment QR label; uses CMMS_PUBLIC_URL when configured. */
     public function quickRequestUrl(string $code): string
     {
-        $base = config('pms.public_url') ?: request()->getSchemeAndHttpHost();
+        $base = config('cmms.public_url') ?: request()->getSchemeAndHttpHost();
 
         return rtrim((string) $base, '/').'/r/'.rawurlencode($code);
     }

@@ -20,8 +20,8 @@ class FileUploadService
         }
 
         $ext = strtolower($file->getClientOriginalExtension());
-        if (! $file->isValid() || ! in_array($ext, config('pms.upload_extensions'), true)
-            || $file->getSize() > config('pms.upload_max_kb') * 1024) {
+        if (! $file->isValid() || ! in_array($ext, config('cmms.upload_extensions'), true)
+            || $file->getSize() > config('cmms.upload_max_kb') * 1024) {
             return null;
         }
 
@@ -36,6 +36,6 @@ class FileUploadService
     /** @return list<string> validation rules shared by every upload field (spread into the field's rule array) */
     public static function rules(): array
     {
-        return ['file', 'max:'.config('pms.upload_max_kb'), 'extensions:'.implode(',', config('pms.upload_extensions'))];
+        return ['file', 'max:'.config('cmms.upload_max_kb'), 'extensions:'.implode(',', config('cmms.upload_extensions'))];
     }
 }

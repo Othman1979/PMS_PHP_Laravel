@@ -66,7 +66,7 @@ class LookupSettingsTest extends TestCase
         $this->assertDatabaseHas('priorities', ['id' => $normal->id]);
 
         $normal->update(['name_ar' => 'روتيني']);
-        $this->withUnencryptedCookie('pms_locale', 'ar')->get("/requests/{$mr->id}")->assertOk()->assertSee('روتيني');
+        $this->withUnencryptedCookie('cmms_locale', 'ar')->get("/requests/{$mr->id}")->assertOk()->assertSee('روتيني');
     }
 
     public function test_quick_screen_offers_only_active_quick_priorities_and_fault_types(): void
@@ -108,7 +108,7 @@ class LookupSettingsTest extends TestCase
         $this->assertSame($type->id, $mr->fault_type_id);
         $this->assertSame($cause->id, $mr->fault_cause_id);
 
-        $this->actingAs($this->user('admin'))->withUnencryptedCookie('pms_locale', 'ar')
+        $this->actingAs($this->user('admin'))->withUnencryptedCookie('cmms_locale', 'ar')
             ->get('/reports?fault_cause_id='.$cause->id)->assertOk()->assertSee('سوء تصنيع')->assertSee($mr->request_number);
         $this->get('/reports?fault_cause_id='.FaultCause::where('name_en', 'Unknown')->value('id'))->assertOk()->assertDontSee($mr->request_number);
     }

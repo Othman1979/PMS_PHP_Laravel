@@ -9,7 +9,7 @@ self.addEventListener('activate', event => event.waitUntil(self.clients.claim())
 self.addEventListener('push', event => {
     let data = {};
     try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text() }; }
-    const title = data.title || 'PMS';
+    const title = data.title || 'CMMS';
     event.waitUntil(self.registration.showNotification(title, {
         body: data.body || '',
         icon: '/icons/icon-192.png',
@@ -41,7 +41,7 @@ self.addEventListener('notificationclick', event => {
 // Static assets (Bootstrap, fonts, scripts, icons) are served cache-first so pages and
 // dialogs open instantly on slow connections. CSS/JS URLs carry a ?v= version, so a changed
 // file gets a new URL and is never stale.
-const STATIC_CACHE = 'pms-static-v2';
+const STATIC_CACHE = 'cmms-static-v2';
 const OFFLINE_URL = '/offline.html';
 const STATIC_PREFIXES = ['/lib/', '/css/', '/js/', '/fonts/', '/icons/'];
 

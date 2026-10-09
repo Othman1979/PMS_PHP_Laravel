@@ -11,6 +11,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = 'PMS'
+rootProject.name = 'CMMS'
 include ':app'
 include ':design'

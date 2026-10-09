@@ -33,7 +33,7 @@ class EquipmentImportController extends Controller
     public function preview(Request $request): View|RedirectResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'extensions:xlsx,xls', 'max:'.config('pms.upload_max_kb')],
+            'file' => ['required', 'file', 'extensions:xlsx,xls', 'max:'.config('cmms.upload_max_kb')],
         ], [], ['file' => __('Import_File')]);
 
         $rows = $this->importer->parse($request->file('file'));

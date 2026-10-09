@@ -20,12 +20,12 @@ class WebPushService
 {
     public function isConfigured(): bool
     {
-        return filled(config('pms.vapid.public_key')) && filled(config('pms.vapid.private_key'));
+        return filled(config('cmms.vapid.public_key')) && filled(config('cmms.vapid.private_key'));
     }
 
     public function publicKey(): ?string
     {
-        return config('pms.vapid.public_key');
+        return config('cmms.vapid.public_key');
     }
 
     /**
@@ -94,9 +94,9 @@ class WebPushService
     {
         try {
             $webPush = new WebPush(['VAPID' => [
-                'subject' => config('pms.vapid.subject'),
-                'publicKey' => config('pms.vapid.public_key'),
-                'privateKey' => config('pms.vapid.private_key'),
+                'subject' => config('cmms.vapid.subject'),
+                'publicKey' => config('cmms.vapid.public_key'),
+                'privateKey' => config('cmms.vapid.private_key'),
             ]], ['TTL' => 86400, 'urgency' => 'high'], new Client(['timeout' => 10, 'connect_timeout' => 5]));
 
             foreach ($subscriptions as $sub) {

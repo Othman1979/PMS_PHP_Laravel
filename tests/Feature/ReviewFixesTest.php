@@ -161,9 +161,9 @@ class ReviewFixesTest extends TestCase
 
     public function test_forbidden_page_is_localized(): void
     {
-        $this->actingAs($this->user('employee'))->withUnencryptedCookie('pms_locale', 'ar')->get('/parts')
+        $this->actingAs($this->user('employee'))->withUnencryptedCookie('cmms_locale', 'ar')->get('/parts')
             ->assertForbidden()->assertSee('غير مصرّح');
-        $this->actingAs($this->user('employee'))->withUnencryptedCookie('pms_locale', 'en')->get('/parts')
+        $this->actingAs($this->user('employee'))->withUnencryptedCookie('cmms_locale', 'en')->get('/parts')
             ->assertForbidden()->assertSee('Access denied');
     }
 
@@ -185,7 +185,7 @@ class ReviewFixesTest extends TestCase
 
     public function test_push_notifications_are_written_in_each_recipients_language(): void
     {
-        config(['pms.vapid.public_key' => 'pub', 'pms.vapid.private_key' => 'priv']);
+        config(['cmms.vapid.public_key' => 'pub', 'cmms.vapid.private_key' => 'priv']);
         Bus::fake();
         $this->subscribe($this->user('admin'), 'ar');
         $this->subscribe($this->user('coord'), 'en');
@@ -203,7 +203,7 @@ class ReviewFixesTest extends TestCase
 
     public function test_lifecycle_changes_notify_technician_requester_and_staff(): void
     {
-        config(['pms.vapid.public_key' => 'pub', 'pms.vapid.private_key' => 'priv']);
+        config(['cmms.vapid.public_key' => 'pub', 'cmms.vapid.private_key' => 'priv']);
         Bus::fake();
         foreach (['coord', 'tech1', 'employee', 'kitchen'] as $username) {
             $this->subscribe($this->user($username), 'en');

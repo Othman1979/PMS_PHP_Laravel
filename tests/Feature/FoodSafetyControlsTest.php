@@ -303,7 +303,7 @@ class FoodSafetyControlsTest extends TestCase
             ->assertDontSee("has('calibrated_at')")
             ->assertDontSee('<details open>', false);
 
-        $response = $this->actingAs($coord)->withCookie('pms_locale', 'ar')
+        $response = $this->actingAs($coord)->withCookie('cmms_locale', 'ar')
             ->from("/equipment/{$oven->id}")
             ->post("/equipment/{$oven->id}/calibrations", ['calibrated_at' => today()->addDay()->toDateString(), 'result' => 'Pass']);
         $response->assertRedirect("/equipment/{$oven->id}")->assertSessionHasErrors('calibrated_at');
@@ -314,7 +314,7 @@ class FoodSafetyControlsTest extends TestCase
         $this->assertStringNotContainsString('calibrated', $message);
         $this->assertSame(0, $oven->calibrations()->count());
 
-        $this->actingAs($coord)->withCookie('pms_locale', 'ar')->from("/equipment/{$oven->id}")->followingRedirects()
+        $this->actingAs($coord)->withCookie('cmms_locale', 'ar')->from("/equipment/{$oven->id}")->followingRedirects()
             ->post("/equipment/{$oven->id}/calibrations", ['calibrated_at' => today()->addDay()->toDateString(), 'result' => 'Pass'])
             ->assertOk()->assertSee('<details open>', false)->assertSee('تاريخ المعايرة');
     }

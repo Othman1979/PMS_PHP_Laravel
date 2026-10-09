@@ -17,7 +17,7 @@ class DatabaseBackup
 
     public function fileName(): string
     {
-        return 'pms-backup-'.now()->format('Ymd-Hi').'.sql';
+        return 'cmms-backup-'.now()->format('Ymd-Hi').'.sql';
     }
 
     /** @return Generator<int, string> */
@@ -28,7 +28,7 @@ class DatabaseBackup
         $pdo = $conn->getPdo();
         $grammar = $conn->getQueryGrammar();
 
-        yield '-- PMS backup '.now()->toDateTimeString()." ({$driver})\n";
+        yield '-- CMMS backup '.now()->toDateTimeString()." ({$driver})\n";
         if ($driver === 'mysql') {
             yield "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
         }
@@ -80,7 +80,7 @@ class DatabaseBackup
             return 0;
         }
         $files = collect(File::files($directory))
-            ->filter(fn ($f) => Str::startsWith($f->getFilename(), 'pms-backup-') && $f->getExtension() === 'sql')
+            ->filter(fn ($f) => Str::startsWith($f->getFilename(), 'cmms-backup-') && $f->getExtension() === 'sql')
             ->sortByDesc(fn ($f) => $f->getMTime())
             ->values();
         $old = $files->slice(max(0, $keep));

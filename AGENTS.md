@@ -63,7 +63,7 @@ cd android
 JAVA_HOME="C:\Users\dell\dev-tools\jdk17" C:\Users\dell\dev-tools\gradle-8.9\bin\gradle.bat :app:assembleDebug --offline
 ```
 
-- `:app` (Java WebView, `com.pms.maintenance`) depends on `:design`, a Kotlin + Jetpack Compose library (`com.pms.maintenance.design`) holding the native role screens; its `MainActivity` is the app launcher and links back to the WebView `MainActivity`.
+- `:app` (Java WebView, `com.cmms.maintenance`) depends on `:design`, a Kotlin + Jetpack Compose library (`com.cmms.maintenance.design`) holding the native role screens; its `MainActivity` is the app launcher and links back to the WebView `MainActivity`.
 - The Kotlin compile daemon cannot connect in this environment; Gradle falls back to in-process compilation — the noisy "Could not connect to Kotlin compile daemon" stack trace is harmless.
 - First build after adding a dependency needs network (drop `--offline` once so Gradle can download it).
 
@@ -71,6 +71,6 @@ JAVA_HOME="C:\Users\dell\dev-tools\jdk17" C:\Users\dell\dev-tools\gradle-8.9\bin
 
 - Bearer-token auth: `POST /api/login` returns `{id, name, username, role, token}`; the token is stored sha256-hashed on `users.api_token` and checked by `auth.token` middleware (`App\Http\Middleware\AuthenticateApiToken`).
 - Token routes: `GET /api/tasks` (technician's assigned open tasks + recent done), `GET /api/my-requests` (employee's own), `GET|POST /api/notifications`, `POST /api/broadcasting/auth` (private-channel signature — binds the request user resolver to `Auth::user()` so `Broadcast::auth()` sees the token user).
-- Live updates use plain WebSockets, **no Pusher SDK**: `Realtime.kt` opens `ws://{host}:8085/app/pms-local-key` (Reverb), waits for `pusher:connection_established`, then sends `pusher:subscribe` with the signature for `private-technician.{id}` / `private-user.{id}`. `request.changed` → refetch via API (API is source of truth); `notification` → tray notification + badge bump, deduped by `Session.lastNotifId`. Reconnects with capped exponential backoff (1s→30s), `pingInterval(25s)`, `readTimeout=0`.
+- Live updates use plain WebSockets, **no Pusher SDK**: `Realtime.kt` opens `ws://{host}:8085/app/cmms-local-key` (Reverb), waits for `pusher:connection_established`, then sends `pusher:subscribe` with the signature for `private-technician.{id}` / `private-user.{id}`. `request.changed` → refetch via API (API is source of truth); `notification` → tray notification + badge bump, deduped by `Session.lastNotifId`. Reconnects with capped exponential backoff (1s→30s), `pingInterval(25s)`, `readTimeout=0`.
 - In tests `BROADCAST_CONNECTION=null`, so `channels.php` registers on the null driver — `config(['broadcasting.default' => 'reverb']); require base_path('routes/channels.php');` before asserting `Broadcast::auth` behavior.
 - `withToken()` sets a persistent test header — use `withToken('bogus')` for the unauthenticated case.

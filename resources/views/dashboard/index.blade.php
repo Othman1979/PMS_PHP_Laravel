@@ -235,7 +235,7 @@
         data: { labels: C.status.labels, datasets: [{ data: statusData(countsFromDom()), backgroundColor: C.status.keys.map(k => statusColors[k] || '#999') }] },
         options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
     });
-    window.PmsCharts = {
+    window.CmmsCharts = {
         status(byStatus) { statusChart.data.datasets[0].data = statusData(byStatus); statusChart.update(); }
     };
 
@@ -275,7 +275,7 @@
     const RECENT_MAX = 8;
     const POLL_SLOW = 60000, POLL_FAST = 15000;
     const CHANNEL = @js(auth()->user()->canWatchAllRequests() ? 'staff' : 'department.'.auth()->user()->department_id);
-    const live = window.PmsLive;
+    const live = window.CmmsLive;
     const L = live ? live.L : (x => (x && typeof x === 'object') ? (x[document.documentElement.lang] ?? '') : (x ?? ''));
     let since = @js($now);
     let pollTimer = null;
@@ -389,7 +389,7 @@
                 const v = String((s.byStatus || {})[el.dataset.statusCount] ?? 0);
                 if (el.textContent !== v) { el.textContent = v; flash(el); }
             });
-            if (window.PmsCharts) window.PmsCharts.status(s.byStatus || {});
+            if (window.CmmsCharts) window.CmmsCharts.status(s.byStatus || {});
             for (const d of s.changes) {
                 if (seen.has(d.id + ':' + d.updatedAt)) continue;
                 showToast(d.isNew ? T.newRequest : T.updated + ' — ' + L(d.statusLabel), d);

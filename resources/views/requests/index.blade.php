@@ -151,7 +151,7 @@
 @endif
 <script>
 (function () {
-    const live = window.PmsLive;
+    const live = window.CmmsLive;
     if (!live || !live.enabled) return;
     const F = @js(['status' => $status?->value, 'overdue' => $overdue, 'foodSafety' => $foodSafety, 'departmentId' => $departmentId, 'countable' => $createdBy === '' && $search === '']);
     const canInsert = @js($status === null && ! $overdue && ! $foodSafety && $departmentId === null && $createdBy === '' && $search === '' && $requests->onFirstPage());

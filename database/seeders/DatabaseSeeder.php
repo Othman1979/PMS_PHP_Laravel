@@ -84,9 +84,9 @@ class DatabaseSeeder extends Seeder
 
         if (User::query()->where('role', Role::Admin)->doesntExist()) {
             User::create([
-                'username' => config('pms.admin_username'),
+                'username' => config('cmms.admin_username'),
                 'full_name' => 'مدير الصيانة',
-                'password' => config('pms.admin_password'),
+                'password' => config('cmms.admin_password'),
                 'role' => Role::Admin,
                 'department_id' => Department::where('name_en', 'Management')->value('id'),
             ]);

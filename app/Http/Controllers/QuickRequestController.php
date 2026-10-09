@@ -97,7 +97,7 @@ class QuickRequestController extends Controller
             'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
             'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
             'food_safety_impact' => ['nullable', 'boolean'],
-            'photo' => ['nullable', 'image', 'max:'.config('pms.upload_max_kb')],
+            'photo' => ['nullable', 'image', 'max:'.config('cmms.upload_max_kb')],
         ]);
 
         $maintenanceRequest = $workflow->create(

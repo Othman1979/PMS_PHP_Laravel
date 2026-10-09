@@ -5,7 +5,7 @@ apply plugin: 'org.jetbrains.kotlin.android'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 android {
-    namespace 'com.pms.maintenance.design'
+    namespace 'com.cmms.maintenance.design'
     compileSdk 35
 
     defaultConfig {

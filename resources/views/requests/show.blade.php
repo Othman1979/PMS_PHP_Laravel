@@ -364,7 +364,7 @@
                 <div class="card mb-3 border-success">
                     <div class="card-header bg-success text-white"><strong>{{ __('MarkComplete') }}</strong></div>
                     <div class="card-body">
-                        <form action="{{ route('requests.complete', $mr) }}" method="post" id="completeForm" data-draft-key="pms.draft.complete.{{ $mr->id }}">
+                        <form action="{{ route('requests.complete', $mr) }}" method="post" id="completeForm" data-draft-key="cmms.draft.complete.{{ $mr->id }}">
                             <div class="alert alert-info py-2 small d-none justify-content-between align-items-center" id="draftNotice">
                                 <span>{{ __('DraftRestored') }}</span>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="draftDiscard">{{ __('DiscardDraft') }}</button>

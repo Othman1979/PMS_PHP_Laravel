@@ -145,7 +145,7 @@ class PurchaseRequestController extends Controller
             'invoice_number' => ['nullable', 'string', 'max:100'],
             'invoice_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'attachment' => ['nullable', 'file', 'max:'.config('pms.upload_max_kb')],
+            'attachment' => ['nullable', 'file', 'max:'.config('cmms.upload_max_kb')],
             'items' => ['required', 'array', 'max:50'],
             'items.*.spare_part_id' => ['nullable', 'integer', 'exists:spare_parts,id'],
             'items.*.part_name' => ['nullable', 'string', 'max:200'],

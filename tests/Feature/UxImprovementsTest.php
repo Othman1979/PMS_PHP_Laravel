@@ -163,7 +163,7 @@ class UxImprovementsTest extends TestCase
 
         $this->get("/requests/{$mr->id}")->assertOk()
             ->assertSee('id="partsList"', false)
-            ->assertSee('data-draft-key="pms.draft.complete.'.$mr->id.'"', false)
+            ->assertSee('data-draft-key="cmms.draft.complete.'.$mr->id.'"', false)
             ->assertDontSee($out->name);
     }
 }

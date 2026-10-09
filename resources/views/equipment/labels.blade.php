@@ -91,7 +91,7 @@
     </div>
     <script>
         (function () {
-            var KEY = 'pms.labels';
+            var KEY = 'cmms.labels';
             var layout = document.getElementById('layout'), size = document.getElementById('size');
             var lw = document.getElementById('lw'), lh = document.getElementById('lh');
             var sizeBox = document.getElementById('sizeBox'), customBox = document.getElementById('customBox');

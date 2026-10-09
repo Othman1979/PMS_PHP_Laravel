@@ -4,7 +4,7 @@
     $app = config('reverb.apps.apps.0.options', []);
 @endphp
 @if ($user)
-    <meta name="pms-live" content="{{ json_encode([
+    <meta name="cmms-live" content="{{ json_encode([
         'key' => $live ? config('reverb.apps.apps.0.key') : null,
         'host' => $app['host'] ?? request()->getHost(),
         'port' => (int) ($app['port'] ?? 443),

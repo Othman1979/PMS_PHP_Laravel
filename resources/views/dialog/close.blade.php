@@ -4,8 +4,8 @@
 <body data-dialog-close>
 <script>
 (function (url) {
-    if (window.parent !== window && window.parent.PmsFormDialog) {
-        window.parent.PmsFormDialog.navigate(url);
+    if (window.parent !== window && window.parent.CmmsFormDialog) {
+        window.parent.CmmsFormDialog.navigate(url);
     } else {
         window.location.replace(url);
     }

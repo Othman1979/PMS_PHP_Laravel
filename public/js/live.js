@@ -1,8 +1,8 @@
 /* Realtime layer: Laravel Echo over Reverb with graceful fallback.
- * Exposes window.PmsLive = { ready, on(channel, event, cb), onState(cb), connected, lang, L(x) }.
+ * Exposes window.CmmsLive = { ready, on(channel, event, cb), onState(cb), connected, lang, L(x) }.
  * Also powers [data-live-reload="channel"] elements and the notification bell. */
 (function () {
-    const meta = document.querySelector('meta[name="pms-live"]');
+    const meta = document.querySelector('meta[name="cmms-live"]');
     const cfg = meta ? JSON.parse(meta.content) : null;
     const lang = document.documentElement.lang || 'ar';
     const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -151,7 +151,7 @@
     connect();
     document.addEventListener('DOMContentLoaded', () => { wireReloads(); wireBell(); });
 
-    window.PmsLive = {
+    window.CmmsLive = {
         get connected() { return connected; },
         get enabled() { return !!echo; },
         lang, L, on, toast, esc,

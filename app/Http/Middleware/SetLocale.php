@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
 {
-    public const COOKIE = 'pms_locale';
+    public const COOKIE = 'cmms_locale';
 
     public const LOCALES = ['ar', 'en'];
 

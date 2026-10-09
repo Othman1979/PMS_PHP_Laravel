@@ -30,7 +30,7 @@ class EquipmentRequest extends FormRequest
 
     public function rules(): array
     {
-        $file = ['nullable', 'file', 'max:'.config('pms.upload_max_kb'), 'extensions:'.implode(',', config('pms.upload_extensions'))];
+        $file = ['nullable', 'file', 'max:'.config('cmms.upload_max_kb'), 'extensions:'.implode(',', config('cmms.upload_extensions'))];
 
         return [
             'code' => ['required', 'string', 'max:50', Rule::unique('equipment', 'code')->ignore($this->route('equipment'))],
@@ -51,7 +51,7 @@ class EquipmentRequest extends FormRequest
             'warranty_provider' => ['nullable', 'exclude_unless:has_warranty,true', 'string', 'max:200'],
             'warranty_number' => ['nullable', 'exclude_unless:has_warranty,true', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:4000'],
-            'photo' => ['nullable', 'image', 'max:'.config('pms.upload_max_kb')],
+            'photo' => ['nullable', 'image', 'max:'.config('cmms.upload_max_kb')],
             'manual' => $file,
             'warranty_doc' => $file,
             'food_contact' => ['boolean'],

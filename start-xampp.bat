@@ -22,10 +22,10 @@ if errorlevel 1 (
 if not exist ".env" (
   copy ".env.xampp" ".env" >nul
   "%PHP%" artisan key:generate --force --no-interaction
-  "%PHP%" artisan pms:vapid --write --no-interaction
+  "%PHP%" artisan cmms:vapid --write --no-interaction
 )
 
-"%MYSQL%" -u root -e "CREATE DATABASE IF NOT EXISTS pms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+"%MYSQL%" -u root -e "CREATE DATABASE IF NOT EXISTS cmms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 if errorlevel 1 (
   echo Could not reach MySQL. Start MySQL from the XAMPP Control Panel first.
   pause & exit /b 1
@@ -40,11 +40,11 @@ if not exist "storage\installed.flag" (
 )
 "%PHP%" artisan view:cache >nul
 
-start "PMS Realtime (Reverb)" /min "%PHP%" artisan reverb:start --host=0.0.0.0 --port=8085
-start "PMS Scheduler" /min "%PHP%" artisan schedule:work
+start "CMMS Realtime (Reverb)" /min "%PHP%" artisan reverb:start --host=0.0.0.0 --port=8085
+start "CMMS Scheduler" /min "%PHP%" artisan schedule:work
 
 echo.
-echo PMS is running on http://localhost:8000  (admin / 1234)
+echo CMMS is running on http://localhost:8000  (admin / 1234)
 echo Realtime (Reverb) and the scheduler run in two minimized windows; close all three to stop.
 start "" http://localhost:8000
 "%PHP%" -d upload_max_filesize=12M -d post_max_size=64M -S 0.0.0.0:8000 server.php

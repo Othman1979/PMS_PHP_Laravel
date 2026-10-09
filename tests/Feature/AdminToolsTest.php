@@ -77,19 +77,19 @@ class AdminToolsTest extends TestCase
     {
         $dir = storage_path('app/backups');
         if (is_dir($dir)) {
-            foreach (glob($dir.'/pms-backup-*.sql') ?: [] as $f) {
+            foreach (glob($dir.'/cmms-backup-*.sql') ?: [] as $f) {
                 unlink($f);
             }
         }
         Setting::set(Setting::BACKUP_KEEP, '1');
         @mkdir($dir, 0775, true);
-        touch($dir.'/pms-backup-20200101-0000.sql', strtotime('2020-01-01'));
+        touch($dir.'/cmms-backup-20200101-0000.sql', strtotime('2020-01-01'));
 
-        $this->artisan('pms:backup')->assertSuccessful();
+        $this->artisan('cmms:backup')->assertSuccessful();
 
-        $files = glob($dir.'/pms-backup-*.sql');
+        $files = glob($dir.'/cmms-backup-*.sql');
         $this->assertCount(1, $files);
-        $this->assertFileDoesNotExist($dir.'/pms-backup-20200101-0000.sql');
+        $this->assertFileDoesNotExist($dir.'/cmms-backup-20200101-0000.sql');
         $this->assertStringContainsString('CREATE TABLE', file_get_contents($files[0]));
         unlink($files[0]);
     }

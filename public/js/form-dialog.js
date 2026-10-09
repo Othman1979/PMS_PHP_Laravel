@@ -24,7 +24,7 @@
     }
 
     if (document.body.classList.contains('in-dialog')) {
-        var host = window.parent !== window ? window.parent.PmsFormDialog : null;
+        var host = window.parent !== window ? window.parent.CmmsFormDialog : null;
         if (!host) {
             var direct = new URL(window.location.href);
             direct.searchParams.delete('dialog');
@@ -159,7 +159,7 @@
         window.location.href = href;
     }
 
-    window.PmsFormDialog = { open: open, close: close, navigate: navigate };
+    window.CmmsFormDialog = { open: open, close: close, navigate: navigate };
 
     document.addEventListener('click', function (e) {
         var link = e.target.closest('a[href]');
