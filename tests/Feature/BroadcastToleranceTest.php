@@ -7,8 +7,9 @@ use App\Models\MaintenanceRequest;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Exceptions;
 use Tests\TestCase;
 
 class BroadcastToleranceTest extends TestCase
@@ -28,6 +29,8 @@ class BroadcastToleranceTest extends TestCase
 
     public function test_request_actions_succeed_when_reverb_is_unreachable(): void
     {
+        Exceptions::fake();
+
         config([
             'broadcasting.default' => 'reverb',
             'broadcasting.connections.reverb.key' => 'k',
@@ -35,7 +38,6 @@ class BroadcastToleranceTest extends TestCase
             'broadcasting.connections.reverb.app_id' => 'a',
             'broadcasting.connections.reverb.options' => ['host' => '127.0.0.1', 'port' => 1, 'scheme' => 'http', 'useTLS' => false],
         ]);
-        Log::spy();
 
         $this->actingAs($this->user('employee'))->post('/r/EQ-FRZ-001', ['description' => 'لا يعمل'])->assertRedirect();
         $mr = MaintenanceRequest::latest('id')->firstOrFail();
@@ -49,6 +51,6 @@ class BroadcastToleranceTest extends TestCase
         $mr->refresh();
         $this->assertSame(RequestStatus::Assigned, $mr->status);
         $this->assertSame($tech->id, $mr->assigned_technician_id);
-        Log::shouldHaveReceived('warning')->withArgs(fn (string $message) => str_starts_with($message, 'Realtime broadcast skipped'))->atLeast()->once();
+        Exceptions::assertReported(BroadcastException::class);
     }
 }
