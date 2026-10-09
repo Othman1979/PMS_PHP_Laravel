@@ -281,7 +281,11 @@ class ReviewFixesTest extends TestCase
         $auth('kitchen', 'private-department.'.$mr->department_id)->assertOk();
         $auth('tech1', 'private-department.'.$mr->department_id)->assertForbidden();
         $auth('employee', 'private-request.'.$mr->id)->assertOk();
-        $auth('tech2', 'private-request.'.$mr->id)->assertOk();
+        $auth('tech2', 'private-request.'.$mr->id)->assertForbidden();
         $auth('tech1', 'private-user.'.$this->user('employee')->id)->assertForbidden();
+
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/assign", ['technician_id' => $this->user('tech1')->id]);
+        $auth('tech1', 'private-request.'.$mr->id)->assertOk();
+        $auth('tech2', 'private-request.'.$mr->id)->assertForbidden();
     }
 }

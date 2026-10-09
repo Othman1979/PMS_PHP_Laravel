@@ -171,16 +171,14 @@ class MaintenanceRequest extends Model
         $query->whereNotNull('due_at')->where('due_at', '<', now())->whereNotIn('status', RequestStatus::closedValues());
     }
 
-    /** Requests a user may see: staff see all, technicians their own + untriaged, managers their department, others their own. */
+    /** Requests a user may see: staff see all, technicians only their assigned tasks, managers their department, others their own. */
     #[Scope]
     protected function visibleTo(Builder $query, User $user): void
     {
         match ($user->role) {
             Role::Admin, Role::Coordinator, Role::FoodSafety => null,
             Role::DepartmentManager => $query->where('department_id', $user->department_id),
-            Role::Technician => $query->where(fn (Builder $q) => $q
-                ->where('assigned_technician_id', $user->id)
-                ->orWhereIn('status', [RequestStatus::New, RequestStatus::UnderReview])),
+            Role::Technician => $query->where('assigned_technician_id', $user->id),
             default => $query->where('created_by_id', $user->id),
         };
     }
@@ -190,8 +188,7 @@ class MaintenanceRequest extends Model
         return match ($user->role) {
             Role::Admin, Role::Coordinator, Role::FoodSafety => true,
             Role::DepartmentManager => $this->department_id === $user->department_id,
-            Role::Technician => $this->assigned_technician_id === $user->id
-                || in_array($this->status, [RequestStatus::New, RequestStatus::UnderReview], true),
+            Role::Technician => $this->assigned_technician_id === $user->id,
             default => $this->created_by_id === $user->id,
         };
     }

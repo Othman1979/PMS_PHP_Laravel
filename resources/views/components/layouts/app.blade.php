@@ -2,7 +2,7 @@
     use App\Enums\Role;
     $user = auth()->user();
     $canManage = $user?->canManage() ?? false;
-    $showPane = $user !== null && ! $user->isEmployee();
+    $showPane = $user !== null && ! $user->hasRole(Role::Employee, Role::Technician);
     $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY) || request()->boolean(\App\Http\Middleware\HandleFormDialog::INPUT);
 @endphp
 <!DOCTYPE html>
@@ -66,11 +66,7 @@
 
     @if ($showPane)
         <nav class="navpane" id="navPane" aria-label="{{ __('Menu') }}">
-            @if ($user->isTechnician())
-                <x-nav-item route="requests.mine" :label="__('MyTasks')" icon="tasks" />
-            @else
-                <x-nav-item route="home" :label="__('Dashboard')" icon="home" />
-            @endif
+            <x-nav-item route="home" :label="__('Dashboard')" icon="home" />
             <x-nav-item route="requests.index" :label="__('Requests')" icon="requests" active="requests.index|requests.show" />
             <x-nav-item route="requests.create" :label="__('NewRequest')" icon="add" />
             @if ($user->hasRole(Role::Employee, Role::DepartmentManager))
@@ -87,7 +83,7 @@
                 <div class="navpane-header">{{ __('FoodSafetySection') }}</div>
                 <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
             @endif
-            @if ($user->hasRole(Role::Admin, Role::Coordinator, Role::Technician))
+            @if ($user->hasRole(Role::Admin, Role::Coordinator))
                 <div class="navpane-header">{{ __('SpareParts') }}</div>
                 <x-nav-item route="parts.index" :label="__('Stock')" icon="stock" active="parts.index|parts.create|parts.edit" />
                 @if ($canManage)

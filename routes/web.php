@@ -83,7 +83,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::controller(EquipmentController::class)->prefix('equipment')->name('equipment.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,DepartmentManager,FoodSafety');
+        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,DepartmentManager,FoodSafety');
         Route::get('/labels', 'labels')->name('labels')->middleware('role:Admin,Coordinator');
         Route::post('/{equipment}/calibrations', 'calibrate')->name('calibrate')->middleware('role:Admin,Coordinator,FoodSafety');
         Route::post('/{equipment}/commission', 'commission')->name('commission')->middleware('role:Admin,FoodSafety');
@@ -151,7 +151,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::controller(SparePartController::class)->prefix('parts')->name('parts.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,Technician,FoodSafety');
+        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,FoodSafety');
         Route::middleware('role:Admin,Coordinator')->group(function () {
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');

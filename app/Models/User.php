@@ -78,6 +78,7 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->role === Role::FoodSafety;
     }
 
+    /** Field technician: only the assigned-tasks screen, no menus or modules. */
     public function isTechnician(): bool
     {
         return $this->role === Role::Technician;

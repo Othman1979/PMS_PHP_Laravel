@@ -19,6 +19,9 @@ class QuickRequestController extends Controller
 {
     public function find(Request $request): View|RedirectResponse
     {
+        if ($request->user()->isTechnician()) {
+            return redirect()->route('requests.mine');
+        }
         $q = trim((string) $request->query('q'));
         if ($q !== '') {
             $exact = Equipment::query()->where('code', $q)->first();
@@ -48,8 +51,12 @@ class QuickRequestController extends Controller
         ]);
     }
 
-    public function mine(Request $request): View
+    public function mine(Request $request): View|RedirectResponse
     {
+        if ($request->user()->isTechnician()) {
+            return redirect()->route('requests.mine');
+        }
+
         return view('quick.mine', [
             'requests' => MaintenanceRequest::with(['equipment', 'assignedTechnician'])
                 ->where('created_by_id', $request->user()->id)
@@ -57,8 +64,11 @@ class QuickRequestController extends Controller
         ]);
     }
 
-    public function show(string $code): View
+    public function show(Request $request, string $code): View|RedirectResponse
     {
+        if ($request->user()->isTechnician()) {
+            return redirect()->route('requests.mine');
+        }
         $equipment = $this->findEquipment($code);
         if ($equipment === null) {
             return view('quick.find', ['results' => collect(), 'q' => $code, 'notFound' => true, 'myRequests' => collect()]);
@@ -78,6 +88,7 @@ class QuickRequestController extends Controller
 
     public function store(Request $request, string $code, RequestWorkflow $workflow): RedirectResponse
     {
+        abort_if($request->user()->isTechnician(), 403);
         $equipment = $this->findEquipment($code);
         abort_if($equipment === null, 404);
 
@@ -103,8 +114,11 @@ class QuickRequestController extends Controller
         return redirect()->route('quick.done', $maintenanceRequest);
     }
 
-    public function done(Request $request, MaintenanceRequest $maintenanceRequest): View
+    public function done(Request $request, MaintenanceRequest $maintenanceRequest): View|RedirectResponse
     {
+        if ($request->user()->isTechnician()) {
+            return redirect()->route('requests.mine');
+        }
         abort_unless($maintenanceRequest->isVisibleTo($request->user()), 403);
 
         return view('quick.done', ['mr' => $maintenanceRequest->load('equipment')]);

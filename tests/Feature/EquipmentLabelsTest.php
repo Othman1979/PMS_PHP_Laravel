@@ -35,10 +35,7 @@ class EquipmentLabelsTest extends TestCase
             ->assertSee(route('equipment.labels'), false)
             ->assertSee(route('equipment.import.template'), false);
 
-        $this->actingAs($this->user('tech1'))->get('/equipment')
-            ->assertOk()
-            ->assertDontSee('data-select-all', false)
-            ->assertDontSee('name="ids[]"', false);
+        $this->actingAs($this->user('tech1'))->get('/equipment')->assertForbidden();
     }
 
     public function test_labels_page_prints_only_selected_equipment(): void
