@@ -31,3 +31,4 @@ composer-setup.php
 /public/downloads
 nul
 Start From PowerShell.txt
+.env.xampp

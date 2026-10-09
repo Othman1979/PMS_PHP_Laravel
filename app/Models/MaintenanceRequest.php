@@ -171,7 +171,7 @@ class MaintenanceRequest extends Model
         $query->whereNotNull('due_at')->where('due_at', '<', now())->whereNotIn('status', RequestStatus::closedValues());
     }
 
-    /** Requests a user may see: staff see all, technicians only their assigned tasks, managers their department, others their own. */
+    /** Requests a user may see: staff see all, technicians only what is assigned to them, managers their department, others their own. */
     #[Scope]
     protected function visibleTo(Builder $query, User $user): void
     {

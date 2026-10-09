@@ -31,6 +31,23 @@ class TechnicianAccessTest extends TestCase
         return $this->user('tech1');
     }
 
+    private function newRequest(string $code = 'EQ-FRZ-001'): MaintenanceRequest
+    {
+        $this->actingAs($this->user('employee'))->post("/r/{$code}", ['description' => 'لا يعمل'])->assertRedirect();
+
+        return MaintenanceRequest::latest('id')->firstOrFail();
+    }
+
+    private function assignedRequest(string $technician = 'tech1'): MaintenanceRequest
+    {
+        $mr = $this->newRequest();
+        $this->actingAs($this->user('coord'))
+            ->post("/requests/{$mr->id}/assign", ['technician_id' => $this->user($technician)->id])
+            ->assertRedirect();
+
+        return $mr->refresh();
+    }
+
     public function test_technician_lands_on_my_tasks_screen(): void
     {
         $this->actingAs($this->technician())->get('/')->assertRedirect(route('requests.mine'));
@@ -44,12 +61,15 @@ class TechnicianAccessTest extends TestCase
         $this->actingAs($this->technician())->get('/parts')->assertForbidden();
         $this->actingAs($this->technician())->get('/reports')->assertForbidden();
         $this->actingAs($this->technician())->get('/pm')->assertForbidden();
+        $this->actingAs($this->technician())->get('/dashboard/stats')->assertForbidden();
     }
 
     public function test_tasks_screen_has_no_menus_for_technician(): void
     {
         $response = $this->actingAs($this->technician())->get('/requests/mine')->assertOk();
         $response->assertDontSee('id="navPane"', false);
+        $response->assertDontSee('href="'.route('requests.index').'"', false);
+        $response->assertDontSee(route('equipment.index'));
         $response->assertSee(route('logout'));
     }
 
@@ -81,12 +101,17 @@ class TechnicianAccessTest extends TestCase
         $tech = $this->technician();
         $this->actingAs($this->user('coord'))->post("/requests/{$assigned->id}/assign", ['technician_id' => $tech->id])->assertRedirect();
 
+        // Other technicians can't touch it either.
+        $this->actingAs($this->user('tech2'))->get("/requests/{$assigned->id}")->assertForbidden();
+
         $this->actingAs($tech)->get("/requests/{$unassigned->id}")->assertForbidden();
         $this->actingAs($tech)->post("/requests/{$unassigned->id}/comment", ['note' => 'x'])->assertForbidden();
         $this->actingAs($tech)->post("/requests/{$unassigned->id}/accept")->assertForbidden();
 
         $this->actingAs($tech)->get("/requests/{$assigned->id}")->assertOk()
             ->assertSee($assigned->request_number)
+            ->assertSee(route('requests.accept', $assigned), false)
+            ->assertDontSee(route('equipment.show', $assigned->equipment), false)
             ->assertSee(__('AcceptAndStart'));
 
         $this->get('/requests/mine')->assertOk()
@@ -94,10 +119,25 @@ class TechnicianAccessTest extends TestCase
             ->assertDontSee($unassigned->request_number);
     }
 
+    public function test_my_tasks_lists_only_assigned_tasks_not_other_technicians(): void
+    {
+        $assigned = $this->assignedRequest('tech1');
+        $other = $this->assignedRequest('tech2');
+
+        $response = $this->actingAs($this->technician())->get('/requests/mine')->assertOk();
+        $response->assertSee($assigned->request_number);
+        $response->assertDontSee($other->request_number);
+    }
+
     public function test_coordinator_keeps_menus(): void
     {
+        $mr = $this->assignedRequest('tech1');
+
         $this->actingAs($this->user('coord'))->get('/')->assertOk()->assertSee('id="navPane"', false);
         $this->actingAs($this->user('coord'))->get('/requests')->assertOk();
         $this->actingAs($this->user('coord'))->get('/r/EQ-FRZ-001')->assertOk();
+        $this->actingAs($this->user('coord'))->get("/requests/{$mr->id}")
+            ->assertOk()
+            ->assertSee(route('equipment.show', $mr->equipment), false);
     }
 }

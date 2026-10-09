@@ -9,6 +9,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -17,7 +18,7 @@ use Illuminate\Queue\SerializesModels;
  * Fired on every create / status change / note of a maintenance request so open screens update without a reload.
  * Labels are sent in both languages; the browser picks the one matching the page.
  */
-class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
+class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, ShouldRescue
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

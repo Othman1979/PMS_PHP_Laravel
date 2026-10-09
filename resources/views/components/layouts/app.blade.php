@@ -2,7 +2,7 @@
     use App\Enums\Role;
     $user = auth()->user();
     $canManage = $user?->canManage() ?? false;
-    $showPane = $user !== null && ! $user->hasRole(Role::Employee, Role::Technician);
+    $showPane = $user !== null && $user->hasNavPane();
     $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY) || request()->boolean(\App\Http\Middleware\HandleFormDialog::INPUT);
 @endphp
 <!DOCTYPE html>
@@ -83,7 +83,7 @@
                 <div class="navpane-header">{{ __('FoodSafetySection') }}</div>
                 <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
             @endif
-            @if ($user->hasRole(Role::Admin, Role::Coordinator))
+            @if ($canManage)
                 <div class="navpane-header">{{ __('SpareParts') }}</div>
                 <x-nav-item route="parts.index" :label="__('Stock')" icon="stock" active="parts.index|parts.create|parts.edit" />
                 @if ($canManage)
