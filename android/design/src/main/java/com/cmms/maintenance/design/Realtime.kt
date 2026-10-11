@@ -7,6 +7,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.isActive
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -32,7 +35,7 @@ object Realtime {
     private const val TAG = "CmmsRealtime"
     private const val MAX_BACKOFF_MS = 30_000L
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val client = OkHttpClient.Builder()
         .pingInterval(25, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -45,35 +48,76 @@ object Realtime {
     private var everConnected = false
     private var backoffMs = 1_000L
     private var socketId: String? = null
+    private var socketUrl: String? = null
+    private var sessionToken: String? = null
 
     @Synchronized
     fun start() {
         if (running) return
         if (!Session.isLoggedIn) return
         running = true
+        sessionToken = Session.token
         everConnected = false
         backoffMs = 1_000L
-        connect()
+        scope.launch {
+            var pollSeconds = 15
+            var ticks = 0
+            while (isActive && running && Session.token == sessionToken) {
+                AppState.refreshNotifications()
+                if (Session.role == "Technician") AppState.refreshTasks()
+                if (Session.role == "Employee") AppState.refreshMine()
+                if (ticks++ % 4 == 0) {
+                    val config = Api.configuration()
+                    if (config != null) {
+                        pollSeconds = config.optInt("pollSeconds", 15).coerceIn(10, 300)
+                        val ws = config.optJSONObject("websocket")
+                        val url = ws?.let { runCatching {
+                            val tls = it.getString("scheme") == "wss"
+                            var host = it.getString("host")
+                            if (host in listOf("localhost", "127.0.0.1", "0.0.0.0")) host = Api.base().toHttpUrl().host
+                            val httpUrl = Api.base().toHttpUrl().newBuilder()
+                                .scheme(if (tls) "https" else "http").host(host).port(it.getInt("port"))
+                                .encodedPath("/app/").addPathSegment(it.getString("key"))
+                                .query("protocol=7&client=cmms-android&version=1.1").build().toString()
+                            httpUrl.replaceFirst(if (tls) "https:" else "http:", if (tls) "wss:" else "ws:")
+                        }.getOrNull() }
+                        if (url != socketUrl) {
+                            socketUrl = url
+                            reconnectJob?.cancel()
+                            socket?.close(1000, "configuration changed")
+                            socket = null
+                            if (url != null) connect()
+                        }
+                    }
+                }
+                delay(pollSeconds * 1000L)
+            }
+        }
     }
 
     @Synchronized
     fun stop() {
         running = false
+        scope.coroutineContext.cancelChildren()
         reconnectJob?.cancel()
         reconnectJob = null
         socket?.close(1000, "logout")
         socket = null
         socketId = null
+        socketUrl = null
+        sessionToken = null
     }
 
     private fun connect() {
+        val url = socketUrl ?: return
+        if (!running || Session.token != sessionToken) return
         socket?.close(1000, "reconnect")
-        val request = Request.Builder().url(Api.wsUrl()).build()
+        val request = Request.Builder().url(url).build()
         socket = client.newWebSocket(request, Listener())
     }
 
     private fun scheduleReconnect() {
-        if (!running) return
+        if (!running || socketUrl == null) return
         reconnectJob?.cancel()
         val wait = backoffMs
         backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
@@ -145,6 +189,8 @@ object Realtime {
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            scope.launch {
+            if (!running || webSocket !== socket || Session.token != sessionToken) return@launch
             try {
                 val msg = JSONObject(text)
                 val event = msg.optString("event")
@@ -165,21 +211,26 @@ object Realtime {
             } catch (e: Exception) {
                 Log.w(TAG, "bad frame", e)
             }
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             Log.w(TAG, "failure: ${t.message}")
+            scope.launch {
             if (webSocket === socket) {
                 socketId = null
                 scheduleReconnect()
+            }
             }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             Log.d(TAG, "closed $code $reason")
+            scope.launch {
             if (webSocket === socket) {
                 socketId = null
                 if (running) scheduleReconnect()
+            }
             }
         }
     }

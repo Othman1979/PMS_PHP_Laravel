@@ -81,6 +81,8 @@ class Equipment(
     val category: EquipCategory,
     val underWarranty: Boolean = false,
     val serial: String = "",
+    val id: Int = 0,
+    val autoEscalates: Boolean = false,
 ) {
     val name get() = if (Lang.isRtl) nameAr else nameEn
     val dept get() = if (Lang.isRtl) deptAr else deptEn
@@ -108,12 +110,33 @@ class CmmsRequest(
     val isReopened: Boolean = false,
     val hasChecklist: Boolean = false,
     val completedAt: String = "",
+    val id: Int = 0,
+    val phone: String = "",
+    val resolution: String = "",
+    val costLabor: Double = 0.0,
+    val costParts: Double = 0.0,
+    val timeline: List<TimelineEntry> = emptyList(),
+    val attachments: List<RequestAttachment> = emptyList(),
+    val checklist: List<CatalogOption> = emptyList(),
+    val spareParts: List<StockPart> = emptyList(),
 ) {
     var status by mutableStateOf(initialStatus)
     val description get() = if (Lang.isRtl) descAr else descEn
     val dueLabel get() = (if (Lang.isRtl) dueLabelAr else dueLabelEn)?.takeIf { it.isNotEmpty() }
     val createdAgo get() = if (Lang.isRtl) createdAgoAr else createdAgoEn
 }
+
+data class CatalogOption(val id: Int, val en: String, val ar: String) {
+    val label get() = if (Lang.isRtl) ar else en
+}
+
+data class RequestOptions(
+    val priorities: List<CatalogOption>, val defaultPriorityId: Int,
+    val faultTypes: List<CatalogOption>, val faultCauses: List<CatalogOption>,
+)
+
+data class StockPart(val id: Int, val name: String, val quantity: Int, val unitCost: Double)
+data class RequestAttachment(val name: String, val url: String)
 
 class SparePart(val nameEn: String, val nameAr: String, val number: String, val stock: Int, val price: String) {
     val name get() = if (Lang.isRtl) nameAr else nameEn

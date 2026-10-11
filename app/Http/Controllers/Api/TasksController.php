@@ -47,12 +47,14 @@ class TasksController extends Controller
     }
 
     /** RequestChanged payload + the extra fields the native cards need. */
-    private static function taskPayload(MaintenanceRequest $r): array
+    public static function taskPayload(MaintenanceRequest $r): array
     {
         return RequestChanged::payload($r, false) + [
             'priorityCode' => $r->priority?->code,
             'descriptionFull' => $r->description,
             'equipmentCode' => $r->equipment?->code,
+            'equipmentId' => $r->equipment_id,
+            'autoEscalates' => $r->equipment?->autoEscalatesFoodSafety() ?? false,
             'equipmentCategory' => $r->equipment?->category->value,
             'equipmentLocation' => $r->equipment?->location,
             'equipmentSerial' => $r->equipment?->serial_number,

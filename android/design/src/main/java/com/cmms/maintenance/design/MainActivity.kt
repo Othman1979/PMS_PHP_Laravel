@@ -104,6 +104,7 @@ fun CmmsDesignApp() {
     }
 
     val logout = {
+        Realtime.stop()
         Session.logout()
         RealtimeService.stop(context)
         AppState.clear()

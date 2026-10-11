@@ -137,6 +137,7 @@ fun CmmsOutlineButton(
     icon: ImageVector? = null,
     color: Color = CmmsPrimary,
     minHeight: Dp = 38.dp,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
@@ -144,7 +145,7 @@ fun CmmsOutlineButton(
             .clip(RoundedCornerShape(6.dp))
             .border(1.dp, color, RoundedCornerShape(6.dp))
             .background(Color.White)
-            .noRippleClick(onClick)
+            .noRippleClick { if (enabled) onClick() }
             .padding(horizontal = 12.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {

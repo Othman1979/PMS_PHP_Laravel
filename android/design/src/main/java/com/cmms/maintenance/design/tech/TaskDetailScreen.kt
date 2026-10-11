@@ -1,5 +1,19 @@
 package com.cmms.maintenance.design.tech
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.cmms.maintenance.design.Api
+import com.cmms.maintenance.design.ApiException
+import com.cmms.maintenance.design.AppState
+import com.cmms.maintenance.design.model.RequestOptions
+import com.cmms.maintenance.design.ui.CmmsDanger
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,8 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cmms.maintenance.design.Lang
-import com.cmms.maintenance.design.model.FAULT_CAUSES
-import com.cmms.maintenance.design.model.FAULT_TYPES
 import com.cmms.maintenance.design.model.Mock
 import com.cmms.maintenance.design.model.CmmsRequest
 import com.cmms.maintenance.design.model.ReqStatus
@@ -70,8 +82,50 @@ import com.cmms.maintenance.design.ui.SectionTitle
 import com.cmms.maintenance.design.ui.StatusBadge
 import com.cmms.maintenance.design.ui.TechTitleBar
 
+private typealias SubmitAction = (String, JSONObject, () -> Unit) -> Unit
+
 @Composable
 fun TaskDetailScreen(request: CmmsRequest, onBack: () -> Unit, onLogout: () -> Unit) {
+    var detail by remember(request.id) { mutableStateOf<CmmsRequest?>(null) }
+    var options by remember { mutableStateOf<RequestOptions?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var revision by remember { mutableStateOf(0) }
+    var reload by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(request.id, AppState.tasks, AppState.done, reload, Lang.isRtl) {
+        val version = revision
+        try {
+            val fresh = Api.request(request.id)
+            val catalog = Api.options()
+            if (version == revision) { detail = fresh; options = catalog; error = null }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            if (version == revision) { error = e.message; if (e is ApiException && e.code in listOf(401, 403, 404)) detail = null }
+        }
+    }
+    val submit: SubmitAction = { action, data, onSuccess ->
+        if (!busy) {
+            busy = true
+            error = null
+            revision++
+            scope.launch {
+                try {
+                    detail = Api.mutate(request.id, action, data)
+                    onSuccess()
+                    AppState.refreshTasks()
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    error = e.message
+                    if (e is ApiException && e.code == 409) detail = try { Api.request(request.id) } catch (refreshError: Exception) {
+                        if (refreshError is CancellationException) throw refreshError
+                        null
+                    }
+                    if (e is ApiException && e.code in listOf(401, 403, 404)) detail = null
+                } finally { busy = false }
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().background(CmmsBackground)) {
         TechTitleBar(
             onLang = { Lang.toggle() },
@@ -84,18 +138,27 @@ fun TaskDetailScreen(request: CmmsRequest, onBack: () -> Unit, onLogout: () -> U
             contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { HeaderRow(request, onBack) }
-            if (request.isReopened || request.status == ReqStatus.Reopened) {
+            item { HeaderRow(detail ?: request, onBack) }
+            error?.let { message -> item {
+                Text(message, color = CmmsDanger)
+                CmmsOutlineButton(s("Retry"), { reload++ }, enabled = !busy)
+            } }
+            if (detail == null && error == null) item { Text(s("Loading")) }
+            val current = detail
+            if (current != null) {
+            if (current.isReopened || current.status == ReqStatus.Reopened) {
                 item { ReopenedAlert() }
             }
-            item { DetailsCard(request) }
-            item { AttachmentsCard() }
-            item { ActionsCard(request) }
-            if (request.status == ReqStatus.InProgress || request.status == ReqStatus.WaitingParts) {
-                item { CompleteCard(request) }
+            item { DetailsCard(current) }
+            if (current.attachments.isNotEmpty()) item { AttachmentsCard(current) }
+            item { ActionsCard(current, busy, submit) }
+            if ((current.status == ReqStatus.InProgress || current.status == ReqStatus.WaitingParts) && options != null) {
+                item { CompleteCard(current, options!!, busy, submit) }
             }
-            item { CommentCard() }
-            item { TimelineCard(request) }
+            if (current.status != ReqStatus.Cancelled) item { CommentCard(busy, submit) }
+            error?.let { message -> item { Text(message, color = CmmsDanger) } }
+            item { TimelineCard(current) }
+            }
             item { Spacer(Modifier.height(12.dp)) }
         }
     }
@@ -134,6 +197,7 @@ private fun ReopenedAlert() {
 
 @Composable
 private fun DetailsCard(r: CmmsRequest) {
+    val context = LocalContext.current
     CmmsCard {
         SectionTitle(s("RequestDetails"))
         Spacer(Modifier.height(8.dp))
@@ -161,7 +225,10 @@ private fun DetailsCard(r: CmmsRequest) {
                 }
                 Spacer(Modifier.width(6.dp))
                 Text(r.requester, fontSize = 13.sp, color = CmmsText, modifier = Modifier.weight(1f))
-                CmmsOutlineButton(text = s("Call"), onClick = {}, icon = CmmsIcons.Phone, minHeight = 30.dp)
+                if (r.phone.isNotBlank()) CmmsOutlineButton(text = s("Call"), onClick = {
+                    val intent = Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", r.phone, null))
+                    runCatching { context.startActivity(intent) }
+                }, icon = CmmsIcons.Phone, minHeight = 30.dp)
             }
         }
         KeyVal(s("CreatedAt")) {
@@ -192,13 +259,13 @@ private fun DetailsCard(r: CmmsRequest) {
             KeyVal(s("CompletedAt")) { Text(r.completedAt, fontSize = 13.sp, color = CmmsText) }
             KeyVal(s("Cost")) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("${s("CostLabor")}: 40.00", fontSize = 12.5.sp, color = CmmsMuted)
-                    Text("${s("TotalCost")}: 76.50", fontSize = 12.5.sp, color = CmmsText, fontWeight = FontWeight.SemiBold)
+                    Text("${s("CostLabor")}: ${r.costLabor}", fontSize = 12.5.sp, color = CmmsMuted)
+                    Text("${s("TotalCost")}: ${r.costLabor + r.costParts}", fontSize = 12.5.sp, color = CmmsText, fontWeight = FontWeight.SemiBold)
                 }
             }
             KeyVal(s("ResolutionNotes")) {
                 Text(
-                    if (Lang.isRtl) "تم استبدال الجلدة وفحص الضاغط — الحرارة عادت للوضع الطبيعي." else "Replaced the door gasket and checked the compressor — temperature back to normal.",
+                    r.resolution,
                     fontSize = 13.sp, color = CmmsText, lineHeight = 18.sp,
                 )
             }
@@ -207,38 +274,33 @@ private fun DetailsCard(r: CmmsRequest) {
 }
 
 @Composable
-private fun AttachmentsCard() {
+private fun AttachmentsCard(request: CmmsRequest) {
+    val context = LocalContext.current
     CmmsCard {
         SectionTitle(s("Attachments"))
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            repeat(2) {
-                Box(
-                    Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(CmmsLight)
-                        .border(1.dp, CmmsBorder, RoundedCornerShape(6.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(CmmsIcons.Camera, contentDescription = null, tint = CmmsMuted, modifier = Modifier.size(22.dp))
-                }
-            }
+        request.attachments.forEach { attachment ->
+            CmmsOutlineButton(attachment.name, {
+                val uri = Uri.parse(attachment.url)
+                if (uri.scheme in listOf("https", "http")) runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            }, icon = CmmsIcons.Camera)
+            Spacer(Modifier.height(6.dp))
         }
     }
 }
 
 @Composable
-private fun ActionsCard(request: CmmsRequest) {
+private fun ActionsCard(request: CmmsRequest, busy: Boolean, submit: SubmitAction) {
     var note by remember { mutableStateOf("") }
     CmmsCard {
         SectionTitle(s("Actions"))
         Spacer(Modifier.height(8.dp))
         when (request.status) {
-            ReqStatus.Assigned, ReqStatus.Reopened -> {
+            ReqStatus.Assigned -> {
                 CmmsButton(
                     text = s("AcceptAndStart"),
-                    onClick = { request.status = ReqStatus.InProgress },
+                    onClick = { submit("actions/accept-start", JSONObject()) {} },
+                    enabled = !busy,
                     icon = CmmsIcons.Play,
                     bg = CmmsWarning,
                     fg = CmmsDark,
@@ -249,7 +311,8 @@ private fun ActionsCard(request: CmmsRequest) {
                 Spacer(Modifier.height(8.dp))
                 CmmsOutlineButton(
                     text = s("AcceptOnly"),
-                    onClick = { request.status = ReqStatus.Accepted },
+                    onClick = { submit("actions/accept", JSONObject()) {} },
+                    enabled = !busy,
                     color = CmmsMuted,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -257,7 +320,8 @@ private fun ActionsCard(request: CmmsRequest) {
             ReqStatus.Accepted -> {
                 CmmsButton(
                     text = s("StartWork"),
-                    onClick = { request.status = ReqStatus.InProgress },
+                    onClick = { submit("actions/start", JSONObject()) {} },
+                    enabled = !busy,
                     icon = CmmsIcons.Play,
                     modifier = Modifier.fillMaxWidth(),
                     minHeight = 48.dp,
@@ -267,7 +331,8 @@ private fun ActionsCard(request: CmmsRequest) {
             ReqStatus.InProgress -> {
                 CmmsButton(
                     text = s("WaitForParts"),
-                    onClick = { request.status = ReqStatus.WaitingParts },
+                    onClick = { submit("actions/wait-parts", JSONObject().put("note", note)) {} },
+                    enabled = !busy,
                     icon = CmmsIcons.Package,
                     bg = CmmsOrange,
                     modifier = Modifier.fillMaxWidth(),
@@ -275,12 +340,13 @@ private fun ActionsCard(request: CmmsRequest) {
                 Spacer(Modifier.height(10.dp))
                 CmmsField(value = note, onValue = { note = it }, placeholder = s("ProgressNotePlaceholder"), minHeight = 42.dp)
                 Spacer(Modifier.height(8.dp))
-                CmmsOutlineButton(text = s("AddNote"), onClick = { note = "" }, icon = CmmsIcons.Plus, color = CmmsPrimary)
+                CmmsOutlineButton(text = s("AddNote"), onClick = { submit("comments", JSONObject().put("note", note)) { note = "" } }, enabled = !busy && note.isNotBlank(), icon = CmmsIcons.Plus, color = CmmsPrimary)
             }
             ReqStatus.WaitingParts -> {
                 CmmsButton(
                     text = s("ResumeWork"),
-                    onClick = { request.status = ReqStatus.InProgress },
+                    onClick = { submit("actions/resume", JSONObject()) {} },
+                    enabled = !busy,
                     icon = CmmsIcons.Play,
                     bg = CmmsSuccess,
                     modifier = Modifier.fillMaxWidth(),
@@ -288,7 +354,7 @@ private fun ActionsCard(request: CmmsRequest) {
                 Spacer(Modifier.height(10.dp))
                 CmmsField(value = note, onValue = { note = it }, placeholder = s("ProgressNotePlaceholder"), minHeight = 42.dp)
                 Spacer(Modifier.height(8.dp))
-                CmmsOutlineButton(text = s("AddNote"), onClick = { note = "" }, icon = CmmsIcons.Plus, color = CmmsPrimary)
+                CmmsOutlineButton(text = s("AddNote"), onClick = { submit("comments", JSONObject().put("note", note)) { note = "" } }, enabled = !busy && note.isNotBlank(), icon = CmmsIcons.Plus, color = CmmsPrimary)
             }
             ReqStatus.Completed -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -303,38 +369,37 @@ private fun ActionsCard(request: CmmsRequest) {
 }
 
 @Composable
-private fun CompleteCard(request: CmmsRequest) {
+private fun CompleteCard(request: CmmsRequest, options: RequestOptions, busy: Boolean, submit: SubmitAction) {
     var resolution by remember { mutableStateOf("") }
     var techNotes by remember { mutableStateOf("") }
     var labor by remember { mutableStateOf("0.00") }
     var tempRepair by remember { mutableStateOf(false) }
     var permDue by remember { mutableStateOf("") }
-    var faultType by remember { mutableStateOf<String?>(null) }
-    var faultCause by remember { mutableStateOf<String?>(null) }
+    var faultType by remember { mutableStateOf<Int?>(null) }
+    var faultCause by remember { mutableStateOf<Int?>(null) }
     var partQuery by remember { mutableStateOf("") }
-    var addedParts by remember { mutableStateOf(listOf<Pair<String, Int>>()) }
-    val checked = remember { mutableStateOf(setOf(0)) }
+    var addedParts by remember { mutableStateOf(mapOf<Int, Int>()) }
+    val checked = remember { mutableStateOf(emptySet<Int>()) }
 
     CmmsCard {
         SectionTitle(s("MarkComplete"))
         Text(s("CompleteHint"), fontSize = 11.5.sp, color = CmmsMuted)
         Spacer(Modifier.height(10.dp))
 
-        if (request.hasChecklist) {
-            val items = if (Lang.isRtl) Mock.checklistItems.second else Mock.checklistItems.first
-            items.forEachIndexed { i, item ->
+        if (request.checklist.isNotEmpty()) {
+            request.checklist.forEach { item ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 3.dp),
                 ) {
                     androidx.compose.material3.Checkbox(
-                        checked = checked.value.contains(i),
+                        checked = checked.value.contains(item.id),
                         onCheckedChange = { on ->
-                            checked.value = if (on) checked.value + i else checked.value - i
+                            checked.value = if (on) checked.value + item.id else checked.value - item.id
                         },
                         colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = CmmsPrimary),
                     )
-                    Text(item, fontSize = 13.sp, color = CmmsText)
+                    Text(item.label, fontSize = 13.sp, color = CmmsText)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -342,16 +407,16 @@ private fun CompleteCard(request: CmmsRequest) {
 
         CmmsDropdown(
             label = s("FaultType"),
-            options = if (Lang.isRtl) FAULT_TYPES.second else FAULT_TYPES.first,
-            selected = faultType,
-            onSelect = { faultType = it },
+            options = options.faultTypes.map { "${it.id} · ${it.label}" },
+            selected = options.faultTypes.firstOrNull { it.id == faultType }?.let { "${it.id} · ${it.label}" },
+            onSelect = { faultType = it.substringBefore(" · ").toInt() },
         )
         Spacer(Modifier.height(8.dp))
         CmmsDropdown(
             label = s("FaultCause"),
-            options = if (Lang.isRtl) FAULT_CAUSES.second else FAULT_CAUSES.first,
-            selected = faultCause,
-            onSelect = { faultCause = it },
+            options = options.faultCauses.map { "${it.id} · ${it.label}" },
+            selected = options.faultCauses.firstOrNull { it.id == faultCause }?.let { "${it.id} · ${it.label}" },
+            onSelect = { faultCause = it.substringBefore(" · ").toInt() },
         )
         Spacer(Modifier.height(10.dp))
 
@@ -382,21 +447,22 @@ private fun CompleteCard(request: CmmsRequest) {
         }
         if (tempRepair) {
             Spacer(Modifier.height(6.dp))
-            CmmsField(value = permDue, onValue = { permDue = it }, placeholder = s("PermanentRepairDue"))
+            CmmsField(value = permDue, onValue = { permDue = it }, placeholder = "${s("PermanentRepairDue")} (YYYY-MM-DD)")
         }
         Spacer(Modifier.height(12.dp))
 
         SectionTitle(s("SparePartsUsed"))
         Spacer(Modifier.height(6.dp))
-        addedParts.forEach { (name, qty) ->
+        addedParts.forEach { (id, qty) ->
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(CmmsIcons.Package, contentDescription = null, tint = CmmsMuted, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(name, fontSize = 13.sp, color = CmmsText, modifier = Modifier.weight(1f))
-                Text("× $qty", fontSize = 12.5.sp, color = CmmsMuted, fontWeight = FontWeight.Medium)
+                Text(request.spareParts.firstOrNull { it.id == id }?.name ?: "#$id", fontSize = 13.sp, color = CmmsText, modifier = Modifier.weight(1f))
+                CmmsField("$qty", { value -> value.toIntOrNull()?.let { addedParts = addedParts + (id to it) } }, placeholder = s("Quantity"), modifier = Modifier.width(64.dp))
+                CmmsOutlineButton("×", { addedParts = addedParts - id })
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -406,22 +472,27 @@ private fun CompleteCard(request: CmmsRequest) {
                 placeholder = s("SearchPartPlaceholder"),
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(8.dp))
-            CmmsOutlineButton(
-                text = s("AddPart"),
-                onClick = {
-                    val part = Mock.spareParts.firstOrNull { it.name.contains(partQuery, true) || it.number.contains(partQuery, true) }
-                        ?: Mock.spareParts.first()
-                    addedParts = addedParts + (part.name to 1)
-                    partQuery = ""
-                },
-                icon = CmmsIcons.Plus,
-            )
+        }
+        if (partQuery.isNotBlank()) request.spareParts.filter { it.name.contains(partQuery, true) }.take(10).forEach { part ->
+            CmmsOutlineButton("${part.name} (${part.quantity})", {
+                addedParts = addedParts + (part.id to ((addedParts[part.id] ?: 0) + 1))
+                partQuery = ""
+            }, icon = CmmsIcons.Plus)
         }
         Spacer(Modifier.height(14.dp))
         CmmsButton(
-            text = s("MarkComplete"),
-            onClick = { request.status = ReqStatus.Completed },
+            text = s(if (busy) "Loading" else "MarkComplete"),
+            enabled = !busy && resolution.isNotBlank(),
+            onClick = {
+                val parts = JSONArray()
+                addedParts.forEach { (id, qty) -> parts.put(JSONObject().put("spare_part_id", id).put("quantity", qty)) }
+                val check = JSONObject()
+                request.checklist.forEach { check.put(it.id.toString(), it.id in checked.value) }
+                submit("complete", JSONObject().put("resolution_notes", resolution).put("technician_notes", techNotes)
+                    .put("cost_labor", labor).put("fault_type_id", faultType).put("fault_cause_id", faultCause)
+                    .put("is_temporary_repair", tempRepair).put("permanent_repair_due", if (tempRepair) permDue else null)
+                    .put("parts", parts).put("check", check)) {}
+            },
             icon = CmmsIcons.CheckCircle,
             bg = CmmsSuccess,
             modifier = Modifier.fillMaxWidth(),
@@ -431,7 +502,7 @@ private fun CompleteCard(request: CmmsRequest) {
 }
 
 @Composable
-private fun CommentCard() {
+private fun CommentCard(busy: Boolean, submit: SubmitAction) {
     var comment by remember { mutableStateOf("") }
     CmmsCard {
         SectionTitle(s("AddComment"))
@@ -439,14 +510,14 @@ private fun CommentCard() {
         CmmsField(value = comment, onValue = { comment = it }, placeholder = s("CommentPlaceholder"), singleLine = false, minHeight = 56.dp)
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            CmmsButton(text = s("AddComment"), onClick = { comment = "" }, icon = CmmsIcons.Send, minHeight = 36.dp)
+            CmmsButton(text = s("AddComment"), onClick = { submit("comments", JSONObject().put("note", comment)) { comment = "" } }, enabled = !busy && comment.isNotBlank(), icon = CmmsIcons.Send, minHeight = 36.dp)
         }
     }
 }
 
 @Composable
 private fun TimelineCard(request: CmmsRequest) {
-    val entries = Mock.timelineFor(request)
+    val entries = request.timeline
     CmmsCard {
         SectionTitle(s("Timeline"))
         Spacer(Modifier.height(8.dp))
