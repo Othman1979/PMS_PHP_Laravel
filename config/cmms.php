@@ -8,6 +8,15 @@ return [
     'admin_username' => env('CMMS_ADMIN_USERNAME', 'admin'),
     'admin_password' => env('CMMS_ADMIN_PASSWORD', 'ChangeMe!2026'),
 
+    // Restaurant identity defaults; the developer settings page overrides these at runtime.
+    'company' => [
+        'name_ar' => env('CMMS_COMPANY_NAME_AR'),
+        'name_en' => env('CMMS_COMPANY_NAME_EN'),
+        'logo' => env('CMMS_COMPANY_LOGO'),
+        'address' => env('CMMS_COMPANY_ADDRESS'),
+        'phone' => env('CMMS_COMPANY_PHONE'),
+    ],
+
     // Upload limits (kilobytes) and allowed extensions.
     'upload_max_kb' => 10240,
     'upload_extensions' => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'],

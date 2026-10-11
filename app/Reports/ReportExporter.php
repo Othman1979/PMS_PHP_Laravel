@@ -2,6 +2,7 @@
 
 namespace App\Reports;
 
+use App\Support\Branding;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ class ReportExporter
     public function xlsx(Report $report, ReportFilters $filters): StreamedResponse
     {
         $spreadsheet = new Spreadsheet;
-        $spreadsheet->getProperties()->setTitle($report->title())->setCreator(__('AppName'));
+        $spreadsheet->getProperties()->setTitle($report->title())->setCreator(Branding::name());
 
         if ($report instanceof SummaryReport) {
             $summary = $report->build($filters);
@@ -62,7 +63,7 @@ class ReportExporter
 
         $mpdf = $this->mpdf($rtl, $report->columns() > 8 ? 'A4-L' : 'A4-L');
         $mpdf->SetTitle($report->title());
-        $mpdf->SetHTMLFooter('<div style="text-align:center;font-size:8pt;color:#616161">'.__('AppName').' — '.__('Page').' {PAGENO} / {nbpg}</div>');
+        $mpdf->SetHTMLFooter('<div style="text-align:center;font-size:8pt;color:#616161">'.e(Branding::name()).' — '.__('Page').' {PAGENO} / {nbpg}</div>');
         $mpdf->WriteHTML($view->render());
 
         return response($mpdf->Output('', 'S'), 200, [

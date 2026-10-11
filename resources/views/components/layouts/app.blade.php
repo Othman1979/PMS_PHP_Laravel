@@ -1,6 +1,8 @@
 @php
     use App\Enums\Role;
     $user = auth()->user();
+    $brandName = \App\Support\Branding::name();
+    $brandLogo = \App\Support\Branding::logoUrl();
     $canManage = $user?->canManage() ?? false;
     $showPane = $user !== null && $user->hasNavPane();
     $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY) || request()->boolean(\App\Http\Middleware\HandleFormDialog::INPUT);
@@ -20,10 +22,14 @@
             </button>
         @endif
         <a class="titlebar-brand" href="{{ route('home') }}">
+            @if ($brandLogo)
+                <img class="brand-logo" src="{{ $brandLogo }}" alt="">
+            @else
             <span class="brand-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
             </span>
-            <span class="titlebar-name">{{ __('AppName') }}</span>
+            @endif
+            <span class="titlebar-name">{{ $brandName }}</span>
         </a>
         <div class="titlebar-actions">
             @if ($user)
@@ -101,6 +107,10 @@
                 <x-nav-item route="fault-types.index" :label="__('FaultTypes')" icon="bolt" active="fault-types.*" />
                 <x-nav-item route="fault-causes.index" :label="__('FaultCauses')" icon="search" active="fault-causes.*" />
                 <x-nav-item route="settings.index" :label="__('GeneralSettings')" icon="settings" active="settings.*" />
+            @endif
+            @if ($user->isDeveloper())
+                <div class="navpane-header">{{ __('Developer') }}</div>
+                <x-nav-item route="developer.settings.index" :label="__('DeveloperSettings')" icon="settings" active="developer.*" />
             @endif
         </nav>
         <div class="navpane-backdrop" id="paneBackdrop"></div>

@@ -784,5 +784,22 @@
     "Activity_calibration_reminder": "إرسال تذكير معايرة",
     "Activity_equipment_commissioned": "اعتماد تشغيل معدة",
     "Activity_request_released": "إعادة تسليم معدة بعد الصيانة",
-    "Activity_food_safety_decision": "قرار سلامة الغذاء"
+    "Activity_food_safety_decision": "قرار سلامة الغذاء",
+    "Developer": "المطوّر",
+    "DeveloperSettings": "إعدادات المطوّر",
+    "DeveloperSettings_Hint": "تظهر لحسابات المطوّر فقط. هوية المطعم تظهر في شريط العنوان وصفحة الدخول والتقارير وملفات PDF/Excel وصفحات الطباعة والتطبيق المثبّت.",
+    "Branding": "هوية المطعم",
+    "CompanyNameAr": "اسم المطعم (عربي)",
+    "CompanyNameEn": "اسم المطعم (إنجليزي)",
+    "CompanyAddress": "العنوان",
+    "CompanyPhone": "الهاتف",
+    "CompanyLogo": "الشعار",
+    "CompanyLogo_Hint": "PNG أو JPG أو WEBP أو SVG حتى 2 ميغابايت؛ يظهر في شريط العنوان وصفحة الدخول وترويسة PDF.",
+    "RemoveLogo": "إزالة الشعار الحالي",
+    "BrandingPreview": "معاينة",
+    "BrandingWhere": "الحقول الفارغة تأخذ قيمة اللغة الأخرى، ثم الاسم الافتراضي للنظام.",
+    "DeveloperAccounts": "حسابات المطوّر",
+    "DeveloperAccounts_Hint": "تُدار من الخادم بالأمر: php artisan cmms:developer <username>. لا تظهر في صفحة المستخدمين.",
+    "UploadRejected": "تم رفض الملف. تحقق من نوعه وحجمه.",
+    "Activity_branding_updated": "تغيير هوية المطعم"
 }

@@ -16,6 +16,16 @@ class Setting extends Model
 
     public const BACKUP_KEEP = 'backup_keep';
 
+    public const COMPANY_NAME_AR = 'company_name_ar';
+
+    public const COMPANY_NAME_EN = 'company_name_en';
+
+    public const COMPANY_LOGO = 'company_logo';
+
+    public const COMPANY_ADDRESS = 'company_address';
+
+    public const COMPANY_PHONE = 'company_phone';
+
     protected $primaryKey = 'key';
 
     protected $keyType = 'string';

@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('PrintQrLabels') }} - {{ __('AppName') }}</title>
+    <title>{{ __('PrintQrLabels') }} - {{ \App\Support\Branding::name() }}</title>
     <link rel="stylesheet" href="{{ asset('lib/bootstrap/dist/css/'.($rtl ? 'bootstrap.rtl.min.css' : 'bootstrap.min.css')) }}">
     <style>
         @font-face { font-family: "Noto Kufi Arabic"; font-weight: 100 900; font-display: swap; src: url("{{ asset('fonts/noto-kufi-arabic/NotoKufiArabic-arabic.woff2') }}") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }

@@ -4,12 +4,14 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DeveloperSettingController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EquipmentImportController;
 use App\Http\Controllers\FaultCauseController;
 use App\Http\Controllers\FaultTypeController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\MaintenanceRequestController;
+use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PreventiveMaintenanceController;
@@ -24,6 +26,8 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/language', LanguageController::class)->name('language');
+
+Route::get('/manifest.webmanifest', ManifestController::class)->name('manifest');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
@@ -178,5 +182,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/backup', 'backup')->name('backup');
             Route::get('/activity', 'activity')->name('activity');
         });
+    });
+
+    Route::controller(DeveloperSettingController::class)->prefix('dev/settings')->name('developer.settings.')->middleware('developer')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::put('/', 'update')->name('update');
     });
 });

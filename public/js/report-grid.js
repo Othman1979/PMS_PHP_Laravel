@@ -112,7 +112,7 @@
         printAsHtml: true,
         printRowRange: 'all',
         printStyled: true,
-        printHeader: '<div class="rg-print-head"><h2>' + esc(cfg.title) + '</h2><div class="rg-print-filters">' + filtersHtml + '</div></div>',
+        printHeader: '<div class="rg-print-head"><div class="rg-print-company">' + esc(cfg.company || '') + '</div><h2>' + esc(cfg.title) + '</h2><div class="rg-print-filters">' + filtersHtml + '</div></div>',
         printFooter: '<div class="rg-print-foot">' + esc(L.generatedAt) + ': ' + new Date().toLocaleString(cfg.locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB') + '</div>'
     });
 

@@ -784,5 +784,22 @@
     "Activity_calibration_reminder": "Calibration reminder sent",
     "Activity_equipment_commissioned": "Equipment commissioned",
     "Activity_request_released": "Equipment released after maintenance",
-    "Activity_food_safety_decision": "Food-safety decision"
+    "Activity_food_safety_decision": "Food-safety decision",
+    "Developer": "Developer",
+    "DeveloperSettings": "Developer settings",
+    "DeveloperSettings_Hint": "Visible only to developer accounts. Restaurant identity shown in the title bar, login page, reports, PDF/Excel exports, printed pages and the installed app.",
+    "Branding": "Restaurant identity",
+    "CompanyNameAr": "Restaurant name (Arabic)",
+    "CompanyNameEn": "Restaurant name (English)",
+    "CompanyAddress": "Address",
+    "CompanyPhone": "Phone",
+    "CompanyLogo": "Logo",
+    "CompanyLogo_Hint": "PNG, JPG, WEBP or SVG up to 2 MB; shown in the title bar, login page and PDF headers.",
+    "RemoveLogo": "Remove current logo",
+    "BrandingPreview": "Preview",
+    "BrandingWhere": "Empty fields fall back to the other language, then to the default system name.",
+    "DeveloperAccounts": "Developer accounts",
+    "DeveloperAccounts_Hint": "Managed from the server with: php artisan cmms:developer <username>. Hidden from the Users page.",
+    "UploadRejected": "The file was rejected. Check its type and size.",
+    "Activity_branding_updated": "Restaurant identity changed"
 }

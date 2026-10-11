@@ -15,10 +15,10 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         return view('users.index', [
-            'users' => User::with('department')->orderBy('role')->orderBy('full_name')->get(),
+            'users' => User::with('department')->visibleTo($request->user())->orderBy('role')->orderBy('full_name')->get(),
         ]);
     }
 
@@ -36,13 +36,16 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('ok', 'Saved');
     }
 
-    public function edit(User $user): View
+    public function edit(Request $request, User $user): View
     {
+        $this->ensureVisible($request, $user);
+
         return $this->form($user);
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        $this->ensureVisible($request, $user);
         $data = $this->validated($request, $user);
         if (blank($data['password'] ?? null)) {
             unset($data['password']);
@@ -56,6 +59,12 @@ class UserController extends Controller
         ActivityLog::record('user_updated', $user, $user->username.' ('.$user->role->value.')');
 
         return redirect()->route('users.index')->with('ok', 'Saved');
+    }
+
+    /** Developer accounts are hidden from regular admins as if they did not exist. */
+    private function ensureVisible(Request $request, User $user): void
+    {
+        abort_if($user->isDeveloper() && ! $request->user()->isDeveloper(), 404);
     }
 
     private function form(User $user): View

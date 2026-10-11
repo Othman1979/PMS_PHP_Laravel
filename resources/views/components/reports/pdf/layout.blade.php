@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <style>
     body { font-family: notokufi; font-size: 9pt; color: #1a1a1a; }
-    h1 { font-size: 15pt; margin: 0 0 4px; color: #004c99; }
+    table.brand { width: 100%; border-collapse: collapse; margin-bottom: 6px; border-bottom: 2px solid #004c99; }
+    table.brand td { padding: 0 0 5px; vertical-align: middle; }
+    table.brand .company { font-size: 13pt; font-weight: bold; color: #1a1a1a; }
+    table.brand .contact { font-size: 8pt; color: #616161; }
+    table.brand .logo { width: 70px; text-align: {{ $rtl ? 'left' : 'right' }}; }
+    table.brand img { max-height: 42px; max-width: 70px; }
+    h1 { font-size: 15pt; margin: 6px 0 4px; color: #004c99; }
     .meta { font-size: 8pt; color: #616161; margin: 0 0 10px; }
     .meta span { margin-{{ $rtl ? 'left' : 'right' }}: 10px; }
     table.grid { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
@@ -23,6 +29,17 @@
 </style>
 </head>
 <body>
+<table class="brand">
+    <tr>
+        <td>
+            <div class="company">{{ \App\Support\Branding::fullName() }}</div>
+            @if ($contact = \App\Support\Branding::contactLine())<div class="contact">{{ $contact }}</div>@endif
+        </td>
+        @if ($logoPath = \App\Support\Branding::logoPath())
+            <td class="logo"><img src="{{ $logoPath }}" alt=""></td>
+        @endif
+    </tr>
+</table>
 <h1>{{ $report->title() }}</h1>
 <p class="meta">
     <span>{{ __('GeneratedAt') }}: {{ now()->format('Y-m-d H:i') }}</span>
