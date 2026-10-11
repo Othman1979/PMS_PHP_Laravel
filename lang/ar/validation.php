@@ -96,6 +96,7 @@ return [
         'invoice_date' => 'تاريخ الفاتورة',
         'invoice_number' => 'رقم الفاتورة',
         'items' => 'البنود',
+        'location' => 'الموقع',
         'manual' => 'دليل الاستخدام',
         'name' => 'الاسم',
         'name_ar' => 'الاسم بالعربي',
