@@ -8,6 +8,7 @@ use App\Enums\Role;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -89,12 +90,18 @@ class MaintenanceRequest extends Model
         return $this->hasMany(RequestTechnician::class, 'request_id')->orderBy('id');
     }
 
+    /** @return Collection<int, RequestTechnician> */
+    public function activeTeamMembers(): Collection
+    {
+        return $this->teamMembers->whereNull('removed_at');
+    }
+
     /** @return list<int> */
     public function technicianIds(): array
     {
         return array_values(array_unique(array_filter([
             $this->assigned_technician_id,
-            ...$this->teamMembers->pluck('user_id')->all(),
+            ...$this->activeTeamMembers()->pluck('user_id')->all(),
         ])));
     }
 
@@ -123,7 +130,7 @@ class MaintenanceRequest extends Model
     {
         $query->where(fn (Builder $team) => $team
             ->where('assigned_technician_id', $userId)
-            ->orWhereHas('teamMembers', fn (Builder $member) => $member->where('user_id', $userId)));
+            ->orWhereHas('teamMembers', fn (Builder $member) => $member->where('user_id', $userId)->whereNull('removed_at')));
     }
 
     /** The temporary-repair request this follow-up was generated from. */

@@ -18,6 +18,7 @@ object Session {
     private const val KEY_TOKEN = "auth_token"
     private const val KEY_LAST_NOTIF = "last_notif_id"
     private const val KEY_BATTERY_ASKED = "battery_asked"
+    private const val KEY_LANGUAGE = "language"
     const val DEFAULT_URL = "http://192.168.1.30:8000"
 
     private lateinit var prefs: SharedPreferences
@@ -48,6 +49,10 @@ object Session {
     var batteryAsked: Boolean
         get() = prefs.getBoolean(KEY_BATTERY_ASKED, false)
         set(value) = prefs.edit().putBoolean(KEY_BATTERY_ASKED, value).apply()
+
+    var language: String
+        get() = prefs.getString(KEY_LANGUAGE, "ar") ?: "ar"
+        set(value) = prefs.edit().putString(KEY_LANGUAGE, value).apply()
 
     fun saveLogin(id: Int, token: String, name: String, username: String, role: String) {
         prefs.edit()

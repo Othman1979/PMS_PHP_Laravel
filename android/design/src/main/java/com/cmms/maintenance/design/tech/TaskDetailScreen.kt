@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -155,9 +156,9 @@ fun TaskDetailScreen(request: CmmsRequest, onBack: () -> Unit, onLogout: () -> U
             if (current.attachments.isNotEmpty()) item { AttachmentsCard(current) }
             item { ActionsCard(current, busy, submit) }
             if (current.isLead && (current.status == ReqStatus.InProgress || current.status == ReqStatus.WaitingParts) && options != null) {
-                item { CompleteCard(current, options!!, busy, submit) }
+                item(key = "complete-${current.id}") { CompleteCard(current, options!!, busy, submit) }
             }
-            if (current.status != ReqStatus.Cancelled) item { CommentCard(busy, submit) }
+            if (current.status != ReqStatus.Cancelled) item(key = "comment-${current.id}") { CommentCard(busy, submit) }
             error?.let { message -> item { Text(message, color = CmmsDanger) } }
             item { TimelineCard(current) }
             }
@@ -398,17 +399,17 @@ private fun ActionsCard(request: CmmsRequest, busy: Boolean, submit: SubmitActio
 
 @Composable
 private fun CompleteCard(request: CmmsRequest, options: RequestOptions, busy: Boolean, submit: SubmitAction) {
-    var resolution by remember { mutableStateOf("") }
-    var techNotes by remember { mutableStateOf("") }
-    var labor by remember { mutableStateOf("0.00") }
-    var tempRepair by remember { mutableStateOf(false) }
-    var permDue by remember { mutableStateOf("") }
-    var faultType by remember { mutableStateOf<Int?>(null) }
-    var faultCause by remember { mutableStateOf<Int?>(null) }
-    var partQuery by remember { mutableStateOf("") }
-    var addedParts by remember { mutableStateOf(mapOf<Int, Int>()) }
-    val checked = remember { mutableStateOf(emptySet<Int>()) }
-    var workers by remember(request.id) { mutableStateOf(request.team.filter { it.isLead }.map { it.id }.toSet()) }
+    var resolution by rememberSaveable(request.id) { mutableStateOf("") }
+    var techNotes by rememberSaveable(request.id) { mutableStateOf("") }
+    var labor by rememberSaveable(request.id) { mutableStateOf("0.00") }
+    var tempRepair by rememberSaveable(request.id) { mutableStateOf(false) }
+    var permDue by rememberSaveable(request.id) { mutableStateOf("") }
+    var faultType by rememberSaveable(request.id) { mutableStateOf<Int?>(null) }
+    var faultCause by rememberSaveable(request.id) { mutableStateOf<Int?>(null) }
+    var partQuery by rememberSaveable(request.id) { mutableStateOf("") }
+    var addedParts by rememberSaveable(request.id) { mutableStateOf(mapOf<Int, Int>()) }
+    val checked = rememberSaveable(request.id) { mutableStateOf(emptySet<Int>()) }
+    var workers by rememberSaveable(request.id) { mutableStateOf(request.team.filter { it.isLead }.map { it.id }.toSet()) }
 
     CmmsCard {
         SectionTitle(s("MarkComplete"))

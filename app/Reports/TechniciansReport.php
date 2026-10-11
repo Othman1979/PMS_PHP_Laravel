@@ -49,10 +49,10 @@ class TechniciansReport extends Report
             ->whereNotNull('assigned_technician_id')
             ->with(['assignedTechnician', 'teamMembers.user'])->get();
 
-        return User::whereIn('id', $requests->flatMap(fn (MaintenanceRequest $r) => $r->technicianIds())->unique())
+        return User::whereIn('id', $requests->flatMap(fn (MaintenanceRequest $r) => [$r->assigned_technician_id, ...$r->teamMembers->pluck('user_id')->all()])->unique())
             ->when($filters->technicianId, fn ($query) => $query->whereKey($filters->technicianId))
             ->get()->map(function (User $technician) use ($requests, $closed) {
-                $group = $requests->filter(fn (MaintenanceRequest $r) => in_array($technician->id, $r->technicianIds(), true));
+                $group = $requests->filter(fn (MaintenanceRequest $r) => $r->assigned_technician_id === $technician->id || $r->teamMembers->contains('user_id', $technician->id));
                 $completed = $group->filter(fn (MaintenanceRequest $r) => in_array($technician->id, $r->actualTechnicianIds(), true));
                 $lead = $completed->filter(fn (MaintenanceRequest $r) => $r->teamMembers->firstWhere('user_id', $technician->id)?->worked_as_lead
                     ?? $r->assigned_technician_id === $technician->id);
@@ -64,7 +64,7 @@ class TechniciansReport extends Report
                     'completed' => $completed->count(),
                     'lead' => $lead->count(),
                     'participant' => $completed->count() - $lead->count(),
-                    'open' => $group->reject(fn (MaintenanceRequest $r) => in_array($r->status, $closed, true))->count(),
+                    'open' => $group->filter(fn (MaintenanceRequest $r) => in_array($technician->id, $r->technicianIds(), true) && ! in_array($r->status, $closed, true))->count(),
                     'completion_rate' => round($completed->count() / $group->count() * 100, 1),
                     'avg_response' => $this->avgHours($group, 'started_at'),
                     'avg_completion' => $this->avgHours($completed, 'completed_at'),

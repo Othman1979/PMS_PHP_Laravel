@@ -170,6 +170,9 @@ class RequestWorkflow
                 $request->status = $current->status;
                 throw ValidationException::withMessages(['status' => __('Error_StateChanged')]);
             }
+            if ($by?->isTechnician() && $from === $to) {
+                abort_unless($current?->hasTechnician($by), 403);
+            }
             if ($by?->isTechnician() && $from !== $to
                 && in_array($to, [RequestStatus::Accepted, RequestStatus::InProgress, RequestStatus::WaitingParts, RequestStatus::Completed], true)) {
                 abort_unless($current?->isLeadTechnician($by), 403);
@@ -200,7 +203,10 @@ class RequestWorkflow
         DB::transaction(function () use ($request, $technician, $by, $note) {
             $current = MaintenanceRequest::lockForUpdate()->findOrFail($request->id);
             abort_unless(in_array($current->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Reopened], true), 409, __('Error_StateChanged'));
-            $request->teamMembers()->firstOrCreate(['user_id' => $technician->id]);
+            if ($current->assigned_technician_id !== null && $current->assigned_technician_id !== $technician->id) {
+                $current->teamMembers()->updateOrCreate(['user_id' => $current->assigned_technician_id], ['removed_at' => now()]);
+            }
+            $request->teamMembers()->updateOrCreate(['user_id' => $technician->id], ['removed_at' => null]);
             $request->unsetRelation('teamMembers');
             $request->assigned_technician_id = $technician->id;
             $request->assigned_at = now();
@@ -228,8 +234,8 @@ class RequestWorkflow
             $current->teamMembers()->firstOrCreate(['user_id' => $current->assigned_technician_id]);
             $added = [];
             foreach ($technicians as $technician) {
-                $member = $current->teamMembers()->firstOrCreate(['user_id' => $technician->id]);
-                if ($member->wasRecentlyCreated) {
+                $member = $current->teamMembers()->updateOrCreate(['user_id' => $technician->id], ['removed_at' => null]);
+                if ($member->wasRecentlyCreated || $member->wasChanged('removed_at')) {
                     $added[] = $technician->full_name;
                 }
             }
@@ -239,6 +245,7 @@ class RequestWorkflow
             }
             if ($leadId !== null && $leadId !== $current->assigned_technician_id) {
                 $previous = $current->assignedTechnician->full_name;
+                $current->teamMembers()->where('user_id', $current->assigned_technician_id)->update(['removed_at' => now()]);
                 $next = $technicians->firstWhere('id', $leadId);
                 $current->assigned_technician_id = $leadId;
                 $current->setRelation('assignedTechnician', $next);

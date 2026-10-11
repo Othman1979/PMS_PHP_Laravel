@@ -314,6 +314,7 @@
     "QuickIssues_SafetySystems": "إنذار بدون سبب|لا يعمل|ضوء أو صوت تحذير|يحتاج فحص",
     "QuickRequest": "طلب صيانة سريع",
     "Quick_Another": "طلب آخر لنفس الجهاز",
+    "Quick_AnotherGeneral": "الإبلاغ عن عطل عام آخر",
     "Quick_DescPlaceholder": "اضغط على مشكلة من فوق أو اكتبها بكلماتك… مثال: الثلاجة لا تبرد منذ الصباح",
     "Quick_FindPlaceholder": "اسم الجهاز أو رمزه",
     "Quick_FindTitle": "امسح رمز QR الموجود على الجهاز بكاميرا الهاتف، أو ابحث عن الجهاز هنا.",

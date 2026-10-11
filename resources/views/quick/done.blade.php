@@ -21,7 +21,7 @@
             @if ($mr->equipment)
                 <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.show', $mr->equipment->code) }}">{{ __('Quick_Another') }}</a>
             @else
-                <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.general') }}">{{ __('Quick_Another') }}</a>
+                <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.general') }}">{{ __('Quick_AnotherGeneral') }}</a>
             @endif
             @unless ($employee)
                 <a class="btn btn-link" href="{{ route('requests.index') }}">{{ __('MyRequests') }}</a>

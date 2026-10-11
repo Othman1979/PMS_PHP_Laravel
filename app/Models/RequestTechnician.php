@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'confirmed_at', 'worked_at', 'worked_as_lead'])]
+#[Fillable(['user_id', 'confirmed_at', 'worked_at', 'worked_as_lead', 'removed_at'])]
 class RequestTechnician extends Model
 {
     protected function casts(): array
@@ -15,6 +15,7 @@ class RequestTechnician extends Model
             'confirmed_at' => 'datetime',
             'worked_at' => 'datetime',
             'worked_as_lead' => 'boolean',
+            'removed_at' => 'datetime',
         ];
     }
 

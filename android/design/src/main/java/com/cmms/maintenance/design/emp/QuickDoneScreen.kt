@@ -103,7 +103,7 @@ fun EmpDoneScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     CmmsOutlineButton(
-                        text = s("Quick_Another"),
+                        text = s(if (request.isGeneral) "Quick_AnotherGeneral" else "Quick_Another"),
                         onClick = onAnother,
                         modifier = Modifier.fillMaxWidth(),
                         minHeight = 42.dp,

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
 use App\Enums\TechnicianTrade;
+use App\Events\RequestChanged;
 use App\Models\Department;
+use App\Models\Equipment;
 use App\Models\FaultCause;
 use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
@@ -17,6 +19,8 @@ use App\Services\RequestWorkflow;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class SharedRequestsTest extends TestCase
@@ -107,23 +111,117 @@ class SharedRequestsTest extends TestCase
         $this->assertSame($employee->id, MaintenanceRequest::findOrFail($id)->created_by_id);
     }
 
-    public function test_manager_can_transfer_lead_without_losing_team_or_history(): void
+    public function test_manager_can_transfer_lead_and_revoke_previous_lead_without_losing_history(): void
     {
         $mr = $this->sharedRequest();
+        app(RequestWorkflow::class)->comment($mr, $this->user('tech1'), 'Mechanical inspection done');
         $this->actingAs($this->user('tech2'))->post("/requests/{$mr->id}/team", ['lead_id' => $this->user('tech2')->id])->assertForbidden();
         $before = $mr->timeline()->count();
         $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/team", ['lead_id' => $this->user('tech2')->id])
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($this->user('tech2')->id, $mr->fresh()->assigned_technician_id);
         $this->assertSame(2, $mr->teamMembers()->count());
+        $this->assertSame([$this->user('tech2')->id], $mr->fresh()->technicianIds());
+        $this->assertNotNull($mr->teamMembers()->where('user_id', $this->user('tech1')->id)->firstOrFail()->removed_at);
         $this->assertSame($before + 1, $mr->timeline()->count());
         $this->assertStringContainsString($this->user('tech1')->full_name, $mr->timeline()->latest('id')->firstOrFail()->note);
         $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/accept-start")->assertForbidden();
         $this->actingAs($this->user('tech2'))->post("/requests/{$mr->id}/accept-start")->assertRedirect();
         $this->assertSame(RequestStatus::InProgress, $mr->fresh()->status);
-        $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/note", ['note' => 'Mechanical inspection done'])
-            ->assertRedirect()->assertSessionHasNoErrors();
-        $this->get("/requests/{$mr->id}")->assertOk()->assertSee('Mechanical inspection done');
+        $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/note", ['note' => 'Not allowed after transfer'])
+            ->assertForbidden();
+        $this->get("/requests/{$mr->id}")->assertForbidden();
+        $this->actingAs($this->user('tech2'))->get("/requests/{$mr->id}")->assertOk()->assertSee('Mechanical inspection done')
+            ->assertSee('data-live-reload="technician.'.$this->user('tech2')->id.'"', false);
+    }
+
+    public function test_removed_lead_loses_api_visibility_actions_and_future_broadcasts_until_readded(): void
+    {
+        $mr = $this->sharedRequest();
+        app(RequestWorkflow::class)->updateTeam($mr, $this->user('coord'), [], $this->user('tech2')->id);
+        $this->token('tech1');
+        $this->getJson("/api/requests/{$mr->id}")->assertForbidden();
+        $items = $this->getJson('/api/tasks')->assertOk()->json('tasks');
+        $this->assertNotContains($mr->id, array_column($items, 'id'));
+        $this->postJson("/api/requests/{$mr->id}/comments", ['note' => 'Denied'])->assertForbidden();
+        $this->postJson("/api/requests/{$mr->id}/participate")->assertForbidden();
+        $this->postJson("/api/requests/{$mr->id}/actions/accept-start")->assertForbidden();
+        $event = new RequestChanged($mr->fresh());
+        $channels = collect($event->broadcastOn())->pluck('name');
+        $this->assertFalse($channels->contains('private-technician.'.$this->user('tech1')->id));
+        $this->assertFalse($channels->contains('private-request.'.$mr->id));
+        $this->assertSame([$this->user('tech2')->id], array_column($event->payload['team'], 'id'));
+
+        app(RequestWorkflow::class)->updateTeam($mr->fresh(), $this->user('coord'), [$this->user('tech1')->id]);
+        $this->getJson("/api/requests/{$mr->id}")->assertOk()->assertJsonCount(2, 'request.team');
+        $this->assertSame(2, $mr->teamMembers()->count());
+        $this->postJson("/api/requests/{$mr->id}/comments", ['note' => 'Rejoined'])->assertOk();
+        $this->postJson("/api/requests/{$mr->id}/actions/accept-start")->assertForbidden();
+    }
+
+    public function test_quick_requests_reject_unsupported_photo_extensions_without_creating_requests(): void
+    {
+        $employee = $this->user('employee');
+        $before = MaintenanceRequest::count();
+        $this->actingAs($employee);
+        foreach (['/r/general', '/r/'.Equipment::firstOrFail()->code] as $url) {
+            $this->post($url, [
+                'department_id' => $employee->department_id, 'location' => 'Ceiling', 'description' => 'Light failure',
+                'photo' => UploadedFile::fake()->image('fault.bmp'),
+            ])->assertSessionHasErrors('photo');
+            $this->assertSame($before, MaintenanceRequest::count());
+        }
+    }
+
+    public function test_general_fault_stores_a_supported_photo_and_shows_general_success_wording(): void
+    {
+        $employee = $this->user('employee');
+        $this->actingAs($employee)->post('/r/general', [
+            'department_id' => $employee->department_id, 'location' => 'Ceiling', 'description' => 'Light failure',
+            'photo' => UploadedFile::fake()->image('fault.jpg'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $mr = MaintenanceRequest::latest('id')->firstOrFail();
+        $attachment = $mr->attachments()->firstOrFail();
+        $path = public_path($attachment->file_url);
+        try {
+            $this->assertFileExists($path);
+            $this->assertSame('fault.jpg', $attachment->file_name);
+            $this->assertSame($employee->id, $attachment->uploaded_by_id);
+            $this->get('/r/done/'.$mr->id)->assertOk()->assertSee(__('Quick_AnotherGeneral'))->assertDontSee(__('Quick_Another'));
+        } finally {
+            File::delete($path);
+        }
+    }
+
+    public function test_reassignment_after_reopening_preserves_historical_work_and_counts_cost_once(): void
+    {
+        $mr = $this->sharedRequest();
+        $mr->update(['status' => RequestStatus::InProgress]);
+        $workflow = app(RequestWorkflow::class);
+        $lead = $this->user('tech1');
+        $next = $this->user('tech2');
+        $workflow->complete($mr, $lead, 'First repair', null, 12, [], [], workedTechnicianIds: [$lead->id, $next->id]);
+        $this->actingAs($this->user('admin'))->post("/requests/{$mr->id}/close")->assertRedirect();
+        $this->post("/requests/{$mr->id}/reopen", ['note' => 'Fault returned'])->assertRedirect();
+        $this->post("/requests/{$mr->id}/assign", ['technician_id' => $next->id])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertFalse($mr->fresh()->hasTechnician($lead));
+        $this->actingAs($next)->post("/requests/{$mr->id}/accept-start")->assertRedirect();
+        $workflow->complete($mr->fresh(), $next, 'Second repair', null, 8, [], [], workedTechnicianIds: [$next->id]);
+        $this->assertEqualsCanonicalizing([$lead->id, $next->id], $mr->fresh()->actualTechnicianIds());
+        $this->assertSame(20.0, $mr->fresh()->totalCost());
+        $filters = ReportFilters::fromRequest(request(), [], null);
+        $rows = (new TechniciansReport)->rows($filters);
+        $this->assertSame(20.0, $rows->sum('cost'));
+        $former = $rows->firstWhere('technician', $lead->full_name);
+        $this->assertSame(1, $former['completed']);
+        $this->assertSame(1, $former['lead']);
+        $this->assertSame(0, $former['open']);
+        $this->assertSame(0.0, $former['cost']);
+        $filters = ReportFilters::fromRequest(request()->merge(['technician_id' => $lead->id]), ['technician_id'], null);
+        $report = (new RequestsReport)->rows($filters);
+        $this->assertCount(1, $report);
+        $this->assertStringContainsString($lead->full_name, $report[0]['workers']);
+        $this->assertStringContainsString($next->full_name, $report[0]['workers']);
     }
 
     public function test_invalid_team_updates_roll_back_and_general_faults_cannot_spoof_departments(): void

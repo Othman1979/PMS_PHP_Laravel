@@ -314,6 +314,7 @@
     "QuickIssues_SafetySystems": "False alarm|Not working|Warning light or sound|Needs inspection",
     "QuickRequest": "Quick maintenance request",
     "Quick_Another": "Another request for this equipment",
+    "Quick_AnotherGeneral": "Report another general fault",
     "Quick_DescPlaceholder": "Tap a problem above or write it in your own words… e.g. The fridge hasn't been cooling since morning",
     "Quick_FindPlaceholder": "Equipment name or code",
     "Quick_FindTitle": "Scan the QR code on the equipment with your phone camera, or search for it here.",

@@ -1,5 +1,12 @@
 @php
     use App\Enums\RequestStatus as S;
+    use App\Enums\Role;
+    $liveChannel = match (true) {
+        $user->canWatchAllRequests() => 'staff',
+        $user->isTechnician() => 'technician.'.$user->id,
+        $user->hasRole(Role::DepartmentManager) => 'department.'.$user->department_id,
+        default => 'user.'.$user->id,
+    };
     $status = $mr->status;
     $isCoordinator = $user->canManage();
     $isAssignedTech = $mr->isLeadTechnician($user);
@@ -14,7 +21,7 @@
     $fmt = fn ($d) => $d?->format('Y-m-d H:i');
 @endphp
 <x-layouts.app :title="__('RequestDetails')">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3" data-live-reload="request.{{ $mr->id }}">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3" data-live-reload="{{ $liveChannel }}" data-live-self="{{ $mr->id }}">
         <h2 class="h4 mb-0">
             {{ $mr->request_number }}
             <x-status-badge :status="$status" class="fs-6" />
@@ -97,9 +104,9 @@
                         <tr><th>{{ __('DueAt') }}</th><td class="{{ $mr->isOverdue() ? 'text-danger fw-semibold' : '' }}">{{ $fmt($mr->due_at) }} <x-due-badge :request="$mr" /></td></tr>
                     @endif
                     <tr><th>{{ __('LeadTechnician') }}</th><td>{{ $mr->assignedTechnician?->full_name ?? '-' }} {{ $fmt($mr->assigned_at) }}</td></tr>
-                    @if ($mr->teamMembers->count() > 1)
+                    @if ($mr->activeTeamMembers()->count() > 1)
                         <tr><th>{{ __('RequestTeam') }}</th><td>
-                            @foreach ($mr->teamMembers as $member)
+                            @foreach ($mr->activeTeamMembers() as $member)
                                 <div class="mb-2">
                                     <strong>{{ $member->user->full_name }}</strong>
                                     — {{ $member->user_id === $mr->assigned_technician_id ? __('LeadTechnician') : __('Participant') }}
@@ -464,10 +471,10 @@
                                 </div>
                             @endif
                             <div class="mb-2">
-                                @if ($mr->teamMembers->count() > 1)
+                                @if ($mr->activeTeamMembers()->count() > 1)
                                     <fieldset class="mb-3">
                                         <legend class="fs-6">{{ __('ConfirmActualParticipants') }}</legend>
-                                        @foreach ($mr->teamMembers as $member)
+                                        @foreach ($mr->activeTeamMembers() as $member)
                                             <label class="form-check mb-2">
                                                 <input class="form-check-input" type="checkbox" name="worked_technician_ids[]" value="{{ $member->user_id }}" @checked(in_array($member->user_id, old('worked_technician_ids', [$mr->assigned_technician_id])))>
                                                 <span class="form-check-label">{{ $member->user->full_name }}</span>

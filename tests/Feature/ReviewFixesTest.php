@@ -254,7 +254,7 @@ class ReviewFixesTest extends TestCase
         $this->actingAs($this->user('employee'))->get('/notifications/'.$json['items'][0]['id'].'/open')->assertForbidden();
     }
 
-    public function test_request_change_event_targets_staff_department_technician_requester_and_request_channels(): void
+    public function test_request_change_event_targets_staff_department_current_technician_and_requester_channels(): void
     {
         Event::fake([RequestChanged::class]);
         $mr = $this->newRequest();
@@ -268,7 +268,7 @@ class ReviewFixesTest extends TestCase
             return ! $e->isNew
                 && $e->payload['status'] === RequestStatus::Assigned->value
                 && $e->payload['statusLabel'] === Localized::all(fn () => RequestStatus::Assigned->label())
-                && $channels === ['private-staff', 'private-department.'.$mr->department_id, 'private-request.'.$mr->id,
+                && $channels === ['private-staff', 'private-department.'.$mr->department_id,
                     'private-technician.'.$tech->id, 'private-user.'.$mr->created_by_id];
         });
     }

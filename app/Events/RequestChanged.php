@@ -42,7 +42,6 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, Shou
         $channels = [
             new PrivateChannel('staff'),
             new PrivateChannel('department.'.$p['departmentId']),
-            new PrivateChannel('request.'.$p['id']),
         ];
         foreach ($p['technicianIds'] as $technicianId) {
             $channels[] = new PrivateChannel('technician.'.$technicianId);
@@ -81,7 +80,7 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, Shou
             'technicianId' => $r->assigned_technician_id,
             'technicianIds' => $r->technicianIds(),
             'location' => $r->location,
-            'team' => $r->teamMembers->map(fn ($member) => [
+            'team' => $r->activeTeamMembers()->map(fn ($member) => [
                 'id' => $member->user_id,
                 'name' => $member->user->full_name,
                 'specialty' => Localized::all(fn () => $member->user->specialtyLabel()),

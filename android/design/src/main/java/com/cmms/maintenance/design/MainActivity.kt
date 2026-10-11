@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Session.init(this)
+        Lang.current = Session.language
         Notifier.init(this)
         enableEdgeToEdge()
         setContent {

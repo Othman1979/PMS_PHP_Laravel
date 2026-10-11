@@ -9,6 +9,7 @@ use App\Models\Equipment;
 use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
 use App\Models\Priority;
+use App\Services\FileUploadService;
 use App\Services\RequestWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class QuickRequestController extends Controller
             'description' => ['required', 'string', 'max:2000'],
             'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
             'food_safety_impact' => ['nullable', 'boolean'],
-            'photo' => ['nullable', 'image', 'max:'.config('cmms.upload_max_kb')],
+            'photo' => ['nullable', 'image', ...FileUploadService::rules()],
         ]);
         $user = $request->user();
         if ($user->isEmployee() && $user->department_id !== null) {
@@ -135,7 +136,7 @@ class QuickRequestController extends Controller
             'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
             'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
             'food_safety_impact' => ['nullable', 'boolean'],
-            'photo' => ['nullable', 'image', 'max:'.config('cmms.upload_max_kb')],
+            'photo' => ['nullable', 'image', ...FileUploadService::rules()],
         ]);
 
         $maintenanceRequest = $workflow->create(
