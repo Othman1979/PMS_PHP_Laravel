@@ -103,7 +103,7 @@
                                 <div class="mb-2">
                                     <strong>{{ $member->user->full_name }}</strong>
                                     — {{ $member->user_id === $mr->assigned_technician_id ? __('LeadTechnician') : __('Participant') }}
-                                    @if ($member->user->specialty)<span class="text-muted"> · {{ $member->user->specialty->label() }}</span>@endif
+                                    @if ($member->user->specialtyLabel())<span class="text-muted"> · {{ $member->user->specialtyLabel() }}</span>@endif
                                     <div class="small text-muted">{{ $member->confirmed_at ? __('ParticipationConfirmed').' · '.$fmt($member->confirmed_at) : __('AwaitingParticipation') }}</div>
                                     @if ($member->worked_at)<div class="small text-success">{{ __('ActualParticipant') }}</div>@endif
                                 </div>
@@ -229,7 +229,7 @@
                             <select id="technician_id" name="technician_id" class="form-select mb-1" required>
                                 <option value="">{{ __('AssignTechnician') }}</option>
                                 @foreach ($technicians as $t)
-                                    <option value="{{ $t->id }}" @selected($suggested?->id === $t->id)>{{ $t->full_name }}{{ $t->specialty ? ' — '.$t->specialty->label() : '' }}</option>
+                                    <option value="{{ $t->id }}" @selected($suggested?->id === $t->id)>{{ $t->full_name }}{{ $t->specialtyLabel() ? ' — '.$t->specialtyLabel() : '' }}</option>
                                 @endforeach
                             </select>
                             @if ($suggested)
@@ -240,7 +240,7 @@
                                 @foreach ($technicians as $t)
                                     <label class="form-check mt-2">
                                         <input type="checkbox" class="form-check-input" name="technician_ids[]" value="{{ $t->id }}" @checked(in_array($t->id, old('technician_ids', [])))>
-                                        <span class="form-check-label">{{ $t->full_name }}{{ $t->specialty ? ' — '.$t->specialty->label() : '' }}</span>
+                                        <span class="form-check-label">{{ $t->full_name }}{{ $t->specialtyLabel() ? ' — '.$t->specialtyLabel() : '' }}</span>
                                     </label>
                                 @endforeach
                             </details>
@@ -266,7 +266,7 @@
                                     @unless (in_array($t->id, $mr->technicianIds(), true))
                                         <label class="form-check mb-2">
                                             <input class="form-check-input" type="checkbox" name="technician_ids[]" value="{{ $t->id }}">
-                                            <span class="form-check-label">{{ $t->full_name }}{{ $t->specialty ? ' — '.$t->specialty->label() : '' }}</span>
+                                            <span class="form-check-label">{{ $t->full_name }}{{ $t->specialtyLabel() ? ' — '.$t->specialtyLabel() : '' }}</span>
                                         </label>
                                     @endunless
                                 @endforeach

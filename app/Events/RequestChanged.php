@@ -84,7 +84,7 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, Shou
             'team' => $r->teamMembers->map(fn ($member) => [
                 'id' => $member->user_id,
                 'name' => $member->user->full_name,
-                'specialty' => Localized::all(fn () => $member->user->specialty?->label()),
+                'specialty' => Localized::all(fn () => $member->user->specialtyLabel()),
                 'isLead' => $member->user_id === $r->assigned_technician_id,
                 'confirmedAt' => $member->confirmed_at?->toIso8601String(),
                 'workedAt' => $member->worked_at?->toIso8601String(),

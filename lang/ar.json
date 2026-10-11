@@ -1,4 +1,9 @@
 {
+    "TechnicianTrade": "التخصص المهني للفني",
+    "Trade_Electrical": "كهرباء",
+    "Trade_Mechanical": "ميكانيك",
+    "Trade_GeneralMaintenance": "صيانة عامة",
+    "Activity_request_team_updated": "تحديث فريق الطلب",
     "CostManagedAsLead": "تكلفة الطلبات التي يقودها",
     "GeneralFault": "عطل عام (بدون معدة)",
     "GeneralFaultHint": "أبلغ عن أعطال الإنارة أو انقطاع الكهرباء أو التسريبات بدون الحاجة إلى ملصق معدة.",

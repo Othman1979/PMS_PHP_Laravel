@@ -14,8 +14,8 @@
                         <td>{{ $u->department?->localized_name }}</td>
                         <td class="text-nowrap">
                             <span class="badge bg-secondary">{{ $u->role->label() }}</span>
-                            @if ($u->specialty)
-                                <span class="badge bg-info text-dark">{{ $u->specialty->label() }}</span>
+                            @if ($u->specialtyLabel())
+                                <span class="badge bg-info text-dark">{{ $u->specialtyLabel() }}</span>
                             @endif
                         </td>
                         <td class="text-nowrap"><span class="badge {{ $u->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $u->is_active ? __('Active') : __('Inactive') }}</span></td>

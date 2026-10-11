@@ -62,7 +62,7 @@ class RequestsReport extends Report
                 'created_by' => $r->createdBy?->full_name ?? '-',
                 'technician' => $r->assignedTechnician?->full_name ?? '-',
                 'workers' => $r->teamMembers->whereNotNull('worked_at')->map(fn ($member) => $member->user->full_name.' ('.($member->worked_as_lead ? __('LeadTechnician') : __('Participant')).
-                    ($member->user->specialty ? ' — '.$member->user->specialty->label() : '').')')->implode(' / ')
+                    ($member->user->specialtyLabel() ? ' — '.$member->user->specialtyLabel() : '').')')->implode(' / ')
                     ?: ($r->teamMembers->isEmpty() && $r->completed_at ? $r->assignedTechnician?->full_name : '-'),
                 'priority' => $r->priority->label(),
                 'priority_color' => $r->priority->color,

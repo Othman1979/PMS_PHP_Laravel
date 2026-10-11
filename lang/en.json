@@ -1,4 +1,9 @@
 {
+    "TechnicianTrade": "Technician trade",
+    "Trade_Electrical": "Electrical",
+    "Trade_Mechanical": "Mechanical",
+    "Trade_GeneralMaintenance": "General maintenance",
+    "Activity_request_team_updated": "Request team updated",
     "CostManagedAsLead": "Cost of requests led",
     "GeneralFault": "General fault (no equipment)",
     "GeneralFaultHint": "Report lighting, power outages, leaks or other faults without an equipment label.",

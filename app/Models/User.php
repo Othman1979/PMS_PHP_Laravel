@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\EquipmentCategory;
 use App\Enums\Role;
+use App\Enums\TechnicianTrade;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-#[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'locale', 'is_active'])]
+#[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'trade', 'locale', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasLocalePreference
 {
@@ -26,6 +27,7 @@ class User extends Authenticatable implements HasLocalePreference
             'password' => 'hashed',
             'role' => Role::class,
             'specialty' => EquipmentCategory::class,
+            'trade' => TechnicianTrade::class,
             'is_active' => 'boolean',
         ];
     }
@@ -33,6 +35,11 @@ class User extends Authenticatable implements HasLocalePreference
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function specialtyLabel(): string
+    {
+        return implode(' · ', array_filter([$this->trade?->label(), $this->specialty?->label()]));
     }
 
     public function pushSubscriptions(): HasMany

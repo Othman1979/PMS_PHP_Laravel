@@ -59,7 +59,7 @@ class TechniciansReport extends Report
 
                 return [
                     'technician' => $technician?->full_name ?? '-',
-                    'specialty' => $technician?->specialty?->label() ?? '-',
+                    'specialty' => $technician?->specialtyLabel() ?: '-',
                     'assigned' => $group->count(),
                     'completed' => $completed->count(),
                     'lead' => $lead->count(),

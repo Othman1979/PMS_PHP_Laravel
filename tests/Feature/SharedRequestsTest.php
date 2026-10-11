@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
+use App\Enums\TechnicianTrade;
 use App\Models\Department;
 use App\Models\FaultCause;
 use App\Models\FaultType;
@@ -163,5 +164,35 @@ class SharedRequestsTest extends TestCase
         $this->assertSame(0.0, $technicians[0]['cost']);
         $this->get('/reports/technicians/export/xlsx')->assertOk();
         $this->get('/reports/requests/export/pdf')->assertOk();
+    }
+
+    public function test_admin_can_set_trade_and_team_api_displays_it_with_existing_specialty(): void
+    {
+        foreach (TechnicianTrade::cases() as $trade) {
+            $this->actingAs($this->user('admin'))->post('/users', [
+                'username' => 'qa_'.$trade->value, 'full_name' => 'Technician '.$trade->value,
+                'role' => 'Technician', 'password' => 'TradeTest123', 'is_active' => '1',
+                'trade' => $trade->value, 'specialty' => 'Refrigeration',
+            ])->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertSame($trade, User::where('username', 'qa_'.$trade->value)->firstOrFail()->trade);
+        }
+        $mr = $this->sharedRequest();
+        $tech = $this->user('tech2');
+        $tech->update(['trade' => TechnicianTrade::Mechanical]);
+        $this->token('tech2');
+        $team = $this->getJson("/api/requests/{$mr->id}")->assertOk()->json('request.team');
+        $this->assertStringContainsString('Mechanical', collect($team)->firstWhere('id', $tech->id)['specialty']['en']);
+    }
+
+    public function test_upgrade_backfills_legacy_completed_lead_without_duplicate_memberships(): void
+    {
+        $mr = $this->sharedRequest();
+        $mr->update(['status' => RequestStatus::Completed, 'completed_at' => now()]);
+        $migration = require database_path('migrations/2026_10_11_160201_add_request_teams_and_general_location.php');
+        $migration->down();
+        $migration->up();
+        $this->assertSame(1, $mr->teamMembers()->count());
+        $this->assertSame([$this->user('tech1')->id], $mr->fresh()->actualTechnicianIds());
+        $this->assertTrue($mr->teamMembers()->firstOrFail()->worked_as_lead);
     }
 }

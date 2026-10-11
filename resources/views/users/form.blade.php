@@ -36,6 +36,15 @@
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="trade">{{ __('TechnicianTrade') }}</label>
+                    <select id="trade" name="trade" class="form-select">
+                        <option value="">{{ __('None') }}</option>
+                        @foreach (\App\Enums\TechnicianTrade::cases() as $trade)
+                            <option value="{{ $trade->value }}" @selected(old('trade', $user->trade?->value) === $trade->value)>{{ $trade->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label class="form-label" for="specialty">{{ __('Specialty') }} <small class="text-muted">({{ \App\Enums\Role::Technician->label() }})</small></label>
                     <select id="specialty" name="specialty" class="form-select">
                         <option value="">{{ __('None') }}</option>

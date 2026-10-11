@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EquipmentCategory;
 use App\Enums\Role;
+use App\Enums\TechnicianTrade;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
@@ -75,6 +76,7 @@ class UserController extends Controller
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
             'role' => ['required', Rule::enum(Role::class)],
             'specialty' => ['nullable', Rule::enum(EquipmentCategory::class)],
+            'trade' => ['nullable', Rule::enum(TechnicianTrade::class)],
             'password' => [$user === null ? 'required' : 'nullable', 'string', 'min:4'],
             'is_active' => ['boolean'],
         ]);
@@ -82,6 +84,7 @@ class UserController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         if ($data['role'] !== Role::Technician->value) {
             $data['specialty'] = null;
+            $data['trade'] = null;
         }
 
         return $data;
