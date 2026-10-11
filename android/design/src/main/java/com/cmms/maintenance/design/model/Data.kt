@@ -122,8 +122,12 @@ class CmmsRequest(
     val team: List<TeamMember> = emptyList(),
     val isLead: Boolean = false,
     val isGeneral: Boolean = false,
+    val priorityNameEn: String = priority.en,
+    val priorityNameAr: String = priority.ar,
+    val priorityColor: Color = priority.color,
 ) {
     var status by mutableStateOf(initialStatus)
+    val priorityLabel get() = if (Lang.isRtl) priorityNameAr else priorityNameEn
     val description get() = if (Lang.isRtl) descAr else descEn
     val dueLabel get() = (if (Lang.isRtl) dueLabelAr else dueLabelEn)?.takeIf { it.isNotEmpty() }
     val createdAgo get() = if (Lang.isRtl) createdAgoAr else createdAgoEn

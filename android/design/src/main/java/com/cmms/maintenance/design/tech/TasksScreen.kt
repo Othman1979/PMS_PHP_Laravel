@@ -149,7 +149,7 @@ private fun TaskCard(task: CmmsRequest, onOpen: (CmmsRequest) -> Unit) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(task.number, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = CmmsText, modifier = Modifier.weight(1f), maxLines = 1)
-                PriorityBadge(task.priority)
+                PriorityBadge(task)
             }
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -51,6 +51,7 @@ class TasksController extends Controller
     {
         return RequestChanged::payload($r, false) + [
             'priorityCode' => $r->priority?->code,
+            'priorityColor' => $r->priority?->color,
             'descriptionFull' => $r->description,
             'equipmentCode' => $r->equipment?->code,
             'equipmentId' => $r->equipment_id,

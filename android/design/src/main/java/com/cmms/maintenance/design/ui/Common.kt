@@ -79,8 +79,10 @@ fun StatusBadge(status: com.cmms.maintenance.design.model.ReqStatus) {
 }
 
 @Composable
-fun PriorityBadge(p: com.cmms.maintenance.design.model.Priority) {
-    Badge(text = p.label, bg = p.color.copy(alpha = 0.12f), fg = p.color, outlined = true, borderColor = p.color.copy(alpha = 0.4f))
+fun PriorityBadge(request: com.cmms.maintenance.design.model.CmmsRequest) {
+    val color = request.priorityColor
+    val brightness = (color.red * 299 + color.green * 587 + color.blue * 114) / 1000
+    Badge(text = request.priorityLabel, bg = color, fg = if (brightness > 150f / 255f) Color(0xFF111111) else Color.White)
 }
 
 @Composable

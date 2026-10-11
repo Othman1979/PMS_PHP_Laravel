@@ -2,6 +2,7 @@ package com.cmms.maintenance.design
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.ui.graphics.Color
 import com.cmms.maintenance.design.model.CatalogOption
 import com.cmms.maintenance.design.model.RequestOptions
 import com.cmms.maintenance.design.model.RequestAttachment
@@ -313,6 +314,8 @@ object Api {
         val desc = j.optString("descriptionFull").ifEmpty { j.optString("description") }
         val due = j.text("dueAt")
         val status = runCatching { ReqStatus.valueOf(j.getString("status")) }.getOrDefault(ReqStatus.New)
+        val priority = mapPriority(j)
+        val priorityLabels = j.optJSONObject("priorityLabel")
         return CmmsRequest(
             id = j.getInt("id"),
             number = j.optString("requestNumber"),
@@ -320,7 +323,11 @@ object Api {
             descEn = desc,
             descAr = desc,
             initialStatus = status,
-            priority = mapPriority(j),
+            priority = priority,
+            priorityNameEn = priorityLabels?.text("en")?.ifBlank { priority.en } ?: priority.en,
+            priorityNameAr = priorityLabels?.text("ar")?.ifBlank { priority.ar } ?: priority.ar,
+            priorityColor = runCatching { Color(android.graphics.Color.parseColor(j.text("priorityColor"))) }
+                .getOrDefault(priority.color),
             dueLabelEn = dueLabel(due, j.optBoolean("overdue")),
             dueLabelAr = dueLabel(due, j.optBoolean("overdue")),
             dueOverdue = j.optBoolean("overdue"),

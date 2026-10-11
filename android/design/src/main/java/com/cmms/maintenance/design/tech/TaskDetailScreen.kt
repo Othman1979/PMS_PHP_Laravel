@@ -175,7 +175,7 @@ private fun HeaderRow(request: CmmsRequest, onBack: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 StatusBadge(request.status)
-                PriorityBadge(request.priority)
+                PriorityBadge(request)
                 request.dueLabel?.let { DueBadge(it, request.dueOverdue) }
             }
         }

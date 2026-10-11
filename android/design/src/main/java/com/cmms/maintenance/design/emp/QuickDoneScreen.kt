@@ -81,7 +81,7 @@ fun EmpDoneScreen(
                     Spacer(Modifier.height(10.dp))
                     androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatusBadge(request.status)
-                        PriorityBadge(request.priority)
+                        PriorityBadge(request)
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(request.equipment.name, fontSize = 13.5.sp, fontWeight = FontWeight.Medium, color = CmmsText)
