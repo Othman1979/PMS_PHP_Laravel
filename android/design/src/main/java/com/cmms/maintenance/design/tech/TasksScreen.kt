@@ -161,6 +161,7 @@ private fun TaskCard(task: CmmsRequest, onOpen: (CmmsRequest) -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             Text(task.equipment.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CmmsText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(s(if (task.isLead) "LeadTechnician" else "Participant"), fontSize = 12.sp, color = CmmsMuted)
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -194,7 +195,7 @@ private fun TaskCard(task: CmmsRequest, onOpen: (CmmsRequest) -> Unit) {
                     Spacer(Modifier.width(6.dp))
                 }
                 Text(
-                    text = if (task.status == ReqStatus.Assigned) s("AcceptAndStart") else s("OpenTask"),
+                    text = if (task.status == ReqStatus.Assigned && task.isLead) s("AcceptAndStart") else s("OpenTask"),
                     color = if (task.status == ReqStatus.Assigned) com.cmms.maintenance.design.ui.CmmsDark else androidx.compose.ui.graphics.Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,

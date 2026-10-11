@@ -36,7 +36,7 @@ class DashboardController extends Controller
         }
 
         $user = $request->user();
-        $with = ['equipment', 'department', 'assignedTechnician', 'priority'];
+        $with = ['equipment', 'department', 'assignedTechnician', 'priority', 'teamMembers.user', 'createdBy'];
 
         return view('dashboard.index', [
             'stats' => $this->counters($user),
@@ -124,7 +124,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $since = $request->date('since') ?? now()->subMinute();
-        $changes = MaintenanceRequest::with(['equipment', 'department', 'assignedTechnician', 'priority'])
+        $changes = MaintenanceRequest::with(['equipment', 'department', 'assignedTechnician', 'priority', 'teamMembers.user', 'createdBy'])
             ->visibleTo($user)
             ->where('updated_at', '>', $since)
             ->orderBy('updated_at')->take(20)->get()

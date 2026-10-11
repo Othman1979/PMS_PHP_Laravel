@@ -16,6 +16,18 @@ object Lang {
 }
 
 private val STRINGS: Map<String, Pair<String, String>> = mapOf(
+    "GeneralFault" to ("General fault (no equipment)" to "عطل عام (بدون معدة)"),
+    "ReportGeneralFault" to ("Report a general fault" to "الإبلاغ عن عطل عام"),
+    "FaultLocation" to ("Location within the department" to "الموقع داخل القسم"),
+    "FaultLocationHint" to ("Example: ceiling above the washbasin" to "مثال: السقف فوق المغسلة"),
+    "LeadTechnician" to ("Lead technician" to "الفني الرئيسي"),
+    "Participant" to ("Participant" to "فني مشارك"),
+    "RequestTeam" to ("Request team" to "فريق الطلب"),
+    "ConfirmParticipation" to ("Confirm my participation" to "تأكيد مشاركتي"),
+    "ParticipationConfirmed" to ("Participation confirmed" to "تم تأكيد المشاركة"),
+    "ActualParticipant" to ("Performed work" to "نفذ العمل فعليًا"),
+    "ConfirmActualParticipants" to ("Confirm who actually performed the work" to "أكد أسماء الفنيين الذين نفذوا العمل فعليًا"),
+    "LeadControlsWorkflow" to ("The lead technician controls the request status and completion. You can confirm participation and add notes." to "الفني الرئيسي يتحكم بحالة الطلب وإنجازه. يمكنك تأكيد مشاركتك وإضافة ملاحظاتك."),
     "AppName" to ("Restaurant CMMS" to "نظام صيانة المطعم"),
     "MyTasks" to ("My tasks" to "مهامي"),
     "NoTasks" to ("No tasks assigned to you right now." to "لا توجد مهام محوّلة إليك حالياً."),

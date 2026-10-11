@@ -52,6 +52,8 @@ Route::middleware('auth')->group(function () {
     Route::controller(QuickRequestController::class)->prefix('r')->name('quick.')->group(function () {
         Route::get('/', 'find')->name('find');
         Route::get('/mine', 'mine')->name('mine');
+        Route::get('/general', 'general')->name('general');
+        Route::post('/general', 'storeGeneral')->name('general.store');
         Route::get('/done/{maintenanceRequest}', 'done')->name('done');
         Route::get('/{code}', 'show')->name('show');
         Route::post('/{code}', 'store')->name('store');
@@ -66,6 +68,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/{maintenanceRequest}', 'show')->name('show');
         Route::post('/{maintenanceRequest}/review', 'review')->name('review')->middleware('role:Admin,Coordinator');
         Route::post('/{maintenanceRequest}/assign', 'assign')->name('assign')->middleware('role:Admin,Coordinator');
+        Route::post('/{maintenanceRequest}/team', 'team')->name('team')->middleware('role:Admin,Coordinator');
+        Route::post('/{maintenanceRequest}/participate', 'participate')->name('participate');
         Route::post('/{maintenanceRequest}/accept', 'accept')->name('accept');
         Route::post('/{maintenanceRequest}/start', 'start')->name('start');
         Route::post('/{maintenanceRequest}/accept-start', 'acceptStart')->name('accept-start');

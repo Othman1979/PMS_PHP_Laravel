@@ -21,6 +21,7 @@ Route::middleware('auth.token')->group(function () {
         ->whereIn('action', ['accept', 'accept-start', 'start', 'wait-parts', 'resume']);
     Route::post('/requests/{maintenanceRequest}/complete', [RequestsController::class, 'complete']);
     Route::post('/requests/{maintenanceRequest}/comments', [RequestsController::class, 'comment']);
+    Route::post('/requests/{maintenanceRequest}/participate', [RequestsController::class, 'participate']);
     Route::post('/broadcasting/auth', function (Request $request) {
         $request->setUserResolver(static fn () => Auth::user());
 

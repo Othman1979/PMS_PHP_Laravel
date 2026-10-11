@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'priority_id', 'fault_type_id', 'fault_cause_id', 'status',
+    'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'location', 'priority_id', 'fault_type_id', 'fault_cause_id', 'status',
     'assigned_technician_id', 'assigned_at', 'due_at', 'escalated_at', 'accepted_at', 'started_at', 'completed_at', 'closed_at',
     'is_under_warranty', 'is_preventive', 'preventive_maintenance_plan_id', 'cost_labor', 'cost_parts',
     'resolution_notes', 'technician_notes', 'department_confirmation',
@@ -82,6 +82,48 @@ class MaintenanceRequest extends Model
     public function assignedTechnician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_technician_id');
+    }
+
+    public function teamMembers(): HasMany
+    {
+        return $this->hasMany(RequestTechnician::class, 'request_id')->orderBy('id');
+    }
+
+    /** @return list<int> */
+    public function technicianIds(): array
+    {
+        return array_values(array_unique(array_filter([
+            $this->assigned_technician_id,
+            ...$this->teamMembers->pluck('user_id')->all(),
+        ])));
+    }
+
+    public function isLeadTechnician(User $user): bool
+    {
+        return $user->isTechnician() && $this->assigned_technician_id === $user->id;
+    }
+
+    /** @return list<int> */
+    public function actualTechnicianIds(): array
+    {
+        if ($this->teamMembers->isEmpty() && $this->completed_at !== null) {
+            return array_values(array_filter([$this->assigned_technician_id]));
+        }
+
+        return $this->teamMembers->whereNotNull('worked_at')->pluck('user_id')->all();
+    }
+
+    public function hasTechnician(User $user): bool
+    {
+        return $user->isTechnician() && in_array($user->id, $this->technicianIds(), true);
+    }
+
+    #[Scope]
+    protected function assignedTo(Builder $query, int $userId): void
+    {
+        $query->where(fn (Builder $team) => $team
+            ->where('assigned_technician_id', $userId)
+            ->orWhereHas('teamMembers', fn (Builder $member) => $member->where('user_id', $userId)));
     }
 
     /** The temporary-repair request this follow-up was generated from. */
@@ -178,7 +220,7 @@ class MaintenanceRequest extends Model
         match ($user->role) {
             Role::Admin, Role::Coordinator, Role::FoodSafety => null,
             Role::DepartmentManager => $query->where('department_id', $user->department_id),
-            Role::Technician => $query->where('assigned_technician_id', $user->id),
+            Role::Technician => $query->assignedTo($user->id),
             default => $query->where('created_by_id', $user->id),
         };
     }
@@ -188,7 +230,7 @@ class MaintenanceRequest extends Model
         return match ($user->role) {
             Role::Admin, Role::Coordinator, Role::FoodSafety => true,
             Role::DepartmentManager => $this->department_id === $user->department_id,
-            Role::Technician => $this->assigned_technician_id === $user->id,
+            Role::Technician => $this->hasTechnician($user),
             default => $this->created_by_id === $user->id,
         };
     }

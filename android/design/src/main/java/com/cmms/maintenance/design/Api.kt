@@ -6,6 +6,7 @@ import com.cmms.maintenance.design.model.CatalogOption
 import com.cmms.maintenance.design.model.RequestOptions
 import com.cmms.maintenance.design.model.RequestAttachment
 import com.cmms.maintenance.design.model.StockPart
+import com.cmms.maintenance.design.model.TeamMember
 import com.cmms.maintenance.design.model.TimelineEntry
 import com.cmms.maintenance.design.model.EquipCategory
 import com.cmms.maintenance.design.model.Equipment
@@ -233,7 +234,8 @@ object Api {
 
     suspend fun options(): RequestOptions {
         val json = requiredGet("/api/request-options")
-        return RequestOptions(json.options("priorities"), json.getInt("defaultPriorityId"), json.options("faultTypes"), json.options("faultCauses"))
+        return RequestOptions(json.options("priorities"), json.getInt("defaultPriorityId"), json.options("faultTypes"), json.options("faultCauses"),
+            json.options("departments"), json.optInt("defaultDepartmentId").takeIf { it > 0 })
     }
 
     suspend fun request(id: Int): CmmsRequest = mapRequest(requiredGet("/api/requests/$id").getJSONObject("request"))
@@ -298,18 +300,18 @@ object Api {
         val equipment = Equipment(
             id = j.optInt("equipmentId"),
             autoEscalates = j.optBoolean("autoEscalates"),
-            code = j.optString("equipmentCode"),
-            nameEn = j.optString("equipment"),
-            nameAr = j.optString("equipment"),
+            code = j.text("equipmentCode"),
+            nameEn = j.text("equipment").ifEmpty { "General fault (no equipment)" },
+            nameAr = j.text("equipment").ifEmpty { "عطل عام (بدون معدة)" },
             deptEn = dept?.optString("en") ?: "",
             deptAr = dept?.optString("ar") ?: dept?.optString("en") ?: "",
-            locationEn = j.optString("equipmentLocation"),
-            locationAr = j.optString("equipmentLocation"),
+            locationEn = j.text("equipmentLocation").ifEmpty { j.text("location") },
+            locationAr = j.text("equipmentLocation").ifEmpty { j.text("location") },
             category = category,
-            serial = j.optString("equipmentSerial"),
+            serial = j.text("equipmentSerial"),
         )
         val desc = j.optString("descriptionFull").ifEmpty { j.optString("description") }
-        val due = j.optString("dueAt")
+        val due = j.text("dueAt")
         val status = runCatching { ReqStatus.valueOf(j.getString("status")) }.getOrDefault(ReqStatus.New)
         return CmmsRequest(
             id = j.getInt("id"),
@@ -329,6 +331,15 @@ object Api {
             requester = j.optString("createdBy"),
             requesterInitial = j.optString("createdBy").take(1),
             technicianName = j.text("technician"),
+            isLead = j.optInt("technicianId") == Session.userId,
+            isGeneral = j.isNull("equipmentId"),
+            team = j.optJSONArray("team")?.let { items -> List(items.length()) { i ->
+                val member = items.getJSONObject(i)
+                val specialty = member.optJSONObject("specialty")
+                TeamMember(member.getInt("id"), member.getString("name"), member.optBoolean("isLead"),
+                    specialty?.text("en").orEmpty(), specialty?.text("ar").orEmpty(),
+                    member.text("confirmedAt").isNotEmpty(), member.text("workedAt").isNotEmpty())
+            } } ?: emptyList(),
             foodSafety = j.optBoolean("foodSafety"),
             completedAt = j.text("completedAt"),
             phone = j.text("phone"), resolution = j.text("resolution"),
@@ -339,7 +350,7 @@ object Api {
                     val label = listOf(s(statusLabel), entry.text("by"), entry.text("note")).filter { it.isNotBlank() }.joinToString(" · ")
                     TimelineEntry(label, label, entry.text("at"))
                 }
-            } } ?: emptyList(),
+            }.asReversed() } ?: emptyList(),
             attachments = j.optJSONArray("attachments")?.let { items -> List(items.length()) { i ->
                 items.getJSONObject(i).let { RequestAttachment(it.getString("name"), it.getString("url")) }
             } } ?: emptyList(),

@@ -43,7 +43,7 @@ sealed class Screen {
     data object TechTasks : Screen()
     data class TechDetail(val request: CmmsRequest) : Screen()
     data object EmpFind : Screen()
-    data class EmpForm(val equipment: Equipment) : Screen()
+    data class EmpForm(val equipment: Equipment?) : Screen()
     data class EmpDone(val request: CmmsRequest) : Screen()
     data object EmpMine : Screen()
 }
@@ -159,6 +159,7 @@ fun CmmsDesignApp() {
         )
         Screen.EmpFind -> EmpFindScreen(
             onPickEquipment = { screen = Screen.EmpForm(it) },
+            onGeneral = { screen = Screen.EmpForm(null) },
             onMine = { screen = Screen.EmpMine },
             onLogout = logout,
         )
@@ -171,7 +172,7 @@ fun CmmsDesignApp() {
         is Screen.EmpDone -> EmpDoneScreen(
             request = sc.request,
             onTrack = { screen = Screen.EmpMine },
-            onAnother = { screen = Screen.EmpForm(sc.request.equipment) },
+            onAnother = { screen = Screen.EmpForm(sc.request.equipment.takeUnless { sc.request.isGeneral }) },
             onLogout = logout,
         )
         Screen.EmpMine -> EmpMineScreen(

@@ -94,7 +94,7 @@ final class ReportFilters
             ->when($this->to, fn (Builder $q) => $q->where('created_at', '<=', $this->to->endOfDay()))
             ->when($this->departmentId, fn (Builder $q) => $q->where('department_id', $this->departmentId))
             ->when($this->equipmentId, fn (Builder $q) => $q->where('equipment_id', $this->equipmentId))
-            ->when($this->technicianId, fn (Builder $q) => $q->where('assigned_technician_id', $this->technicianId))
+            ->when($this->technicianId, fn (Builder $q) => $q->assignedTo($this->technicianId))
             ->when($this->faultTypeId, fn (Builder $q) => $q->where('fault_type_id', $this->faultTypeId))
             ->when($this->faultCauseId, fn (Builder $q) => $q->where('fault_cause_id', $this->faultCauseId))
             ->when($this->state === 'open', fn (Builder $q) => $q->whereNotIn('status', $closed))

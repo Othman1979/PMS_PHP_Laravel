@@ -11,6 +11,8 @@
         </div>
         @if ($mr->equipment)
             <div class="fw-bold">{{ $mr->equipment->name }}</div>
+        @else
+            <div class="fw-bold">{{ __('GeneralFault') }} — {{ $mr->location }}</div>
         @endif
         <p class="text-muted mt-2">{{ __('Quick_SentHint') }}</p>
         @php($employee = auth()->user()->isEmployee())
@@ -18,6 +20,8 @@
             <a class="btn btn-primary quick-send" href="{{ route('requests.show', $mr) }}">{{ __('Quick_Track') }}</a>
             @if ($mr->equipment)
                 <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.show', $mr->equipment->code) }}">{{ __('Quick_Another') }}</a>
+            @else
+                <a class="btn btn-outline-secondary btn-lg" href="{{ route('quick.general') }}">{{ __('Quick_Another') }}</a>
             @endif
             @unless ($employee)
                 <a class="btn btn-link" href="{{ route('requests.index') }}">{{ __('MyRequests') }}</a>

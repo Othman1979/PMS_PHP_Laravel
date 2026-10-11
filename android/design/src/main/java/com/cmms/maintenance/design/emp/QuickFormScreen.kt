@@ -10,6 +10,7 @@ import com.cmms.maintenance.design.Api
 import com.cmms.maintenance.design.AppState
 import com.cmms.maintenance.design.model.RequestOptions
 import com.cmms.maintenance.design.ui.CmmsDanger
+import com.cmms.maintenance.design.ui.CmmsDropdown
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -76,7 +77,7 @@ import com.cmms.maintenance.design.ui.StatusBadge
 
 @Composable
 fun EmpFormScreen(
-    equipment: Equipment,
+    equipment: Equipment?,
     onMine: () -> Unit,
     onSent: (CmmsRequest) -> Unit,
     onLogout: () -> Unit,
@@ -84,7 +85,9 @@ fun EmpFormScreen(
     var selectedIssue by remember { mutableStateOf<String?>(null) }
     var description by remember { mutableStateOf("") }
     var priorityId by remember { mutableStateOf<Int?>(null) }
-    var foodSafety by remember { mutableStateOf(equipment.autoEscalates) }
+    var foodSafety by remember { mutableStateOf(equipment?.autoEscalates == true) }
+    var departmentId by remember { mutableStateOf<Int?>(null) }
+    var location by remember { mutableStateOf("") }
     var faultTypeId by remember { mutableStateOf<Int?>(null) }
     var photo by remember { mutableStateOf<Uri?>(null) }
     val hasPhoto = photo != null
@@ -99,6 +102,7 @@ fun EmpFormScreen(
         try {
             options = Api.options()
             priorityId = priorityId ?: options?.defaultPriorityId
+            departmentId = departmentId ?: options?.defaultDepartmentId
             error = null
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -106,8 +110,8 @@ fun EmpFormScreen(
         }
     }
 
-    val chips = ISSUE_CHIPS[equipment.category]?.let { if (Lang.isRtl) it.second else it.first }.orEmpty()
-    val openReq = AppState.myRequests?.firstOrNull { it.equipment.code == equipment.code && it.status != ReqStatus.Closed && it.status != ReqStatus.Cancelled }
+    val chips = ISSUE_CHIPS[equipment?.category]?.let { if (Lang.isRtl) it.second else it.first }.orEmpty()
+    val openReq = if (equipment == null) null else AppState.myRequests?.firstOrNull { it.equipment.code == equipment.code && it.status != ReqStatus.Closed && it.status != ReqStatus.Cancelled }
 
     Column(Modifier.fillMaxSize().background(CmmsBackground)) {
         QuickBar(onMyRequests = onMine, onLang = { Lang.toggle() }, onLogout = onLogout)
@@ -116,7 +120,19 @@ fun EmpFormScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { EquipmentHeader(equipment) }
+            if (equipment != null) item { EquipmentHeader(equipment) }
+            else item {
+                CmmsCard {
+                    SectionTitle(s("GeneralFault"))
+                    Spacer(Modifier.height(8.dp))
+                    CmmsDropdown(s("Department"), options?.departments?.map { it.label }.orEmpty(),
+                        options?.departments?.firstOrNull { it.id == departmentId }?.label,
+                        { label -> departmentId = options?.departments?.firstOrNull { it.label == label }?.id })
+                    Spacer(Modifier.height(10.dp))
+                    Text(s("FaultLocation"), color = CmmsText, fontSize = 13.sp)
+                    CmmsField(location, { location = it.take(255) }, placeholder = s("FaultLocationHint"))
+                }
+            }
             error?.let { message -> item {
                 Text(message, color = CmmsDanger)
                 if (options == null) CmmsOutlineButton(s("Retry"), { reload++ })
@@ -158,7 +174,7 @@ fun EmpFormScreen(
                     Text(s("FoodSafetyImpactHint"), fontSize = 11.sp, color = CmmsMuted, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (!equipment.autoEscalates) SelectChip(text = s("No"), selected = !foodSafety) { foodSafety = false }
+                        if (equipment?.autoEscalates != true) SelectChip(text = s("No"), selected = !foodSafety) { foodSafety = false }
                         SelectChip(text = s("Yes"), selected = foodSafety, color = com.cmms.maintenance.design.ui.CmmsDanger) { foodSafety = true }
                     }
                 }
@@ -211,14 +227,15 @@ fun EmpFormScreen(
             item {
                 CmmsButton(
                     text = s(if (busy) "Loading" else "Quick_Send"),
-                    enabled = !busy && options != null && description.isNotBlank(),
+                    enabled = !busy && options != null && description.isNotBlank() && (equipment != null || (departmentId != null && location.isNotBlank())),
                     onClick = {
                         busy = true
                         error = null
                         scope.launch {
                             try {
-                                val data = JSONObject().put("equipment_id", equipment.id).put("description", description)
+                                val data = JSONObject().put("equipment_id", equipment?.id).put("description", description)
                                     .put("priority_id", priorityId).put("fault_type_id", faultTypeId).put("food_safety_impact", foodSafety)
+                                if (equipment == null) data.put("department_id", departmentId).put("location", location)
                                 val req = Api.createRequest(data, context, photo)
                                 AppState.refreshMine()
                                 onSent(req)

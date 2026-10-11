@@ -119,6 +119,9 @@ class CmmsRequest(
     val attachments: List<RequestAttachment> = emptyList(),
     val checklist: List<CatalogOption> = emptyList(),
     val spareParts: List<StockPart> = emptyList(),
+    val team: List<TeamMember> = emptyList(),
+    val isLead: Boolean = false,
+    val isGeneral: Boolean = false,
 ) {
     var status by mutableStateOf(initialStatus)
     val description get() = if (Lang.isRtl) descAr else descEn
@@ -133,7 +136,16 @@ data class CatalogOption(val id: Int, val en: String, val ar: String) {
 data class RequestOptions(
     val priorities: List<CatalogOption>, val defaultPriorityId: Int,
     val faultTypes: List<CatalogOption>, val faultCauses: List<CatalogOption>,
+    val departments: List<CatalogOption> = emptyList(), val defaultDepartmentId: Int? = null,
 )
+
+data class TeamMember(
+    val id: Int, val name: String, val isLead: Boolean,
+    val specialtyEn: String, val specialtyAr: String,
+    val confirmed: Boolean, val worked: Boolean,
+) {
+    val specialty get() = if (Lang.isRtl) specialtyAr else specialtyEn
+}
 
 data class StockPart(val id: Int, val name: String, val quantity: Int, val unitCost: Double)
 data class RequestAttachment(val name: String, val url: String)

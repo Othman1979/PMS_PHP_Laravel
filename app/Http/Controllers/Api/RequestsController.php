@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Department;
 use App\Models\Equipment;
 use App\Models\FaultCause;
 use App\Models\FaultType;
@@ -58,12 +59,17 @@ class RequestsController extends Controller
         ])]);
     }
 
-    public function options(): JsonResponse
+    public function options(Request $request): JsonResponse
     {
         return response()->json([
             'priorities' => Priority::active()->where('show_in_quick', true)->ordered()->get()
                 ->map(fn (Priority $item) => ['id' => $item->id, 'en' => $item->name_en, 'ar' => $item->name_ar]),
             'defaultPriorityId' => Priority::default()->id,
+            'defaultDepartmentId' => $request->user()->department_id,
+            'departments' => Department::active()->ordered()
+                ->when($request->user()->isEmployee() && $request->user()->department_id,
+                    fn ($query) => $query->whereKey($request->user()->department_id))
+                ->get(['id', 'name_en as en', 'name_ar as ar']),
             'faultTypes' => FaultType::active()->ordered()->get(['id', 'name_en as en', 'name_ar as ar']),
             'faultCauses' => FaultCause::active()->ordered()->get(['id', 'name_en as en', 'name_ar as ar']),
         ]);
@@ -73,19 +79,25 @@ class RequestsController extends Controller
     {
         abort_if($request->user()->isTechnician(), 403);
         $data = $request->validate([
-            'equipment_id' => ['required', 'integer', Rule::exists('equipment', 'id')->whereNot('status', EquipmentStatus::OutOfService->value)],
+            'equipment_id' => ['nullable', 'integer', Rule::exists('equipment', 'id')->whereNot('status', EquipmentStatus::OutOfService->value)],
+            'department_id' => ['required_without:equipment_id', 'nullable', 'integer', Rule::exists('departments', 'id')->where('is_active', true)],
+            'location' => ['required_without:equipment_id', 'nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
             'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
             'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
             'food_safety_impact' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image', ...FileUploadService::rules()],
         ]);
-        $equipment = Equipment::findOrFail($data['equipment_id']);
-        $mr = $this->workflow->create($request->user(), $equipment, $equipment->department_id,
+        $equipment = isset($data['equipment_id']) ? Equipment::findOrFail($data['equipment_id']) : null;
+        $departmentId = $equipment?->department_id ?? (int) $data['department_id'];
+        if ($equipment === null && $request->user()->isEmployee() && $request->user()->department_id !== null) {
+            abort_unless($departmentId === $request->user()->department_id, 403);
+        }
+        $mr = $this->workflow->create($request->user(), $equipment, $departmentId,
             trim($data['description']), isset($data['priority_id']) ? Priority::findOrFail($data['priority_id']) : Priority::default(),
             array_filter([$request->file('photo')]),
             faultTypeId: isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
-            foodSafetyImpact: $request->boolean('food_safety_impact'));
+            foodSafetyImpact: $request->boolean('food_safety_impact'), location: $data['location'] ?? null);
 
         return response()->json(['request' => TasksController::taskPayload($mr)], 201);
     }
@@ -99,6 +111,7 @@ class RequestsController extends Controller
         $data['costParts'] = $mr->cost_parts;
         $data['resolution'] = $mr->resolution_notes;
         $data['phone'] = $mr->createdBy?->phone;
+        $data['canManageWorkflow'] = $mr->isLeadTechnician($request->user());
         $data['timeline'] = $mr->timeline->sortByDesc('id')->values()->map(fn ($entry) => [
             'status' => $entry->status_to->value, 'note' => $entry->note,
             'by' => $entry->changedBy?->full_name, 'at' => $entry->changed_at->format('Y-m-d H:i'),
@@ -155,6 +168,13 @@ class RequestsController extends Controller
         return $this->show($request, $maintenanceRequest->fresh());
     }
 
+    public function participate(Request $request, MaintenanceRequest $maintenanceRequest): JsonResponse
+    {
+        $this->workflow->confirmParticipation($maintenanceRequest, $request->user());
+
+        return $this->show($request, $maintenanceRequest->fresh());
+    }
+
     public function complete(Request $request, MaintenanceRequest $maintenanceRequest): JsonResponse
     {
         DB::transaction(function () use ($request, $maintenanceRequest) {
@@ -164,6 +184,8 @@ class RequestsController extends Controller
                 'fault_type_id' => [FaultType::active()->exists() ? 'required' : 'nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
                 'fault_cause_id' => [FaultCause::active()->exists() ? 'required' : 'nullable', Rule::exists('fault_causes', 'id')->where('is_active', true)],
                 'resolution_notes' => ['required', 'string', 'max:2000'],
+                'worked_technician_ids' => ['nullable', 'array', 'min:1', 'max:100'],
+                'worked_technician_ids.*' => ['required', 'integer', 'distinct'],
                 'technician_notes' => ['nullable', 'string', 'max:2000'],
                 'cost_labor' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
                 'parts' => ['nullable', 'array', 'max:100'],
@@ -189,7 +211,8 @@ class RequestsController extends Controller
                 isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
                 isset($data['fault_cause_id']) ? (int) $data['fault_cause_id'] : null,
                 $request->boolean('is_temporary_repair'),
-                $request->boolean('is_temporary_repair') ? Carbon::parse($data['permanent_repair_due']) : null);
+                $request->boolean('is_temporary_repair') ? Carbon::parse($data['permanent_repair_due']) : null,
+                $data['worked_technician_ids'] ?? null);
         });
 
         return $this->show($request, $maintenanceRequest->fresh());
@@ -198,7 +221,7 @@ class RequestsController extends Controller
     private function lockedAssignment(Request $request, MaintenanceRequest $maintenanceRequest): MaintenanceRequest
     {
         $mr = MaintenanceRequest::lockForUpdate()->findOrFail($maintenanceRequest->id);
-        abort_unless($request->user()->isTechnician() && $mr->isAssignedTo($request->user()), 403);
+        abort_unless($mr->isLeadTechnician($request->user()), 403);
 
         return $mr;
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
+use App\Models\Department;
 use App\Models\Equipment;
 use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
@@ -17,6 +18,43 @@ use Illuminate\View\View;
 /** Simple phone screen opened by scanning the QR label stuck on the equipment. */
 class QuickRequestController extends Controller
 {
+    public function general(Request $request): View
+    {
+        abort_if($request->user()->isTechnician(), 403);
+
+        return view('quick.general', [
+            'departments' => Department::active()->ordered()
+                ->when($request->user()->isEmployee() && $request->user()->department_id,
+                    fn ($query) => $query->whereKey($request->user()->department_id))->get(),
+            'defaultDepartment' => $request->user()->department_id,
+            'priorities' => Priority::active()->where('show_in_quick', true)->ordered()->get(),
+            'defaultPriority' => Priority::default(),
+        ]);
+    }
+
+    public function storeGeneral(Request $request, RequestWorkflow $workflow): RedirectResponse
+    {
+        abort_if($request->user()->isTechnician(), 403);
+        $data = $request->validate([
+            'department_id' => ['required', 'integer', Rule::exists('departments', 'id')->where('is_active', true)],
+            'location' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string', 'max:2000'],
+            'priority_id' => ['nullable', Rule::exists('priorities', 'id')->where('is_active', true)->where('show_in_quick', true)],
+            'food_safety_impact' => ['nullable', 'boolean'],
+            'photo' => ['nullable', 'image', 'max:'.config('cmms.upload_max_kb')],
+        ]);
+        $user = $request->user();
+        if ($user->isEmployee() && $user->department_id !== null) {
+            abort_unless((int) $data['department_id'] === $user->department_id, 403);
+        }
+        $mr = $workflow->create($user, null, (int) $data['department_id'], trim($data['description']),
+            isset($data['priority_id']) ? Priority::findOrFail($data['priority_id']) : Priority::default(),
+            array_filter([$request->file('photo')]),
+            foodSafetyImpact: $request->boolean('food_safety_impact'), location: $data['location']);
+
+        return redirect()->route('quick.done', $mr);
+    }
+
     public function find(Request $request): View|RedirectResponse
     {
         if ($request->user()->isTechnician()) {

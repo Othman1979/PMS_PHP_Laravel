@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.cmms.maintenance.design.Api
 import com.cmms.maintenance.design.ApiException
 import com.cmms.maintenance.design.AppState
+import com.cmms.maintenance.design.Session
 import com.cmms.maintenance.design.model.RequestOptions
 import com.cmms.maintenance.design.ui.CmmsDanger
 import kotlinx.coroutines.CancellationException
@@ -150,9 +151,10 @@ fun TaskDetailScreen(request: CmmsRequest, onBack: () -> Unit, onLogout: () -> U
                 item { ReopenedAlert() }
             }
             item { DetailsCard(current) }
+            if (current.team.size > 1) item { TeamCard(current) }
             if (current.attachments.isNotEmpty()) item { AttachmentsCard(current) }
             item { ActionsCard(current, busy, submit) }
-            if ((current.status == ReqStatus.InProgress || current.status == ReqStatus.WaitingParts) && options != null) {
+            if (current.isLead && (current.status == ReqStatus.InProgress || current.status == ReqStatus.WaitingParts) && options != null) {
                 item { CompleteCard(current, options!!, busy, submit) }
             }
             if (current.status != ReqStatus.Cancelled) item { CommentCard(busy, submit) }
@@ -290,7 +292,33 @@ private fun AttachmentsCard(request: CmmsRequest) {
 }
 
 @Composable
+private fun TeamCard(request: CmmsRequest) {
+    CmmsCard {
+        SectionTitle(s("RequestTeam"))
+        request.team.forEach { member ->
+            Spacer(Modifier.height(8.dp))
+            Text(member.name, fontSize = 13.sp, color = CmmsText, fontWeight = FontWeight.SemiBold)
+            Text(listOf(s(if (member.isLead) "LeadTechnician" else "Participant"), member.specialty)
+                .filter { it.isNotBlank() }.joinToString(" · "), fontSize = 12.sp, color = CmmsMuted)
+            if (member.confirmed) Text(s("ParticipationConfirmed"), fontSize = 11.sp, color = CmmsMuted)
+            if (member.worked) Text(s("ActualParticipant"), fontSize = 11.sp, color = CmmsSuccess)
+        }
+    }
+}
+
+@Composable
 private fun ActionsCard(request: CmmsRequest, busy: Boolean, submit: SubmitAction) {
+    if (!request.isLead) {
+        CmmsCard {
+            Text(s("LeadControlsWorkflow"), fontSize = 13.sp, color = CmmsMuted)
+            val member = request.team.firstOrNull { it.id == Session.userId }
+            if (member != null && !member.confirmed && request.status !in listOf(ReqStatus.Completed, ReqStatus.Closed, ReqStatus.Cancelled)) {
+                Spacer(Modifier.height(8.dp))
+                CmmsButton(s("ConfirmParticipation"), { submit("participate", JSONObject()) {} }, enabled = !busy)
+            }
+        }
+        return
+    }
     var note by remember { mutableStateOf("") }
     CmmsCard {
         SectionTitle(s("Actions"))
@@ -380,11 +408,27 @@ private fun CompleteCard(request: CmmsRequest, options: RequestOptions, busy: Bo
     var partQuery by remember { mutableStateOf("") }
     var addedParts by remember { mutableStateOf(mapOf<Int, Int>()) }
     val checked = remember { mutableStateOf(emptySet<Int>()) }
+    var workers by remember(request.id) { mutableStateOf(request.team.filter { it.isLead }.map { it.id }.toSet()) }
 
     CmmsCard {
         SectionTitle(s("MarkComplete"))
         Text(s("CompleteHint"), fontSize = 11.5.sp, color = CmmsMuted)
         Spacer(Modifier.height(10.dp))
+
+        if (request.team.size > 1) {
+            Text(s("ConfirmActualParticipants"), fontSize = 13.sp, color = CmmsText, fontWeight = FontWeight.SemiBold)
+            request.team.forEach { member ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Checkbox(
+                        checked = member.id in workers,
+                        onCheckedChange = { on -> workers = if (on) workers + member.id else workers - member.id },
+                        enabled = !busy,
+                    )
+                    Text(member.name, fontSize = 13.sp, color = CmmsText)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
 
         if (request.checklist.isNotEmpty()) {
             request.checklist.forEach { item ->
@@ -482,7 +526,7 @@ private fun CompleteCard(request: CmmsRequest, options: RequestOptions, busy: Bo
         Spacer(Modifier.height(14.dp))
         CmmsButton(
             text = s(if (busy) "Loading" else "MarkComplete"),
-            enabled = !busy && resolution.isNotBlank(),
+            enabled = !busy && resolution.isNotBlank() && (request.team.size <= 1 || workers.isNotEmpty()),
             onClick = {
                 val parts = JSONArray()
                 addedParts.forEach { (id, qty) -> parts.put(JSONObject().put("spare_part_id", id).put("quantity", qty)) }
@@ -491,6 +535,7 @@ private fun CompleteCard(request: CmmsRequest, options: RequestOptions, busy: Bo
                 submit("complete", JSONObject().put("resolution_notes", resolution).put("technician_notes", techNotes)
                     .put("cost_labor", labor).put("fault_type_id", faultType).put("fault_cause_id", faultCause)
                     .put("is_temporary_repair", tempRepair).put("permanent_repair_due", if (tempRepair) permDue else null)
+                    .put("worked_technician_ids", JSONArray(workers.toList().ifEmpty { listOf(Session.userId) }))
                     .put("parts", parts).put("check", check)) {}
             },
             icon = CmmsIcons.CheckCircle,

@@ -19,6 +19,7 @@ use App\Services\RequestWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -131,13 +132,13 @@ class MaintenanceRequestController extends Controller
 
         return view('requests.mine', [
             'tasks' => MaintenanceRequest::with(['equipment', 'department', 'priority'])
-                ->where('assigned_technician_id', $user->id)
+                ->assignedTo($user->id)
                 ->whereIn('status', $active)
                 ->orderByRaw('case when due_at is not null and due_at < ? then 0 else 1 end', [now()])
                 ->orderByRaw(Priority::rankSql().' desc')->orderBy('due_at')->orderBy('assigned_at')
                 ->get(),
             'recentDone' => MaintenanceRequest::with(['equipment', 'department', 'priority'])
-                ->where('assigned_technician_id', $user->id)
+                ->assignedTo($user->id)
                 ->whereIn('status', [RequestStatus::Completed, RequestStatus::Closed])
                 ->latest('completed_at')->take(5)->get(),
         ]);
@@ -173,6 +174,7 @@ class MaintenanceRequestController extends Controller
         $data = $request->validate([
             'department_id' => ['required', Rule::exists('departments', 'id')->where('is_active', true)],
             'equipment_id' => ['nullable', 'exists:equipment,id'],
+            'location' => ['nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
             'priority_id' => ['required', Rule::exists('priorities', 'id')->where('is_active', true)],
             'fault_type_id' => ['nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
@@ -194,6 +196,7 @@ class MaintenanceRequestController extends Controller
             $request->file('files', []),
             faultTypeId: isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
             foodSafetyImpact: $request->boolean('food_safety_impact'),
+            location: $data['location'] ?? null,
         );
 
         return redirect()->route('requests.show', $maintenanceRequest)->with('ok', 'Saved');
@@ -206,7 +209,8 @@ class MaintenanceRequestController extends Controller
 
         $maintenanceRequest->load([
             'equipment', 'department', 'createdBy', 'assignedTechnician', 'attachments', 'priority', 'faultType', 'faultCause',
-            'timeline' => fn ($q) => $q->with('changedBy')->orderByDesc('changed_at')->orderByDesc('id'),
+            'timeline' => fn ($q) => $q->with('changedBy')->orderBy('changed_at')->orderBy('id'),
+            'teamMembers.user',
             'partsUsed.sparePart', 'checklistResults.checklistItem', 'plan.checklist.items',
             'releasedBy', 'followUpOf', 'followUps' => fn ($q) => $q->latest(),
         ]);
@@ -244,11 +248,16 @@ class MaintenanceRequestController extends Controller
     {
         $data = $request->validate([
             'technician_id' => ['required', Rule::exists('users', 'id')->where('role', Role::Technician->value)->where('is_active', true)],
+            'technician_ids' => ['nullable', 'array', 'max:100'],
+            'technician_ids.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->where('role', Role::Technician->value)->where('is_active', true)],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
         if (in_array($maintenanceRequest->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Reopened], true)) {
-            $this->workflow->assign($maintenanceRequest, User::findOrFail($data['technician_id']), $request->user(), $data['note'] ?? null);
+            DB::transaction(function () use ($maintenanceRequest, $request, $data) {
+                $this->workflow->assign($maintenanceRequest, User::findOrFail($data['technician_id']), $request->user(), $data['note'] ?? null);
+                $this->workflow->updateTeam($maintenanceRequest, $request->user(), $data['technician_ids'] ?? []);
+            });
         }
 
         return $this->back($maintenanceRequest);
@@ -262,6 +271,25 @@ class MaintenanceRequestController extends Controller
             $maintenanceRequest->accepted_at = now();
             $this->workflow->transition($maintenanceRequest, RequestStatus::Accepted, $request->user(), $note);
         }
+
+        return $this->back($maintenanceRequest);
+    }
+
+    public function team(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        $data = $request->validate([
+            'technician_ids' => ['nullable', 'array', 'max:100'],
+            'technician_ids.*' => ['required', 'integer', 'distinct'],
+            'lead_id' => ['nullable', 'integer'],
+        ]);
+        $this->workflow->updateTeam($maintenanceRequest, $request->user(), $data['technician_ids'] ?? [], isset($data['lead_id']) ? (int) $data['lead_id'] : null);
+
+        return $this->back($maintenanceRequest);
+    }
+
+    public function participate(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        $this->workflow->confirmParticipation($maintenanceRequest, $request->user());
 
         return $this->back($maintenanceRequest);
     }
@@ -306,7 +334,7 @@ class MaintenanceRequestController extends Controller
 
     public function addNote(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
     {
-        $this->authorizeTechnician($request, $maintenanceRequest);
+        abort_unless($maintenanceRequest->hasTechnician($request->user()), 403);
         $note = $this->note($request);
         $active = [RequestStatus::Accepted, RequestStatus::InProgress, RequestStatus::WaitingParts];
         if ($note !== null && in_array($maintenanceRequest->status, $active, true)) {
@@ -349,6 +377,8 @@ class MaintenanceRequestController extends Controller
             'fault_type_id' => [$hasTypes ? 'required' : 'nullable', Rule::exists('fault_types', 'id')->where('is_active', true)],
             'fault_cause_id' => [$hasCauses ? 'required' : 'nullable', Rule::exists('fault_causes', 'id')->where('is_active', true)],
             'resolution_notes' => ['required', 'string', 'max:2000'],
+            'worked_technician_ids' => ['nullable', 'array', 'min:1', 'max:100'],
+            'worked_technician_ids.*' => ['required', 'integer', 'distinct'],
             'technician_notes' => ['nullable', 'string', 'max:2000'],
             'cost_labor' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
             'parts' => ['nullable', 'array'],
@@ -378,7 +408,8 @@ class MaintenanceRequestController extends Controller
             isset($data['fault_type_id']) ? (int) $data['fault_type_id'] : null,
             isset($data['fault_cause_id']) ? (int) $data['fault_cause_id'] : null,
             $request->boolean('is_temporary_repair'),
-            $request->boolean('is_temporary_repair') ? Carbon::parse($data['permanent_repair_due']) : null);
+            $request->boolean('is_temporary_repair') ? Carbon::parse($data['permanent_repair_due']) : null,
+            $data['worked_technician_ids'] ?? null);
 
         return $this->back($maintenanceRequest);
     }
@@ -523,7 +554,7 @@ class MaintenanceRequestController extends Controller
 
     private function authorizeTechnician(Request $request, MaintenanceRequest $maintenanceRequest): void
     {
-        abort_unless($maintenanceRequest->isAssignedTo($request->user()), 403);
+        abort_unless($maintenanceRequest->isLeadTechnician($request->user()), 403);
     }
 
     private function note(Request $request): ?string

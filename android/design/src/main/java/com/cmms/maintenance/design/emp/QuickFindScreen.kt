@@ -72,6 +72,7 @@ import com.cmms.maintenance.design.ui.StatusBadge
 @Composable
 fun EmpFindScreen(
     onPickEquipment: (Equipment) -> Unit,
+    onGeneral: () -> Unit,
     onMine: () -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -140,6 +141,9 @@ fun EmpFindScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(s("Quick_ScanHint"), fontSize = 11.5.sp, color = CmmsMuted, modifier = Modifier.fillMaxWidth())
+            }
+            item {
+                CmmsOutlineButton(s("ReportGeneralFault"), onGeneral, modifier = Modifier.fillMaxWidth())
             }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
