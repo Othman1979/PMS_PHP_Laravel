@@ -71,7 +71,7 @@ class MaintenanceRequestController extends Controller
             ->when($overdue, fn ($q) => $q->overdue())
             ->when($foodSafety, fn ($q) => $q->where('food_safety_impact', true)->whereNotIn('status', RequestStatus::closedValues()))
             ->latest()->latest('id')
-            ->paginate(50)->appends($filters);
+            ->paginate(25)->appends($filters);
 
         $title = match ($user->role) {
             Role::Employee => __('MyRequests'),

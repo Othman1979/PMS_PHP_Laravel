@@ -242,13 +242,13 @@ class MaintenanceRequest extends Model
         };
     }
 
-    /** Requester or the requester's department manager (and admin) may confirm / reopen / cancel. */
     /** Cancel/reopen: maintenance staff, or the non-technician employee who filed the request. */
     public function canCancelOrReopen(User $user): bool
     {
         return $user->canManage() || ($this->created_by_id === $user->id && ! $user->isTechnician());
     }
 
+    /** Requester or the requester's department manager (and admin) may confirm completion. */
     public function isRequesterSide(User $user): bool
     {
         return $this->created_by_id === $user->id
