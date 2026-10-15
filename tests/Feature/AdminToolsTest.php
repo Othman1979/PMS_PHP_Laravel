@@ -158,4 +158,31 @@ class AdminToolsTest extends TestCase
         $this->assertFileExists(public_path('offline.html'));
         $this->assertStringContainsString("OFFLINE_URL = '/offline.html'", file_get_contents(public_path('sw.js')));
     }
+
+    public function test_cancel_and_reopen_are_limited_to_staff_and_the_filing_employee(): void
+    {
+        $mr = $this->newRequest();
+
+        $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/cancel")->assertForbidden();
+        $this->actingAs($this->user('kitchen'))->post("/requests/{$mr->id}/cancel")->assertForbidden();
+        $this->assertNotSame(RequestStatus::Cancelled, $mr->fresh()->status);
+
+        $this->actingAs($this->user('employee'))->post("/requests/{$mr->id}/cancel")->assertRedirect();
+        $this->assertSame(RequestStatus::Cancelled, $mr->fresh()->status);
+
+        $closed = $this->newRequest();
+        $closed->forceFill(['status' => RequestStatus::Closed, 'closed_at' => now()])->save();
+        $this->actingAs($this->user('tech1'))->post("/requests/{$closed->id}/reopen")->assertForbidden();
+        $this->actingAs($this->user('coord'))->post("/requests/{$closed->id}/reopen")->assertRedirect();
+        $this->assertSame(RequestStatus::Reopened, $closed->fresh()->status);
+    }
+
+    public function test_technician_cannot_cancel_a_request_they_filed(): void
+    {
+        $mr = $this->newRequest();
+        $mr->forceFill(['created_by_id' => $this->user('tech1')->id])->save();
+
+        $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/cancel")->assertForbidden();
+        $this->actingAs($this->user('tech1'))->get("/requests/{$mr->id}")->assertDontSee('/requests/'.$mr->id.'/cancel');
+    }
 }

@@ -12,6 +12,7 @@
     $isAssignedTech = $mr->isLeadTechnician($user);
     $isParticipant = $mr->hasTechnician($user);
     $isRequesterSide = $mr->isRequesterSide($user);
+    $canCancelOrReopen = $mr->canCancelOrReopen($user);
     $canComplete = $isAssignedTech && in_array($status, [S::InProgress, S::WaitingParts], true);
     $canAddNote = $isParticipant && in_array($status, [S::Accepted, S::InProgress, S::WaitingParts], true);
     $requiresRelease = $mr->requiresRelease();
@@ -365,7 +366,7 @@
                         @endif
                     @endif
 
-                    @if ($status === S::Closed && ($isRequesterSide || $isCoordinator))
+                    @if ($status === S::Closed && $canCancelOrReopen)
                         <form action="{{ route('requests.reopen', $mr) }}" method="post" class="row g-2 mb-2">
                             @csrf
                             <div class="col-auto flex-grow-1"><input name="note" class="form-control form-control-sm" placeholder="{{ __('NoteOptional') }}"></div>
@@ -373,7 +374,7 @@
                         </form>
                     @endif
 
-                    @if (! in_array($status, [S::Closed, S::Cancelled, S::Completed], true) && ($isRequesterSide || $isCoordinator))
+                    @if (! in_array($status, [S::Closed, S::Cancelled, S::Completed], true) && $canCancelOrReopen)
                         <form action="{{ route('requests.cancel', $mr) }}" method="post" class="d-inline" onsubmit="return confirm(@js(__('AreYouSure')))">
                             @csrf
                             <button class="btn btn-outline-secondary btn-sm mb-2">{{ __('CancelRequest') }}</button>

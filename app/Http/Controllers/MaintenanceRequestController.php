@@ -532,7 +532,7 @@ class MaintenanceRequestController extends Controller
     public function reopen(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($maintenanceRequest->isRequesterSide($user) || $user->canManage(), 403);
+        abort_unless($maintenanceRequest->canCancelOrReopen($user), 403);
         if ($maintenanceRequest->status === RequestStatus::Closed) {
             $maintenanceRequest->fill(['closed_at' => null, 'completed_at' => null, 'department_confirmation' => DepartmentConfirmation::Pending]);
             $this->workflow->transition($maintenanceRequest, RequestStatus::Reopened, $user, $this->note($request));
@@ -544,7 +544,7 @@ class MaintenanceRequestController extends Controller
     public function cancel(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($maintenanceRequest->isRequesterSide($user) || $user->canManage(), 403);
+        abort_unless($maintenanceRequest->canCancelOrReopen($user), 403);
         if (! in_array($maintenanceRequest->status, [RequestStatus::Closed, RequestStatus::Cancelled, RequestStatus::Completed], true)) {
             $this->workflow->transition($maintenanceRequest, RequestStatus::Cancelled, $user, $this->note($request));
         }
