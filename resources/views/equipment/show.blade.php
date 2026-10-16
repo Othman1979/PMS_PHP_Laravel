@@ -260,7 +260,7 @@
         </div>
     </div>
 
-    @if ($user->isAdmin())
+    @if ($user->can('equipment.delete'))
         <form action="{{ route('equipment.destroy', $equipment) }}" method="post" class="mt-3" onsubmit="return confirm(@js(__('AreYouSure')))">
             @csrf
             @method('DELETE')

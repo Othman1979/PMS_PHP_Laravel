@@ -8,24 +8,31 @@
         $tabStatuses = [\App\Enums\RequestStatus::New, \App\Enums\RequestStatus::UnderReview, \App\Enums\RequestStatus::Assigned, \App\Enums\RequestStatus::Accepted,
             \App\Enums\RequestStatus::InProgress, \App\Enums\RequestStatus::WaitingParts, \App\Enums\RequestStatus::Completed, \App\Enums\RequestStatus::Reopened,
             \App\Enums\RequestStatus::Closed, \App\Enums\RequestStatus::Cancelled];
-        $tabBase = collect($filters)->except(['status', 'overdue', 'food_safety', 'page'])->all();
+        $tabBase = collect($filters)->except(['status', 'overdue', 'food_safety', 'archived', 'page'])->all();
         $total = $counts->sum();
     @endphp
     <ul class="nav nav-pills status-tabs flex-nowrap overflow-auto mb-3" id="statusTabs">
-        <li class="nav-item"><a class="nav-link {{ $status === null && ! $overdue && ! $foodSafety ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['all' => 1]) }}">{{ __('AllStatuses') }} <span class="badge rounded-pill text-bg-light" data-count="all">{{ $total }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {{ $status === null && ! $overdue && ! $foodSafety && ! $archived ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['all' => 1]) }}">{{ __('AllStatuses') }} <span class="badge rounded-pill text-bg-light" data-count="all">{{ $total }}</span></a></li>
         @if ($foodSafetyCount > 0 || $foodSafety)
             <li class="nav-item"><a class="nav-link text-danger {{ $foodSafety ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['food_safety' => 1]) }}">🛡 {{ __('FoodSafetyImpact') }} <span class="badge rounded-pill text-bg-danger" data-count="food_safety">{{ $foodSafetyCount }}</span></a></li>
         @endif
         <li class="nav-item"><a class="nav-link text-danger {{ $overdue ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['overdue' => 1]) }}">⏰ {{ __('Overdue') }} <span class="badge rounded-pill text-bg-danger" data-count="overdue">{{ $overdueCount }}</span></a></li>
         @foreach ($tabStatuses as $s)
-            <li class="nav-item"><a class="nav-link {{ $status === $s ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['status' => $s->value]) }}">{{ $s->label() }} <span class="badge rounded-pill text-bg-light" data-count="{{ $s->value }}">{{ $counts[$s->value] ?? 0 }}</span></a></li>
+            <li class="nav-item"><a class="nav-link {{ $status === $s && ! $archived ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['status' => $s->value]) }}">{{ $s->label() }} <span class="badge rounded-pill text-bg-light" data-count="{{ $s->value }}">{{ $counts[$s->value] ?? 0 }}</span></a></li>
         @endforeach
+        @can(\App\Enums\Permission::RequestsArchiveView->value)
+            <li class="nav-item"><a class="nav-link text-secondary {{ $archived ? 'active' : '' }}" href="{{ route('requests.index', $tabBase + ['archived' => 1]) }}">🗄 {{ __('Archive') }} <span class="badge rounded-pill text-bg-light">{{ $archivedCount }}</span></a></li>
+        @endcan
     </ul>
+    @if ($archived)
+        <div class="alert alert-light border small py-2">{{ __('ArchiveHint', ['days' => \App\Models\Setting::archiveDays()]) }}</div>
+    @endif
 
     <form method="get" class="row g-2 mb-3 align-items-center">
         @if ($status) <input type="hidden" name="status" value="{{ $status->value }}"> @endif
         @if ($overdue) <input type="hidden" name="overdue" value="1"> @endif
         @if ($foodSafety) <input type="hidden" name="food_safety" value="1"> @endif
+        @if ($archived) <input type="hidden" name="archived" value="1"> @endif
         <div class="col-12 col-md-4 col-lg-3">
             <input type="search" name="q" value="{{ $search }}" class="form-control" placeholder="{{ __('SearchRequestsPlaceholder') }}">
         </div>

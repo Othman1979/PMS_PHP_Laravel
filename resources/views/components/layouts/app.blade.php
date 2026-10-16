@@ -1,6 +1,9 @@
 @php
+    use App\Enums\Permission as P;
     use App\Enums\Role;
     $user = auth()->user();
+    $brandName = \App\Support\Branding::name();
+    $brandLogo = \App\Support\Branding::logoUrl();
     $canManage = $user?->canManage() ?? false;
     $showPane = $user !== null && $user->hasNavPane();
     $inDialog = request()->boolean(\App\Http\Middleware\HandleFormDialog::QUERY) || request()->boolean(\App\Http\Middleware\HandleFormDialog::INPUT);
@@ -20,10 +23,14 @@
             </button>
         @endif
         <a class="titlebar-brand" href="{{ route('home') }}">
+            @if ($brandLogo)
+                <img class="brand-logo" src="{{ $brandLogo }}" alt="">
+            @else
             <span class="brand-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
             </span>
-            <span class="titlebar-name">{{ __('AppName') }}</span>
+            @endif
+            <span class="titlebar-name">{{ $brandName }}</span>
         </a>
         <div class="titlebar-actions">
             @if ($user)
@@ -74,33 +81,49 @@
             @endif
             <x-nav-item route="equipment.index" :label="__('Equipment')" icon="equipment" active="equipment.*" />
 
-            @if ($canManage)
-                <div class="navpane-header">{{ __('PreventiveMaintenance') }}</div>
-                <x-nav-item route="pm.index" :label="__('PMPlans')" icon="calendar" active="pm.*" />
-                <x-nav-item route="checklists.index" :label="__('Checklists')" icon="checklist" active="checklists.*" />
-                <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
-            @elseif ($user->isFoodSafety())
-                <div class="navpane-header">{{ __('FoodSafetySection') }}</div>
-                <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
+            @if ($user->can(P::PmManage->value) || $user->can(P::ReportsView->value))
+                <div class="navpane-header">{{ $user->can(P::PmManage->value) ? __('PreventiveMaintenance') : __('FoodSafetySection') }}</div>
+                @if ($user->can(P::PmManage->value))
+                    <x-nav-item route="pm.index" :label="__('PMPlans')" icon="calendar" active="pm.*" />
+                    <x-nav-item route="checklists.index" :label="__('Checklists')" icon="checklist" active="checklists.*" />
+                @endif
+                @if ($user->can(P::ReportsView->value))
+                    <x-nav-item route="reports.index" :label="__('Reports')" icon="reports" active="reports.*" />
+                @endif
             @endif
-            @if ($canManage)
+            @if ($user->can(P::PartsView->value) || $user->can(P::PurchasesManage->value))
                 <div class="navpane-header">{{ __('SpareParts') }}</div>
-                <x-nav-item route="parts.index" :label="__('Stock')" icon="stock" active="parts.index|parts.create|parts.edit" />
-                @if ($canManage)
+                @if ($user->can(P::PartsView->value))
+                    <x-nav-item route="parts.index" :label="__('Stock')" icon="stock" active="parts.index|parts.create|parts.edit" />
+                @endif
+                @if ($user->can(P::PurchasesManage->value))
                     <x-nav-item route="purchases.index" :label="__('PurchaseRequests')" icon="cart" active="purchases.index|purchases.show|purchases.receive|receipts.show" />
                     <x-nav-item route="purchases.create" :label="__('NewPurchaseRequest')" icon="cartadd" />
+                @endif
+                @if ($user->can(P::PmManage->value))
                     <x-nav-item route="parts.movements" :label="__('StockMovements')" icon="movements" />
                 @endif
             @endif
-            @if ($user->isAdmin())
+            @if ($user->can(P::UsersManage->value) || $user->can(P::SettingsManage->value))
                 <div class="navpane-header">{{ __('Administration') }}</div>
-                <x-nav-item route="departments.index" :label="__('Departments')" icon="building" active="departments.*" />
-                <x-nav-item route="users.index" :label="__('Users')" icon="users" active="users.*" />
-                <div class="navpane-header">{{ __('SystemSettings') }}</div>
-                <x-nav-item route="priorities.index" :label="__('Priorities')" icon="flag" active="priorities.*" />
-                <x-nav-item route="fault-types.index" :label="__('FaultTypes')" icon="bolt" active="fault-types.*" />
-                <x-nav-item route="fault-causes.index" :label="__('FaultCauses')" icon="search" active="fault-causes.*" />
-                <x-nav-item route="settings.index" :label="__('GeneralSettings')" icon="settings" active="settings.*" />
+                @if ($user->can(P::SettingsManage->value))
+                    <x-nav-item route="departments.index" :label="__('Departments')" icon="building" active="departments.*" />
+                @endif
+                @if ($user->can(P::UsersManage->value))
+                    <x-nav-item route="users.index" :label="__('Users')" icon="users" active="users.*" />
+                    <x-nav-item route="groups.index" :label="__('UserGroups')" icon="users" active="groups.*" />
+                @endif
+                @if ($user->can(P::SettingsManage->value))
+                    <div class="navpane-header">{{ __('SystemSettings') }}</div>
+                    <x-nav-item route="priorities.index" :label="__('Priorities')" icon="flag" active="priorities.*" />
+                    <x-nav-item route="fault-types.index" :label="__('FaultTypes')" icon="bolt" active="fault-types.*" />
+                    <x-nav-item route="fault-causes.index" :label="__('FaultCauses')" icon="search" active="fault-causes.*" />
+                    <x-nav-item route="settings.index" :label="__('GeneralSettings')" icon="settings" active="settings.*" />
+                @endif
+            @endif
+            @if ($user->isDeveloper())
+                <div class="navpane-header">{{ __('Developer') }}</div>
+                <x-nav-item route="developer.settings.index" :label="__('DeveloperSettings')" icon="settings" active="developer.*" />
             @endif
         </nav>
         <div class="navpane-backdrop" id="paneBackdrop"></div>

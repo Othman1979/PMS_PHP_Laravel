@@ -68,6 +68,7 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .titlebar-brand { display: flex; align-items: center; gap: .6rem; color: var(--cmms-text); font-weight: 600; font-size: .95rem; padding: 0 .4rem; min-width: 0; }
 .titlebar-brand:hover { color: var(--cmms-text); }
 .titlebar-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-logo { height: 28px; width: auto; max-width: 110px; object-fit: contain; flex-shrink: 0; }
 .brand-icon {
   width: 26px; height: 26px; flex-shrink: 0;
   display: grid; place-items: center;
@@ -363,6 +364,8 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
   margin-bottom: .4rem;
 }
 .login-hero h2 { font-weight: 600; margin: 0; }
+.login-hero .hero-logo { height: 72px; width: auto; max-width: 220px; object-fit: contain; margin-bottom: .4rem; background: rgba(255,255,255,.9); border-radius: 12px; padding: .35rem .6rem; align-self: flex-start; }
+.login-hero .hero-app { color: #dbe8f7; font-size: .9rem; font-weight: 600; letter-spacing: .02em; }
 .login-hero p { color: #dbe8f7; margin: 0; line-height: 1.65; }
 .login-form-side { flex: 1; padding: 3rem 2.6rem; }
 .login-form-side h3 { font-weight: 600; margin-bottom: 1.6rem; }
@@ -613,6 +616,7 @@ a.btn:hover, a.navpane-item:hover, a.list-group-item:hover, a.text-decoration-no
 .tabulator-print-table td { border: 1px solid #d9d9d9; padding: 3px 6px; }
 .tabulator-print-table .tabulator-print-table-group td { background: #eef4fb; font-weight: 600; }
 .tabulator-print-table .tabulator-print-table-calcs td { background: #f3f3f3; font-weight: 600; }
+.rg-print-company { font-weight: 700; font-size: 12pt; margin-bottom: 2px; }
 .rg-print-head h2 { font-size: 16pt; margin: 0 0 4px; color: #004c99; }
 .rg-print-filters { font-size: 9pt; color: #616161; margin-bottom: 8px; }
 .rg-print-filters span { margin-inline-end: 10px; }

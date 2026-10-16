@@ -1,5 +1,19 @@
 package com.cmms.maintenance.design.emp
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.cmms.maintenance.design.Api
+import com.cmms.maintenance.design.AppState
+import com.cmms.maintenance.design.model.RequestOptions
+import com.cmms.maintenance.design.ui.CmmsDanger
+import com.cmms.maintenance.design.ui.CmmsDropdown
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,7 +51,6 @@ import com.cmms.maintenance.design.Lang
 import com.cmms.maintenance.design.model.Equipment
 import com.cmms.maintenance.design.model.FAULT_TYPES
 import com.cmms.maintenance.design.model.ISSUE_CHIPS
-import com.cmms.maintenance.design.model.Mock
 import com.cmms.maintenance.design.model.CmmsRequest
 import com.cmms.maintenance.design.model.Priority
 import com.cmms.maintenance.design.model.ReqStatus
@@ -64,20 +77,41 @@ import com.cmms.maintenance.design.ui.StatusBadge
 
 @Composable
 fun EmpFormScreen(
-    equipment: Equipment,
+    equipment: Equipment?,
     onMine: () -> Unit,
     onSent: (CmmsRequest) -> Unit,
     onLogout: () -> Unit,
 ) {
     var selectedIssue by remember { mutableStateOf<String?>(null) }
     var description by remember { mutableStateOf("") }
-    var priority by remember { mutableStateOf(Priority.Normal) }
-    var foodSafety by remember { mutableStateOf(false) }
-    var faultType by remember { mutableStateOf<String?>(null) }
-    var hasPhoto by remember { mutableStateOf(false) }
+    var priorityId by remember { mutableStateOf<Int?>(null) }
+    var foodSafety by remember { mutableStateOf(equipment?.autoEscalates == true) }
+    var departmentId by remember { mutableStateOf<Int?>(null) }
+    var location by remember { mutableStateOf("") }
+    var faultTypeId by remember { mutableStateOf<Int?>(null) }
+    var photo by remember { mutableStateOf<Uri?>(null) }
+    val hasPhoto = photo != null
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) photo = it }
+    var options by remember { mutableStateOf<RequestOptions?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var reload by remember { mutableStateOf(0) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(reload) {
+        try {
+            options = Api.options()
+            priorityId = priorityId ?: options?.defaultPriorityId
+            departmentId = departmentId ?: options?.defaultDepartmentId
+            error = null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            error = e.message
+        }
+    }
 
-    val chips = ISSUE_CHIPS[equipment.category]?.let { if (Lang.isRtl) it.second else it.first }.orEmpty()
-    val openReq = Mock.employeeRequests.firstOrNull { it.equipment.code == equipment.code && it.status != ReqStatus.Closed && it.status != ReqStatus.Cancelled }
+    val chips = ISSUE_CHIPS[equipment?.category]?.let { if (Lang.isRtl) it.second else it.first }.orEmpty()
+    val openReq = if (equipment == null) null else AppState.myRequests?.firstOrNull { it.equipment.code == equipment.code && it.status != ReqStatus.Closed && it.status != ReqStatus.Cancelled }
 
     Column(Modifier.fillMaxSize().background(CmmsBackground)) {
         QuickBar(onMyRequests = onMine, onLang = { Lang.toggle() }, onLogout = onLogout)
@@ -86,7 +120,23 @@ fun EmpFormScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { EquipmentHeader(equipment) }
+            if (equipment != null) item { EquipmentHeader(equipment) }
+            else item {
+                CmmsCard {
+                    SectionTitle(s("GeneralFault"))
+                    Spacer(Modifier.height(8.dp))
+                    CmmsDropdown(s("Department"), options?.departments?.map { it.label }.orEmpty(),
+                        options?.departments?.firstOrNull { it.id == departmentId }?.label,
+                        { label -> departmentId = options?.departments?.firstOrNull { it.label == label }?.id })
+                    Spacer(Modifier.height(10.dp))
+                    Text(s("FaultLocation"), color = CmmsText, fontSize = 13.sp)
+                    CmmsField(location, { location = it.take(255) }, placeholder = s("FaultLocationHint"))
+                }
+            }
+            error?.let { message -> item {
+                Text(message, color = CmmsDanger)
+                if (options == null) CmmsOutlineButton(s("Retry"), { reload++ })
+            } }
 
             if (openReq != null) {
                 item { OpenRequestWarning(openReq, onMine) }
@@ -111,8 +161,9 @@ fun EmpFormScreen(
 
             item {
                 StepCard(step = 2, title = s("Quick_Step2")) {
-                    Priority.entries.forEach { p ->
-                        PriorityRow(p, selected = priority == p) { priority = p }
+                    options?.priorities?.forEach { p ->
+                        SelectChip(p.label, priorityId == p.id) { priorityId = p.id }
+                        Spacer(Modifier.height(6.dp))
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -123,7 +174,7 @@ fun EmpFormScreen(
                     Text(s("FoodSafetyImpactHint"), fontSize = 11.sp, color = CmmsMuted, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SelectChip(text = s("No"), selected = !foodSafety) { foodSafety = false }
+                        if (equipment?.autoEscalates != true) SelectChip(text = s("No"), selected = !foodSafety) { foodSafety = false }
                         SelectChip(text = s("Yes"), selected = foodSafety, color = com.cmms.maintenance.design.ui.CmmsDanger) { foodSafety = true }
                     }
                 }
@@ -131,8 +182,10 @@ fun EmpFormScreen(
 
             item {
                 StepCard(step = 3, title = "${s("Quick_StepFaultType")} ${s("Optional")}") {
-                    val types = if (Lang.isRtl) FAULT_TYPES.second else FAULT_TYPES.first
-                    ChipGrid(types, faultType) { faultType = if (faultType == it) null else it }
+                    options?.faultTypes?.forEach { type ->
+                        SelectChip(type.label, faultTypeId == type.id) { faultTypeId = if (faultTypeId == type.id) null else type.id }
+                        Spacer(Modifier.height(6.dp))
+                    }
                 }
             }
 
@@ -148,7 +201,7 @@ fun EmpFormScreen(
                                 RoundedCornerShape(8.dp),
                             )
                             .background(if (hasPhoto) CmmsSuccess.copy(alpha = 0.06f) else CmmsSurface)
-                            .clickable { hasPhoto = !hasPhoto }
+                            .clickable { photoPicker.launch("image/*") }
                             .padding(vertical = 22.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
@@ -161,34 +214,36 @@ fun EmpFormScreen(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            s("Quick_TakePhoto"),
+                            if (Lang.isRtl) "إرفاق صورة" else "Attach photo",
                             fontSize = 13.5.sp,
                             fontWeight = FontWeight.Medium,
                             color = if (hasPhoto) CmmsSuccess else CmmsPrimary,
                         )
                     }
+                    if (hasPhoto) CmmsOutlineButton(if (Lang.isRtl) "إزالة الصورة" else "Remove photo", { photo = null })
                 }
             }
 
             item {
                 CmmsButton(
-                    text = s("Quick_Send"),
+                    text = s(if (busy) "Loading" else "Quick_Send"),
+                    enabled = !busy && options != null && description.isNotBlank() && (equipment != null || (departmentId != null && location.isNotBlank())),
                     onClick = {
-                        val req = CmmsRequest(
-                            number = "REQ-2026-0043",
-                            equipment = equipment,
-                            descEn = description.ifEmpty { selectedIssue ?: "" },
-                            descAr = description.ifEmpty { selectedIssue ?: "" },
-                            initialStatus = ReqStatus.New,
-                            priority = priority,
-                            createdAt = "Just now",
-                            createdAgoEn = "just now",
-                            createdAgoAr = "الآن",
-                            requester = if (Lang.isRtl) Mock.employeeNameAr else Mock.employeeNameEn,
-                            foodSafety = foodSafety,
-                        )
-                        Mock.employeeRequests.add(0, req)
-                        onSent(req)
+                        busy = true
+                        error = null
+                        scope.launch {
+                            try {
+                                val data = JSONObject().put("equipment_id", equipment?.id).put("description", description)
+                                    .put("priority_id", priorityId).put("fault_type_id", faultTypeId).put("food_safety_impact", foodSafety)
+                                if (equipment == null) data.put("department_id", departmentId).put("location", location)
+                                val req = Api.createRequest(data, context, photo)
+                                AppState.refreshMine()
+                                onSent(req)
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                error = e.message
+                            } finally { busy = false }
+                        }
                     },
                     icon = CmmsIcons.Send,
                     modifier = Modifier.fillMaxWidth(),

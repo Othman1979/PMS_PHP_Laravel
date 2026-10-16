@@ -27,6 +27,8 @@
                     <div class="form-text">{{ __('FoodSafetyImpactHint') }}</div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="location">{{ __('FaultLocation') }} — {{ __('GeneralFault') }}</label>
+                    <input class="form-control mb-3" id="location" name="location" value="{{ old('location') }}" maxlength="255" placeholder="{{ __('FaultLocationHint') }}">
                     <label class="form-label" for="description">{{ __('Description') }}</label>
                     <textarea id="description" name="description" class="form-control" rows="4" required maxlength="2000">{{ old('description') }}</textarea>
                 </div>

@@ -81,7 +81,7 @@ fun EmpDoneScreen(
                     Spacer(Modifier.height(10.dp))
                     androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatusBadge(request.status)
-                        PriorityBadge(request.priority)
+                        PriorityBadge(request)
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(request.equipment.name, fontSize = 13.5.sp, fontWeight = FontWeight.Medium, color = CmmsText)
@@ -103,7 +103,7 @@ fun EmpDoneScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     CmmsOutlineButton(
-                        text = s("Quick_Another"),
+                        text = s(if (request.isGeneral) "Quick_AnotherGeneral" else "Quick_Another"),
                         onClick = onAnother,
                         modifier = Modifier.fillMaxWidth(),
                         minHeight = 42.dp,

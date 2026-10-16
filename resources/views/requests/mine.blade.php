@@ -15,13 +15,14 @@
                             <x-status-badge :status="$r->priority" />
                         </div>
                         <div class="mb-2"><x-status-badge :status="$r->status" /> <x-due-badge :request="$r" /></div>
-                        <div class="fw-semibold">{{ $r->equipment?->name ?? $r->department?->localized_name }}</div>
-                        <div class="small text-muted mb-2">{{ $r->department?->localized_name }}@if ($r->equipment?->location) · 📍 {{ $r->equipment->location }}@endif</div>
+                        <div class="fw-semibold">{{ $r->equipment?->name ?? __('GeneralFault') }}</div>
+                        <div class="small text-muted mb-2">{{ $r->department?->localized_name }} · {{ $r->equipment?->location ?? $r->location }}</div>
+                        <div class="small mb-2">{{ $r->isLeadTechnician(auth()->user()) ? __('LeadTechnician') : __('Participant') }}</div>
                         <p class="mb-2">{{ \Illuminate\Support\Str::limit($r->description, 140) }}</p>
                         <small class="text-muted">{{ __('AssignedTo') }}: {{ $r->assigned_at?->format('Y-m-d H:i') }} ({{ str_replace('{0}', $r->created_at->diffForHumans(now(), ['syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]), __('ElapsedSince')) }})</small>
                     </div>
                     <div class="card-footer bg-transparent">
-                        <span class="btn {{ $r->status === \App\Enums\RequestStatus::Assigned ? 'btn-warning' : 'btn-primary' }} w-100">{{ $r->status === \App\Enums\RequestStatus::Assigned ? __('AcceptAndStart') : __('OpenTask') }}</span>
+                        <span class="btn btn-primary w-100">{{ $r->status === \App\Enums\RequestStatus::Assigned && $r->isLeadTechnician(auth()->user()) ? __('AcceptAndStart') : __('OpenTask') }}</span>
                     </div>
                 </a>
             </div>

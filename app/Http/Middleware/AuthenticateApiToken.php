@@ -22,6 +22,8 @@ class AuthenticateApiToken
         abort_if($user === null, 401);
 
         Auth::setUser($user);
+        $request->setUserResolver(static fn () => $user);
+        app()->setLocale($request->getPreferredLanguage(['ar', 'en']) ?? config('app.locale'));
 
         return $next($request);
     }

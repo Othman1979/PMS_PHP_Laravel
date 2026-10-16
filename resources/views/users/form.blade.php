@@ -36,6 +36,25 @@
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label d-block">{{ __('UserGroups') }}</label>
+                    <div class="form-text mb-2">{{ __('UserGroupsHint') }}</div>
+                    @foreach ($groups as $g)
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="groups[]" id="group_{{ $g->id }}" value="{{ $g->id }}" @checked(in_array($g->id, array_map('intval', $selectedGroups), true))>
+                            <label class="form-check-label" for="group_{{ $g->id }}">{{ $g->localized_name }} <small class="text-muted">({{ $g->permissions->count() }} {{ __('Permissions') }})</small></label>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="trade">{{ __('TechnicianTrade') }}</label>
+                    <select id="trade" name="trade" class="form-select">
+                        <option value="">{{ __('None') }}</option>
+                        @foreach (\App\Enums\TechnicianTrade::cases() as $trade)
+                            <option value="{{ $trade->value }}" @selected(old('trade', $user->trade?->value) === $trade->value)>{{ $trade->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label class="form-label" for="specialty">{{ __('Specialty') }} <small class="text-muted">({{ \App\Enums\Role::Technician->label() }})</small></label>
                     <select id="specialty" name="specialty" class="form-select">
                         <option value="">{{ __('None') }}</option>

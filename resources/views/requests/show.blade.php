@@ -1,11 +1,21 @@
 @php
     use App\Enums\RequestStatus as S;
+    use App\Enums\Role;
+    $liveChannel = match (true) {
+        $user->canWatchAllRequests() => 'staff',
+        $user->isTechnician() => 'technician.'.$user->id,
+        $user->hasRole(Role::DepartmentManager) => 'department.'.$user->department_id,
+        default => 'user.'.$user->id,
+    };
     $status = $mr->status;
     $isCoordinator = $user->canManage();
-    $isAssignedTech = $mr->isAssignedTo($user);
+    $isAssignedTech = $mr->isLeadTechnician($user);
+    $isParticipant = $mr->hasTechnician($user);
     $isRequesterSide = $mr->isRequesterSide($user);
+    $canCancel = $mr->canCancel($user);
+    $canReopen = $mr->canReopen($user);
     $canComplete = $isAssignedTech && in_array($status, [S::InProgress, S::WaitingParts], true);
-    $canAddNote = $isAssignedTech && in_array($status, [S::Accepted, S::InProgress, S::WaitingParts], true);
+    $canAddNote = $isParticipant && in_array($status, [S::Accepted, S::InProgress, S::WaitingParts], true);
     $requiresRelease = $mr->requiresRelease();
     $canRelease = $requiresRelease && ! $mr->isReleased() && $status === S::Completed && $mr->canRelease($user);
     $releaseBlocksClose = $requiresRelease && ! $mr->isReleased();
@@ -13,7 +23,7 @@
     $fmt = fn ($d) => $d?->format('Y-m-d H:i');
 @endphp
 <x-layouts.app :title="__('RequestDetails')">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3" data-live-reload="request.{{ $mr->id }}">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3" data-live-reload="{{ $liveChannel }}" data-live-self="{{ $mr->id }}">
         <h2 class="h4 mb-0">
             {{ $mr->request_number }}
             <x-status-badge :status="$status" class="fs-6" />
@@ -27,6 +37,9 @@
             @endif
             @if ($mr->is_temporary_repair)
                 <span class="badge bg-warning text-dark fs-6">{{ __('TemporaryRepair') }}</span>
+            @endif
+            @if ($mr->isArchived())
+                <span class="badge bg-secondary fs-6">{{ __('Archived') }}</span>
             @endif
             @if ($mr->followUpOf)
                 <a class="badge bg-secondary fs-6 text-decoration-none" href="{{ route('requests.show', $mr->followUpOf) }}">{{ __('FollowUpOf') }} {{ $mr->followUpOf->request_number }}</a>
@@ -74,7 +87,8 @@
                                     <div class="small text-muted">📍 {{ __('Location') }}: <strong>{{ $mr->equipment->location }}</strong></div>
                                 @endif
                             @else
-                                -
+                                {{ __('GeneralFault') }}
+                                <div class="small text-muted">{{ $mr->location }}</div>
                             @endif
                         </td>
                     </tr>
@@ -94,7 +108,20 @@
                     @if ($mr->due_at)
                         <tr><th>{{ __('DueAt') }}</th><td class="{{ $mr->isOverdue() ? 'text-danger fw-semibold' : '' }}">{{ $fmt($mr->due_at) }} <x-due-badge :request="$mr" /></td></tr>
                     @endif
-                    <tr><th>{{ __('AssignedTo') }}</th><td>{{ $mr->assignedTechnician?->full_name ?? '-' }} {{ $fmt($mr->assigned_at) }}</td></tr>
+                    <tr><th>{{ __('LeadTechnician') }}</th><td>{{ $mr->assignedTechnician?->full_name ?? '-' }} {{ $fmt($mr->assigned_at) }}</td></tr>
+                    @if ($mr->activeTeamMembers()->count() > 1)
+                        <tr><th>{{ __('RequestTeam') }}</th><td>
+                            @foreach ($mr->activeTeamMembers() as $member)
+                                <div class="mb-2">
+                                    <strong>{{ $member->user->full_name }}</strong>
+                                    — {{ $member->user_id === $mr->assigned_technician_id ? __('LeadTechnician') : __('Participant') }}
+                                    @if ($member->user->specialtyLabel())<span class="text-muted"> · {{ $member->user->specialtyLabel() }}</span>@endif
+                                    <div class="small text-muted">{{ $member->confirmed_at ? __('ParticipationConfirmed').' · '.$fmt($member->confirmed_at) : __('AwaitingParticipation') }}</div>
+                                    @if ($member->worked_at)<div class="small text-success">{{ __('ActualParticipant') }}</div>@endif
+                                </div>
+                            @endforeach
+                        </td></tr>
+                    @endif
                     <tr><th>{{ __('AcceptedAt') }}</th><td>{{ $fmt($mr->accepted_at) }}</td></tr>
                     <tr><th>{{ __('StartedAt') }}</th><td>{{ $fmt($mr->started_at) }}</td></tr>
                     <tr><th>{{ __('CompletedAt') }}</th><td>{{ $fmt($mr->completed_at) }}</td></tr>
@@ -210,19 +237,64 @@
                     @if ($isCoordinator && in_array($status, [S::New, S::UnderReview, S::Reopened], true))
                         <form action="{{ route('requests.assign', $mr) }}" method="post" class="mb-3">
                             @csrf
-                            <label class="form-label" for="technician_id">{{ __('AssignTechnician') }}</label>
+                            <label class="form-label" for="technician_id">{{ __('LeadTechnician') }}</label>
                             <select id="technician_id" name="technician_id" class="form-select mb-1" required>
                                 <option value="">{{ __('AssignTechnician') }}</option>
                                 @foreach ($technicians as $t)
-                                    <option value="{{ $t->id }}" @selected($suggested?->id === $t->id)>{{ $t->full_name }}{{ $t->specialty ? ' — '.$t->specialty->label() : '' }}</option>
+                                    <option value="{{ $t->id }}" @selected($suggested?->id === $t->id)>{{ $t->full_name }}{{ $t->specialtyLabel() ? ' — '.$t->specialtyLabel() : '' }}</option>
                                 @endforeach
                             </select>
                             @if ($suggested)
                                 <div class="form-text mb-2">{{ __('SuggestedTechnician') }}: <strong>{{ $suggested->full_name }}</strong></div>
                             @endif
+                            <details class="mb-3">
+                                <summary>{{ __('AddParticipants') }}</summary>
+                                @foreach ($technicians as $t)
+                                    <label class="form-check mt-2">
+                                        <input type="checkbox" class="form-check-input" name="technician_ids[]" value="{{ $t->id }}" @checked(in_array($t->id, old('technician_ids', [])))>
+                                        <span class="form-check-label">{{ $t->full_name }}{{ $t->specialtyLabel() ? ' — '.$t->specialtyLabel() : '' }}</span>
+                                    </label>
+                                @endforeach
+                            </details>
                             <textarea name="note" class="form-control mb-2" rows="2" placeholder="{{ __('NoteForTechnician') }}"></textarea>
                             <button class="btn btn-primary w-100">{{ __('Assign') }}</button>
                         </form>
+                    @endif
+
+                    @if ($isCoordinator && $mr->assigned_technician_id && $mr->isOpen())
+                        <details class="mb-3">
+                            <summary>{{ __('ManageTeam') }}</summary>
+                            <form action="{{ route('requests.team', $mr) }}" method="post" class="mt-2">
+                                @csrf
+                                <label class="form-label" for="lead_id">{{ __('TransferLead') }}</label>
+                                <select id="lead_id" name="lead_id" class="form-select mb-3">
+                                    <option value="">{{ __('KeepCurrentLead') }}</option>
+                                    @foreach ($technicians as $t)
+                                        <option value="{{ $t->id }}">{{ $t->full_name }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mb-1">{{ __('AddParticipants') }}</p>
+                                @foreach ($technicians as $t)
+                                    @unless (in_array($t->id, $mr->technicianIds(), true))
+                                        <label class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" name="technician_ids[]" value="{{ $t->id }}">
+                                            <span class="form-check-label">{{ $t->full_name }}{{ $t->specialtyLabel() ? ' — '.$t->specialtyLabel() : '' }}</span>
+                                        </label>
+                                    @endunless
+                                @endforeach
+                                <button class="btn btn-primary mt-2">{{ __('Save') }}</button>
+                            </form>
+                        </details>
+                    @endif
+
+                    @if ($isParticipant && ! $isAssignedTech && $mr->isOpen())
+                        <p class="text-muted">{{ __('LeadControlsWorkflow') }}</p>
+                        @if (! $mr->teamMembers->firstWhere('user_id', $user->id)?->confirmed_at)
+                            <form action="{{ route('requests.participate', $mr) }}" method="post" class="mb-3">
+                                @csrf
+                                <button class="btn btn-primary w-100">{{ __('ConfirmParticipation') }}</button>
+                            </form>
+                        @endif
                     @endif
 
                     @if ($isAssignedTech && $status === S::Assigned)
@@ -298,7 +370,7 @@
                         @endif
                     @endif
 
-                    @if ($status === S::Closed && ($isRequesterSide || $isCoordinator))
+                    @if ($canReopen)
                         <form action="{{ route('requests.reopen', $mr) }}" method="post" class="row g-2 mb-2">
                             @csrf
                             <div class="col-auto flex-grow-1"><input name="note" class="form-control form-control-sm" placeholder="{{ __('NoteOptional') }}"></div>
@@ -306,11 +378,21 @@
                         </form>
                     @endif
 
-                    @if (! in_array($status, [S::Closed, S::Cancelled, S::Completed], true) && ($isRequesterSide || $isCoordinator))
-                        <form action="{{ route('requests.cancel', $mr) }}" method="post" class="d-inline" onsubmit="return confirm(@js(__('AreYouSure')))">
+                    @if ($canCancel)
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-2" data-bs-toggle="collapse" data-bs-target="#cancelForm" aria-expanded="{{ $errors->has('note') ? 'true' : 'false' }}">{{ __('CancelRequest') }}</button>
+                        <form action="{{ route('requests.cancel', $mr) }}" method="post" class="collapse {{ $errors->has('note') ? 'show' : '' }} border rounded p-2 mb-2" id="cancelForm">
                             @csrf
-                            <button class="btn btn-outline-secondary btn-sm mb-2">{{ __('CancelRequest') }}</button>
+                            <label class="form-label small mb-1" for="cancelReason">{{ __('CancelReason') }} <span class="text-danger">*</span></label>
+                            <textarea name="note" id="cancelReason" class="form-control form-control-sm mb-2 @error('note') is-invalid @enderror" rows="2" required maxlength="1000" placeholder="{{ __('CancelReasonPlaceholder') }}">{{ old('note') }}</textarea>
+                            @error('note')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+                            <button class="btn btn-danger btn-sm" onclick="return confirm(@js(__('AreYouSure')))">{{ __('ConfirmCancelRequest') }}</button>
                         </form>
+                    @endif
+                    @if ($status === S::Cancelled && $mr->cancel_reason)
+                        <div class="alert alert-secondary py-2 small mb-2">
+                            <strong>{{ __('CancelReason') }}:</strong> {{ $mr->cancel_reason }}
+                            <div class="text-muted">{{ $mr->cancelledBy?->full_name }} · {{ $fmt($mr->cancelled_at) }}</div>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -404,6 +486,17 @@
                                 </div>
                             @endif
                             <div class="mb-2">
+                                @if ($mr->activeTeamMembers()->count() > 1)
+                                    <fieldset class="mb-3">
+                                        <legend class="fs-6">{{ __('ConfirmActualParticipants') }}</legend>
+                                        @foreach ($mr->activeTeamMembers() as $member)
+                                            <label class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" name="worked_technician_ids[]" value="{{ $member->user_id }}" @checked(in_array($member->user_id, old('worked_technician_ids', [$mr->assigned_technician_id])))>
+                                                <span class="form-check-label">{{ $member->user->full_name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </fieldset>
+                                @endif
                                 <label class="form-label" for="resolution_notes">{{ __('ResolutionNotes') }}</label>
                                 <textarea id="resolution_notes" name="resolution_notes" class="form-control" rows="3" required placeholder="{{ __('CompleteHint') }}">{{ old('resolution_notes') }}</textarea>
                             </div>

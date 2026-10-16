@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMMS QR Scanner</title>
+<style>
+body { margin: 0; padding: 16px; color: white; background: #14233b; font: 18px system-ui; text-align: center; }
+video { width: 100%; max-height: 70vh; border-radius: 12px; object-fit: cover; }
+p { line-height: 1.5; }
+</style>
+<p id="hint"></p>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas" hidden></canvas>
+<p id="error" role="alert"></p>
+<script src="lib/jsqr/jsQR.js"></script>
+<script>
+'use strict';
+const ar = new URLSearchParams(location.search).get('lang') === 'ar';
+document.documentElement.lang = ar ? 'ar' : 'en';
+document.documentElement.dir = ar ? 'rtl' : 'ltr';
+document.getElementById('hint').textContent = ar ? 'وجّه الكاميرا نحو ملصق QR للمعدة' : 'Point the camera at the equipment QR label';
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const context = canvas.getContext('2d', { willReadFrequently: true });
+let stream;
+let stopped = false;
+function stop() {
+    stopped = true;
+    stream?.getTracks().forEach(track => track.stop());
+}
+window.addEventListener('pagehide', stop);
+async function start() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        requestAnimationFrame(scan);
+    } catch (error) {
+        document.getElementById('error').textContent = ar ? 'تعذّر تشغيل الكاميرا. أغلق الماسح وابحث برمز المعدة.' : 'Camera unavailable. Close the scanner and search by equipment code.';
+        stop();
+    }
+}
+function scan() {
+    if (stopped) return;
+    if (video.readyState >= video.HAVE_CURRENT_DATA && video.videoWidth) {
+        const ratio = Math.min(1, 800 / video.videoWidth);
+        canvas.width = video.videoWidth * ratio;
+        canvas.height = video.videoHeight * ratio;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(frame.data, frame.width, frame.height);
+        if (code?.data) {
+            stop();
+            location.href = 'cmms://equipment?code=' + encodeURIComponent(code.data);
+            return;
+        }
+    }
+    requestAnimationFrame(scan);
+}
+start();
+</script>
+</html>

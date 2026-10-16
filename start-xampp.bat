@@ -5,6 +5,7 @@ cd /d "%~dp0"
 set "PHP=C:\xampp\php\php.exe"
 if exist "C:\php83\php.exe" set "PHP=C:\php83\php.exe"
 set "MYSQL=C:\xampp\mysql\bin\mysql.exe"
+for %%I in ("%PHP%") do set "PATH=%%~dpI;%PATH%"
 
 if not exist "%PHP%" (
   echo PHP not found. Install XAMPP in C:\xampp or PHP 8.3 in C:\php83
@@ -19,11 +20,28 @@ if errorlevel 1 (
   pause & exit /b 1
 )
 
-if not exist ".env" (
-  copy ".env.xampp" ".env" >nul
-  "%PHP%" artisan key:generate --force --no-interaction
-  "%PHP%" artisan cmms:vapid --write --no-interaction
+if not exist "vendor\autoload.php" (
+  where composer >nul 2>&1
+  if errorlevel 1 (
+    echo Install Composer from https://getcomposer.org/download/ then run this script again.
+    pause & exit /b 1
+  )
+  call composer install --no-interaction --prefer-dist || (pause & exit /b 1)
 )
+
+if not exist "%MYSQL%" (
+  echo MySQL client not found. Install XAMPP in C:\xampp.
+  pause & exit /b 1
+)
+
+if not exist ".env" (
+  copy ".env.xampp.example" ".env" >nul || (pause & exit /b 1)
+  "%PHP%" artisan config:clear || (pause & exit /b 1)
+  "%PHP%" artisan key:generate --force --no-interaction || (pause & exit /b 1)
+  "%PHP%" artisan cmms:vapid --write --no-interaction || (pause & exit /b 1)
+)
+
+"%PHP%" artisan config:clear || (pause & exit /b 1)
 
 "%MYSQL%" -u root -e "CREATE DATABASE IF NOT EXISTS cmms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 if errorlevel 1 (
@@ -38,7 +56,7 @@ if not exist "storage\installed.flag" (
 ) else (
   "%PHP%" artisan migrate --force || (pause & exit /b 1)
 )
-"%PHP%" artisan view:cache >nul
+"%PHP%" artisan view:cache >nul || (pause & exit /b 1)
 
 start "CMMS Realtime (Reverb)" /min "%PHP%" artisan reverb:start --host=0.0.0.0 --port=8085
 start "CMMS Scheduler" /min "%PHP%" artisan schedule:work

@@ -7,15 +7,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 
-/** App language state (design preview toggle). The web app uses the same EN/AR pair. */
 object Lang {
     var current by mutableStateOf("ar")
     val isRtl get() = current == "ar"
     val layoutDirection get() = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
-    fun toggle() { current = if (current == "ar") "en" else "ar" }
+    fun toggle() {
+        current = if (current == "ar") "en" else "ar"
+        Session.language = current
+    }
 }
 
 private val STRINGS: Map<String, Pair<String, String>> = mapOf(
+    "GeneralFault" to ("General fault (no equipment)" to "عطل عام (بدون معدة)"),
+    "ReportGeneralFault" to ("Report a general fault" to "الإبلاغ عن عطل عام"),
+    "Quick_AnotherGeneral" to ("Report another general fault" to "الإبلاغ عن عطل عام آخر"),
+    "FaultLocation" to ("Location within the department" to "الموقع داخل القسم"),
+    "FaultLocationHint" to ("Example: ceiling above the washbasin" to "مثال: السقف فوق المغسلة"),
+    "LeadTechnician" to ("Lead technician" to "الفني الرئيسي"),
+    "Participant" to ("Participant" to "فني مشارك"),
+    "RequestTeam" to ("Request team" to "فريق الطلب"),
+    "ConfirmParticipation" to ("Confirm my participation" to "تأكيد مشاركتي"),
+    "ParticipationConfirmed" to ("Participation confirmed" to "تم تأكيد المشاركة"),
+    "ActualParticipant" to ("Performed work" to "نفذ العمل فعليًا"),
+    "ConfirmActualParticipants" to ("Confirm who actually performed the work" to "أكد أسماء الفنيين الذين نفذوا العمل فعليًا"),
+    "LeadControlsWorkflow" to ("The lead technician controls the request status and completion. You can confirm participation and add notes." to "الفني الرئيسي يتحكم بحالة الطلب وإنجازه. يمكنك تأكيد مشاركتك وإضافة ملاحظاتك."),
     "AppName" to ("Restaurant CMMS" to "نظام صيانة المطعم"),
     "MyTasks" to ("My tasks" to "مهامي"),
     "NoTasks" to ("No tasks assigned to you right now." to "لا توجد مهام محوّلة إليك حالياً."),

@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\Role;
+use App\Models\MaintenanceRequest;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\CalibrationReminder;
 use App\Services\DatabaseBackup;
 use App\Services\PmGenerator;
@@ -64,3 +67,36 @@ Artisan::command('cmms:calibration-reminders', function (CalibrationReminder $re
 })->purpose('Alert maintenance staff and food-safety officers about calibration due soon / expired');
 
 Schedule::command('cmms:calibration-reminders')->dailyAt('07:00')->withoutOverlapping();
+
+Artisan::command('cmms:developer {username} {--name=} {--password=}', function () {
+    $username = trim($this->argument('username'));
+    $user = User::query()->where('username', $username)->first();
+    $password = $this->option('password') ?: ($user === null ? $this->secret('Password for the new developer account') : null);
+
+    if ($user === null && blank($password)) {
+        $this->error('A password is required to create a new developer account.');
+
+        return self::FAILURE;
+    }
+
+    $user ??= new User(['username' => $username, 'full_name' => $this->option('name') ?: 'Developer']);
+    $user->forceFill(['role' => Role::Admin, 'is_active' => true, 'is_developer' => true]);
+    if ($this->option('name')) {
+        $user->full_name = $this->option('name');
+    }
+    if (filled($password)) {
+        $user->password = $password;
+    }
+    $user->save();
+
+    $this->info("Developer account '{$username}' is ready (hidden from the user list, admin rights + /dev/settings).");
+
+    return self::SUCCESS;
+})->purpose('Create or promote a hidden developer account that can edit branding and deployment settings');
+
+Artisan::command('cmms:archive-requests', function () {
+    $days = Setting::archiveDays();
+    $count = MaintenanceRequest::query()->archivable($days)->update(['archived_at' => now()]);
+    $this->info("Archived {$count} request(s) finished more than {$days} days ago.");
+})->purpose('Archive completed, closed and cancelled requests older than the retention period');
+Schedule::command('cmms:archive-requests')->dailyAt('03:00')->withoutOverlapping();

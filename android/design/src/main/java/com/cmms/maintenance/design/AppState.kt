@@ -8,6 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -19,7 +21,7 @@ import kotlinx.coroutines.sync.withLock
 object AppState {
     private const val SUMMARY_ID = 2_000_000_000L
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val tasksMutex = Mutex()
     private val mineMutex = Mutex()
     private val notifMutex = Mutex()
@@ -47,6 +49,9 @@ object AppState {
                 } else if (tasks == null) {
                     tasksFailed = true
                 }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                tasksFailed = true
             } finally {
                 tasksMutex.unlock()
             }
@@ -64,6 +69,9 @@ object AppState {
                 } else if (myRequests == null) {
                     myRequestsFailed = true
                 }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                myRequestsFailed = true
             } finally {
                 mineMutex.unlock()
             }
@@ -102,6 +110,8 @@ object AppState {
                 }
                 val newest = page.items.maxOfOrNull { it.id } ?: 0L
                 if (newest > Session.lastNotifId) Session.lastNotifId = newest
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
             } finally {
                 notifMutex.unlock()
             }
@@ -110,22 +120,15 @@ object AppState {
 
     /** Handle one socket 'notification' event payload. */
     fun onSocketNotification(id: Long, title: String, body: String) {
-        if (id <= Session.lastNotifId) {
-            refreshNotifications()
-            return
-        }
-        Session.lastNotifId = id
-        unread += 1
-        Notifier.post(NotifItem(id, title, body, "", read = false))
+        refreshNotifications()
     }
 
     fun markAllRead() {
-        unread = 0
-        Notifier.syncBadge()
-        scope.launch { Api.markAllNotificationsRead() }
+        scope.launch { if (Api.markAllNotificationsRead()) refreshNotifications() }
     }
 
     fun clear() {
+        scope.coroutineContext.cancelChildren()
         tasks = null
         done = emptyList()
         tasksFailed = false

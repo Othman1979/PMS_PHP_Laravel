@@ -31,7 +31,7 @@ class RequestWorkflow
     /** @param list<UploadedFile> $files */
     public function create(?User $user, ?Equipment $equipment, int $departmentId, string $description,
         Priority $priority, array $files = [], bool $preventive = false, ?int $planId = null, ?int $faultTypeId = null,
-        bool $foodSafetyImpact = false, ?int $followUpOfId = null, ?Carbon $dueAt = null): MaintenanceRequest
+        bool $foodSafetyImpact = false, ?int $followUpOfId = null, ?Carbon $dueAt = null, ?string $location = null): MaintenanceRequest
     {
         // A fault on CCP/oPRP or critical equipment always affects food safety; any food-safety fault jumps to the critical priority.
         $foodSafetyImpact = $foodSafetyImpact || ($equipment?->autoEscalatesFoodSafety() ?? false);
@@ -44,12 +44,13 @@ class RequestWorkflow
             }
         }
 
-        $request = DB::transaction(function () use ($user, $equipment, $departmentId, $description, $priority, $preventive, $planId, $faultTypeId, $foodSafetyImpact, $followUpOfId, $dueAt, $escalatedFrom) {
+        $request = DB::transaction(function () use ($user, $equipment, $departmentId, $description, $priority, $preventive, $planId, $faultTypeId, $foodSafetyImpact, $followUpOfId, $dueAt, $escalatedFrom, $location) {
             $request = MaintenanceRequest::create([
                 'equipment_id' => $equipment?->id,
                 'department_id' => $departmentId,
                 'created_by_id' => $user?->id ?? User::query()->where('role', Role::Admin)->value('id'),
                 'description' => $description,
+                'location' => $equipment === null && filled($location) ? trim($location) : null,
                 'priority_id' => $priority->id,
                 'due_at' => $dueAt ?? ($priority->sla_hours ? now()->addHours((int) $priority->sla_hours) : null),
                 'fault_type_id' => $faultTypeId,
@@ -142,7 +143,7 @@ class RequestWorkflow
             ->each(function (MaintenanceRequest $request) use (&$count) {
                 $request->forceFill(['escalated_at' => now()])->save();
                 RequestChanged::dispatch($request);
-                $this->notify($request, [...$this->staffIds(), ...array_filter([$request->assigned_technician_id])], 'Push_OverdueTitle', null, withPriority: true);
+                $this->notify($request, [...$this->staffIds(), ...$request->technicianIds()], 'Push_OverdueTitle', null, withPriority: true);
                 $count++;
             });
 
@@ -164,10 +165,23 @@ class RequestWorkflow
         }
 
         DB::transaction(function () use ($request, $from, $to, $by, $note) {
-            $current = MaintenanceRequest::query()->lockForUpdate()->find($request->id, ['status']);
+            $current = MaintenanceRequest::query()->lockForUpdate()->find($request->id);
             if ($current !== null && $current->status !== $from) {
                 $request->status = $current->status;
                 throw ValidationException::withMessages(['status' => __('Error_StateChanged')]);
+            }
+            if ($by?->isTechnician() && $from === $to) {
+                abort_unless($current?->hasTechnician($by), 403);
+            }
+            if ($by?->isTechnician() && $from !== $to
+                && in_array($to, [RequestStatus::Accepted, RequestStatus::InProgress, RequestStatus::WaitingParts, RequestStatus::Completed], true)) {
+                abort_unless($current?->isLeadTechnician($by), 403);
+            }
+            if ($to === RequestStatus::Accepted && $request->assigned_technician_id !== null) {
+                $member = $request->teamMembers()->firstOrCreate(['user_id' => $request->assigned_technician_id]);
+                $member->confirmed_at ??= now();
+                $member->save();
+                $request->unsetRelation('teamMembers');
             }
             $request->save();
             $request->touch();
@@ -186,10 +200,78 @@ class RequestWorkflow
 
     public function assign(MaintenanceRequest $request, User $technician, ?User $by, ?string $note): void
     {
-        $request->assigned_technician_id = $technician->id;
-        $request->assigned_at = now();
-        $request->setRelation('assignedTechnician', $technician);
-        $this->transition($request, RequestStatus::Assigned, $by, $note);
+        DB::transaction(function () use ($request, $technician, $by, $note) {
+            $current = MaintenanceRequest::lockForUpdate()->findOrFail($request->id);
+            abort_unless(in_array($current->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Reopened], true), 409, __('Error_StateChanged'));
+            if ($current->assigned_technician_id !== null && $current->assigned_technician_id !== $technician->id) {
+                $current->teamMembers()->updateOrCreate(['user_id' => $current->assigned_technician_id], ['removed_at' => now()]);
+            }
+            $request->teamMembers()->updateOrCreate(['user_id' => $technician->id], ['removed_at' => null]);
+            $request->unsetRelation('teamMembers');
+            $request->assigned_technician_id = $technician->id;
+            $request->assigned_at = now();
+            $request->setRelation('assignedTechnician', $technician);
+            $this->transition($request, RequestStatus::Assigned, $by, $note);
+        });
+    }
+
+    /** @param list<int> $technicianIds */
+    public function updateTeam(MaintenanceRequest $request, User $by, array $technicianIds, ?int $leadId = null): void
+    {
+        abort_unless($by->canManage(), 403);
+        DB::transaction(function () use ($request, $by, $technicianIds, $leadId) {
+            $current = MaintenanceRequest::lockForUpdate()->findOrFail($request->id);
+            abort_unless($current->assigned_technician_id !== null && $current->isOpen(), 409, __('Error_StateChanged'));
+            $ids = array_values(array_unique(array_map('intval', $technicianIds)));
+            if ($leadId !== null) {
+                $ids[] = $leadId;
+                $ids = array_values(array_unique($ids));
+            }
+            $technicians = User::whereIn('id', $ids)->where('role', Role::Technician)->where('is_active', true)->get();
+            if ($technicians->count() !== count($ids)) {
+                throw ValidationException::withMessages(['technician_ids' => __('Error_InvalidTechnicians')]);
+            }
+            $current->teamMembers()->firstOrCreate(['user_id' => $current->assigned_technician_id]);
+            $added = [];
+            foreach ($technicians as $technician) {
+                $member = $current->teamMembers()->updateOrCreate(['user_id' => $technician->id], ['removed_at' => null]);
+                if ($member->wasRecentlyCreated || $member->wasChanged('removed_at')) {
+                    $added[] = $technician->full_name;
+                }
+            }
+            $notes = [];
+            if ($added !== []) {
+                $notes[] = __('TeamMembersAdded').': '.implode(', ', $added);
+            }
+            if ($leadId !== null && $leadId !== $current->assigned_technician_id) {
+                $previous = $current->assignedTechnician->full_name;
+                $current->teamMembers()->where('user_id', $current->assigned_technician_id)->update(['removed_at' => now()]);
+                $next = $technicians->firstWhere('id', $leadId);
+                $current->assigned_technician_id = $leadId;
+                $current->setRelation('assignedTechnician', $next);
+                $notes[] = __('LeadTransferred').': '.$previous.' → '.$next->full_name;
+            }
+            if ($notes !== []) {
+                $current->unsetRelation('teamMembers');
+                $this->comment($current, $by, implode(' | ', $notes));
+                ActivityLog::record('request_team_updated', $current, implode(' | ', $notes), $by);
+            }
+        });
+    }
+
+    public function confirmParticipation(MaintenanceRequest $request, User $by): void
+    {
+        DB::transaction(function () use ($request, $by) {
+            $current = MaintenanceRequest::lockForUpdate()->findOrFail($request->id);
+            abort_unless($current->hasTechnician($by), 403);
+            abort_unless($current->isOpen(), 409, __('Error_StateChanged'));
+            $member = $current->teamMembers()->firstOrCreate(['user_id' => $by->id]);
+            if ($member->confirmed_at === null) {
+                $member->update(['confirmed_at' => now()]);
+                $current->unsetRelation('teamMembers');
+                $this->comment($current, $by, __('ParticipationConfirmed'));
+            }
+        });
     }
 
     /**
@@ -201,12 +283,31 @@ class RequestWorkflow
      */
     public function complete(MaintenanceRequest $request, User $by, string $resolution, ?string $technicianNotes,
         float $laborCost, array $parts, array $checklist, ?int $faultTypeId = null, ?int $faultCauseId = null,
-        bool $temporaryRepair = false, ?Carbon $permanentRepairDue = null): void
+        bool $temporaryRepair = false, ?Carbon $permanentRepairDue = null, ?array $workedTechnicianIds = null): void
     {
         $request->loadMissing('equipment');
         $foodContact = $request->equipment?->food_contact ?? false;
 
-        DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist, $faultTypeId, $faultCauseId, $temporaryRepair, $permanentRepairDue, $foodContact) {
+        DB::transaction(function () use ($request, $by, $resolution, $technicianNotes, $laborCost, $parts, $checklist, $faultTypeId, $faultCauseId, $temporaryRepair, $permanentRepairDue, $foodContact, $workedTechnicianIds) {
+            $current = MaintenanceRequest::lockForUpdate()->findOrFail($request->id);
+            if ($by->isTechnician()) {
+                abort_unless($current->isLeadTechnician($by), 403);
+            }
+            $teamIds = $current->technicianIds();
+            if (count($teamIds) > 1 && $workedTechnicianIds === null) {
+                throw ValidationException::withMessages(['worked_technician_ids' => __('Error_ConfirmWorkers')]);
+            }
+            $workers = array_values(array_unique(array_map('intval', $workedTechnicianIds ?? $teamIds)));
+            if (array_diff($workers, $teamIds) !== [] || ($teamIds !== [] && $workers === [])) {
+                throw ValidationException::withMessages(['worked_technician_ids' => __('Error_InvalidWorkers')]);
+            }
+            foreach ($workers as $workerId) {
+                $member = $current->teamMembers()->firstOrCreate(['user_id' => $workerId]);
+                $member->worked_at ??= now();
+                $member->worked_as_lead = $member->worked_as_lead || $workerId === $current->assigned_technician_id;
+                $member->save();
+            }
+            $request->unsetRelation('teamMembers');
             foreach ($parts as $partId => $qty) {
                 $qty = (int) $qty;
                 $spare = SparePart::query()->lockForUpdate()->find($partId);
@@ -302,6 +403,7 @@ class RequestWorkflow
             foodSafetyImpact: $request->food_safety_impact,
             followUpOfId: $request->id,
             dueAt: $permanentRepairDue->copy()->endOfDay(),
+            location: $request->location,
         );
 
         $this->notify($request, array_values(array_unique([...$this->staffIds($by->id), ...$this->foodSafetyIds($by->id)])),
@@ -356,16 +458,15 @@ class RequestWorkflow
         RequestChanged::dispatch($request, false, $from === $to ? null : $from);
 
         $actor = $by?->id;
-        $technician = $request->assigned_technician_id;
         $staff = fn () => $request->food_safety_impact
             ? array_values(array_unique([...$this->staffIds($actor), ...$this->foodSafetyIds($actor)]))
             : $this->staffIds($actor);
-        $tech = fn () => $technician !== null && $technician !== $actor ? [$technician] : [];
+        $tech = fn () => array_values(array_diff($request->technicianIds(), array_filter([$actor])));
         $requesterSide = fn () => array_values(array_diff($this->requesterSideIds($request), array_filter([$actor])));
 
         if ($from === $to) {
             $titleKey = $by?->isTechnician() ? 'Push_NoteAddedTitle' : 'Push_CommentTitle';
-            $this->notify($request, array_values(array_unique([...$staff(), ...$tech(), ...$requesterSide()])), $titleKey, $note, withTechnician: $by?->isTechnician() ?? false);
+            $this->notify($request, array_values(array_unique([...$staff(), ...$tech(), ...$requesterSide()])), $titleKey, $by !== null ? $by->full_name.': '.$note : $note);
 
             return;
         }

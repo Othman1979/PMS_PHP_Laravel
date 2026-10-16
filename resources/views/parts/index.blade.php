@@ -50,7 +50,7 @@
                                 <a class="btn btn-sm btn-outline-info" href="{{ route('parts.movements', ['spare_part_id' => $p->id]) }}">{{ __('PartHistory') }}</a>
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ route('parts.edit', $p) }}">{{ __('Edit') }}</a>
                             @endif
-                            @if ($user->isAdmin())
+                            @if ($user->can('parts.delete'))
                                 <form action="{{ route('parts.destroy', $p) }}" method="post" class="d-inline" onsubmit="return confirm(@js(__('AreYouSure')))">
                                     @csrf
                                     @method('DELETE')

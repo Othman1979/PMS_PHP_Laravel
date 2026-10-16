@@ -26,6 +26,7 @@ class SettingController extends Controller
             'autoAssign' => Setting::bool(Setting::AUTO_ASSIGN),
             'escalateOverdue' => Setting::bool(Setting::ESCALATE_OVERDUE, true),
             'backupKeep' => (int) Setting::get(Setting::BACKUP_KEEP, '14'),
+            'archiveDays' => Setting::archiveDays(),
             'backups' => $backups,
         ]);
     }
@@ -33,12 +34,14 @@ class SettingController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([
+            'archive_days' => ['required', 'integer', 'min:1', 'max:3650'],
             'backup_keep' => ['required', 'integer', 'min:1', 'max:365'],
         ]);
 
         Setting::set(Setting::AUTO_ASSIGN, $request->boolean('auto_assign') ? '1' : '0');
         Setting::set(Setting::ESCALATE_OVERDUE, $request->boolean('escalate_overdue') ? '1' : '0');
         Setting::set(Setting::BACKUP_KEEP, (string) $data['backup_keep']);
+        Setting::set(Setting::ARCHIVE_DAYS, (string) $data['archive_days']);
         ActivityLog::record('settings_updated', null, sprintf('auto_assign=%d escalate_overdue=%d backup_keep=%d',
             $request->boolean('auto_assign'), $request->boolean('escalate_overdue'), $data['backup_keep']));
 

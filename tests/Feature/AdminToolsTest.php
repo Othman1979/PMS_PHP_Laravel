@@ -42,7 +42,7 @@ class AdminToolsTest extends TestCase
         $admin = $this->user('admin');
 
         $this->actingAs($admin)->get('/settings')->assertOk()->assertSee(__('AutoAssign'));
-        $this->actingAs($admin)->put('/settings', ['auto_assign' => '1', 'backup_keep' => 7])->assertRedirect('/settings');
+        $this->actingAs($admin)->put('/settings', ['auto_assign' => '1', 'backup_keep' => 7, 'archive_days' => 45])->assertRedirect('/settings');
 
         $this->assertTrue(Setting::bool(Setting::AUTO_ASSIGN));
         $this->assertFalse(Setting::bool(Setting::ESCALATE_OVERDUE, true));
@@ -105,7 +105,7 @@ class AdminToolsTest extends TestCase
         $mr = $this->newRequest();
         $this->assertDatabaseHas('activity_logs', ['action' => 'request_created', 'subject_id' => $mr->id, 'user_id' => $this->user('employee')->id]);
 
-        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel")->assertRedirect();
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertRedirect();
         $this->assertDatabaseHas('activity_logs', ['action' => 'request_transition', 'subject_id' => $mr->id, 'description' => $mr->request_number.': New → Cancelled']);
 
         $this->actingAs($admin)->post('/logout')->assertRedirect();
@@ -122,7 +122,7 @@ class AdminToolsTest extends TestCase
         $b = $this->newRequest();
         $coord = $this->user('coord');
         $tech = $this->user('tech1');
-        $this->actingAs($coord)->post("/requests/{$b->id}/cancel")->assertRedirect();
+        $this->actingAs($coord)->post("/requests/{$b->id}/cancel", ['note' => 'duplicate request'])->assertRedirect();
 
         $this->actingAs($coord)->post('/requests/bulk', ['action' => 'assign', 'ids' => [$a->id, $b->id], 'technician_id' => $tech->id])
             ->assertRedirect('/requests')
@@ -157,5 +157,32 @@ class AdminToolsTest extends TestCase
             ->assertSee('chartTrend')->assertSee('lib/chartjs/chart.umd.js')->assertSee(__('AgingOpenRequests'));
         $this->assertFileExists(public_path('offline.html'));
         $this->assertStringContainsString("OFFLINE_URL = '/offline.html'", file_get_contents(public_path('sw.js')));
+    }
+
+    public function test_cancel_and_reopen_are_limited_to_staff_and_the_filing_employee(): void
+    {
+        $mr = $this->newRequest();
+
+        $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertForbidden();
+        $this->actingAs($this->user('kitchen'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertForbidden();
+        $this->assertNotSame(RequestStatus::Cancelled, $mr->fresh()->status);
+
+        $this->actingAs($this->user('employee'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertRedirect();
+        $this->assertSame(RequestStatus::Cancelled, $mr->fresh()->status);
+
+        $closed = $this->newRequest();
+        $closed->forceFill(['status' => RequestStatus::Closed, 'closed_at' => now()])->save();
+        $this->actingAs($this->user('tech1'))->post("/requests/{$closed->id}/reopen")->assertForbidden();
+        $this->actingAs($this->user('coord'))->post("/requests/{$closed->id}/reopen")->assertRedirect();
+        $this->assertSame(RequestStatus::Reopened, $closed->fresh()->status);
+    }
+
+    public function test_technician_cannot_cancel_a_request_they_filed(): void
+    {
+        $mr = $this->newRequest();
+        $mr->forceFill(['created_by_id' => $this->user('tech1')->id])->save();
+
+        $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertForbidden();
+        $this->actingAs($this->user('tech1'))->get("/requests/{$mr->id}")->assertDontSee('/requests/'.$mr->id.'/cancel');
     }
 }

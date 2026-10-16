@@ -6,7 +6,8 @@
         <div class="quick-list mb-3" data-live-reload="user.{{ auth()->id() }}" data-live-self="*">
             @foreach ($requests as $r)
                 <a class="quick-list-item" href="{{ route('requests.show', $r) }}">
-                    <span class="quick-list-name">{{ $r->equipment?->name }} <small class="text-muted">{{ $r->request_number }}</small></span>
+                    <span class="quick-list-name">{{ $r->equipment?->name ?? __('GeneralFault') }} <small class="text-muted">{{ $r->request_number }}</small></span>
+                    @if ($r->location)<span class="quick-list-meta">{{ $r->location }}</span>@endif
                     <span class="quick-list-meta d-flex align-items-center gap-2 flex-wrap">
                         <x-status-badge :status="$r->status" />
                         @if ($r->status === \App\Enums\RequestStatus::Completed)<strong class="text-success">{{ __('Quick_ConfirmNeeded') }}</strong>@endif

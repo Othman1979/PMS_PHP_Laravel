@@ -41,6 +41,7 @@
 
     <script type="application/json" id="reportData">{!! json_encode([
         'title' => $report->title(),
+        'company' => \App\Support\Branding::fullName(),
         'filters' => $filters->describe(),
         'columns' => $columns,
         'rows' => $rows,

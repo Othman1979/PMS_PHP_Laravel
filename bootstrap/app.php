@@ -3,6 +3,7 @@
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\EnsureUserIsDeveloper;
 use App\Http\Middleware\HandleFormDialog;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -21,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [SetLocale::class, EnsureUserIsActive::class, HandleFormDialog::class]);
         $middleware->encryptCookies(except: [SetLocale::COOKIE]);
-        $middleware->alias(['role' => EnsureUserHasRole::class, 'auth.token' => AuthenticateApiToken::class]);
+        $middleware->alias(['role' => EnsureUserHasRole::class, 'auth.token' => AuthenticateApiToken::class, 'developer' => EnsureUserIsDeveloper::class]);
         $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {

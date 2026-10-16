@@ -42,10 +42,9 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, Shou
         $channels = [
             new PrivateChannel('staff'),
             new PrivateChannel('department.'.$p['departmentId']),
-            new PrivateChannel('request.'.$p['id']),
         ];
-        if ($p['technicianId'] !== null) {
-            $channels[] = new PrivateChannel('technician.'.$p['technicianId']);
+        foreach ($p['technicianIds'] as $technicianId) {
+            $channels[] = new PrivateChannel('technician.'.$technicianId);
         }
         if ($p['createdById'] !== null) {
             $channels[] = new PrivateChannel('user.'.$p['createdById']);
@@ -67,7 +66,7 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, Shou
      */
     public static function payload(MaintenanceRequest $r, bool $isNew, ?CarbonInterface $since = null): array
     {
-        $r->loadMissing(['equipment', 'department', 'assignedTechnician', 'createdBy', 'priority']);
+        $r->loadMissing(['equipment', 'department', 'assignedTechnician', 'createdBy', 'priority', 'teamMembers.user']);
 
         return [
             'id' => $r->id,
@@ -79,6 +78,17 @@ class RequestChanged implements ShouldBroadcast, ShouldDispatchAfterCommit, Shou
             'departmentId' => $r->department_id,
             'technician' => $r->assignedTechnician?->full_name,
             'technicianId' => $r->assigned_technician_id,
+            'technicianIds' => $r->technicianIds(),
+            'location' => $r->location,
+            'team' => $r->activeTeamMembers()->map(fn ($member) => [
+                'id' => $member->user_id,
+                'name' => $member->user->full_name,
+                'specialty' => Localized::all(fn () => $member->user->specialtyLabel()),
+                'isLead' => $member->user_id === $r->assigned_technician_id,
+                'confirmedAt' => $member->confirmed_at?->toIso8601String(),
+                'workedAt' => $member->worked_at?->toIso8601String(),
+                'workedAsLead' => $member->worked_as_lead,
+            ])->values()->all(),
             'createdById' => $r->created_by_id,
             'createdBy' => $r->createdBy?->full_name,
             'priorityCritical' => $r->priority->is_critical,

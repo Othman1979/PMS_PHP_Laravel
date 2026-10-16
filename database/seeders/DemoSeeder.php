@@ -32,7 +32,7 @@ class DemoSeeder extends Seeder
             ['kitchen', 'مشرف المطبخ', Role::DepartmentManager, $kitchen, null],
             ['employee', 'موظف المطبخ', Role::Employee, $kitchen, null],
         ] as [$username, $name, $role, $dept, $specialty]) {
-            User::updateOrCreate(['username' => $username], [
+            $user = User::updateOrCreate(['username' => $username], [
                 'full_name' => $name,
                 'password' => '1234',
                 'role' => $role,
@@ -40,6 +40,7 @@ class DemoSeeder extends Seeder
                 'specialty' => $specialty,
                 'is_active' => true,
             ]);
+            $user->attachDefaultGroup();
         }
 
         if (Equipment::query()->exists()) {

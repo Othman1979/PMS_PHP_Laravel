@@ -43,7 +43,7 @@ sealed class Screen {
     data object TechTasks : Screen()
     data class TechDetail(val request: CmmsRequest) : Screen()
     data object EmpFind : Screen()
-    data class EmpForm(val equipment: Equipment) : Screen()
+    data class EmpForm(val equipment: Equipment?) : Screen()
     data class EmpDone(val request: CmmsRequest) : Screen()
     data object EmpMine : Screen()
 }
@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Session.init(this)
+        Lang.current = Session.language
         Notifier.init(this)
         enableEdgeToEdge()
         setContent {
@@ -104,6 +105,7 @@ fun CmmsDesignApp() {
     }
 
     val logout = {
+        Realtime.stop()
         Session.logout()
         RealtimeService.stop(context)
         AppState.clear()
@@ -158,6 +160,7 @@ fun CmmsDesignApp() {
         )
         Screen.EmpFind -> EmpFindScreen(
             onPickEquipment = { screen = Screen.EmpForm(it) },
+            onGeneral = { screen = Screen.EmpForm(null) },
             onMine = { screen = Screen.EmpMine },
             onLogout = logout,
         )
@@ -170,7 +173,7 @@ fun CmmsDesignApp() {
         is Screen.EmpDone -> EmpDoneScreen(
             request = sc.request,
             onTrack = { screen = Screen.EmpMine },
-            onAnother = { screen = Screen.EmpForm(sc.request.equipment) },
+            onAnother = { screen = Screen.EmpForm(sc.request.equipment.takeUnless { sc.request.isGeneral }) },
             onLogout = logout,
         )
         Screen.EmpMine -> EmpMineScreen(

@@ -7,7 +7,7 @@
     @include('reports._tabs')
     @include('reports._filters')
 
-    <div class="report-print-head d-none"><h2>{{ $report->title() }}</h2>
+    <div class="report-print-head d-none"><div class="fw-bold">{{ \App\Support\Branding::fullName() }}</div><h2>{{ $report->title() }}</h2>
         <div class="text-muted small">@foreach ($filters->describe() as $label => $value)<span class="me-3">{{ $label }}: {{ $value }}</span>@endforeach</div>
     </div>
 

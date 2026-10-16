@@ -3,22 +3,25 @@
 namespace App\Models;
 
 use App\Enums\DepartmentConfirmation;
+use App\Enums\Permission;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'priority_id', 'fault_type_id', 'fault_cause_id', 'status',
+    'request_number', 'equipment_id', 'department_id', 'created_by_id', 'description', 'location', 'priority_id', 'fault_type_id', 'fault_cause_id', 'status',
     'assigned_technician_id', 'assigned_at', 'due_at', 'escalated_at', 'accepted_at', 'started_at', 'completed_at', 'closed_at',
     'is_under_warranty', 'is_preventive', 'preventive_maintenance_plan_id', 'cost_labor', 'cost_parts',
     'resolution_notes', 'technician_notes', 'department_confirmation',
     'food_safety_impact', 'affected_product', 'food_safety_decision', 'is_temporary_repair', 'permanent_repair_due', 'follow_up_of_id',
     'released_at', 'released_by_id', 'release_checklist', 'release_notes',
+    'archived_at', 'cancelled_at', 'cancelled_by_id', 'cancel_reason',
 ])]
 class MaintenanceRequest extends Model
 {
@@ -37,6 +40,8 @@ class MaintenanceRequest extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'closed_at' => 'datetime',
+            'archived_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'is_under_warranty' => 'boolean',
             'is_preventive' => 'boolean',
             'food_safety_impact' => 'boolean',
@@ -82,6 +87,54 @@ class MaintenanceRequest extends Model
     public function assignedTechnician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_technician_id');
+    }
+
+    public function teamMembers(): HasMany
+    {
+        return $this->hasMany(RequestTechnician::class, 'request_id')->orderBy('id');
+    }
+
+    /** @return Collection<int, RequestTechnician> */
+    public function activeTeamMembers(): Collection
+    {
+        return $this->teamMembers->whereNull('removed_at');
+    }
+
+    /** @return list<int> */
+    public function technicianIds(): array
+    {
+        return array_values(array_unique(array_filter([
+            $this->assigned_technician_id,
+            ...$this->activeTeamMembers()->pluck('user_id')->all(),
+        ])));
+    }
+
+    public function isLeadTechnician(User $user): bool
+    {
+        return $user->isTechnician() && $this->assigned_technician_id === $user->id;
+    }
+
+    /** @return list<int> */
+    public function actualTechnicianIds(): array
+    {
+        if ($this->teamMembers->isEmpty() && $this->completed_at !== null) {
+            return array_values(array_filter([$this->assigned_technician_id]));
+        }
+
+        return $this->teamMembers->whereNotNull('worked_at')->pluck('user_id')->all();
+    }
+
+    public function hasTechnician(User $user): bool
+    {
+        return $user->isTechnician() && in_array($user->id, $this->technicianIds(), true);
+    }
+
+    #[Scope]
+    protected function assignedTo(Builder $query, int $userId): void
+    {
+        $query->where(fn (Builder $team) => $team
+            ->where('assigned_technician_id', $userId)
+            ->orWhereHas('teamMembers', fn (Builder $member) => $member->where('user_id', $userId)->whereNull('removed_at')));
     }
 
     /** The temporary-repair request this follow-up was generated from. */
@@ -153,6 +206,11 @@ class MaintenanceRequest extends Model
     }
 
     /** Open follow-up (permanent repair) still pending for a temporary repair. */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
+    }
+
     public function hasOpenFollowUp(): bool
     {
         return $this->followUps()->whereNotIn('status', RequestStatus::closedValues())->exists();
@@ -175,25 +233,72 @@ class MaintenanceRequest extends Model
     #[Scope]
     protected function visibleTo(Builder $query, User $user): void
     {
-        match ($user->role) {
-            Role::Admin, Role::Coordinator, Role::FoodSafety => null,
-            Role::DepartmentManager => $query->where('department_id', $user->department_id),
-            Role::Technician => $query->where('assigned_technician_id', $user->id),
+        match (true) {
+            $user->canWatchAllRequests() => null,
+            $user->role === Role::DepartmentManager => $query->where('department_id', $user->department_id),
+            $user->role === Role::Technician => $query->assignedTo($user->id),
             default => $query->where('created_by_id', $user->id),
         };
     }
 
+    #[Scope]
+    protected function archived(Builder $query, bool $archived = true): void
+    {
+        $archived ? $query->whereNotNull('archived_at') : $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /** Terminal requests older than the configured retention are archived; the latest terminal timestamp is the reference. */
+    #[Scope]
+    protected function archivable(Builder $query, int $days): void
+    {
+        $cutoff = now()->subDays($days);
+        $query->whereNull('archived_at')
+            ->whereIn('status', RequestStatus::closedValues())
+            ->where(fn (Builder $q) => $q
+                ->where(fn (Builder $c) => $c->where('status', RequestStatus::Cancelled)->where('cancelled_at', '<', $cutoff))
+                ->orWhere(fn (Builder $c) => $c->where('status', RequestStatus::Closed)->where('closed_at', '<', $cutoff))
+                ->orWhere(fn (Builder $c) => $c->where('status', RequestStatus::Completed)->where('completed_at', '<', $cutoff))
+                ->orWhere(fn (Builder $c) => $c->whereNull('cancelled_at')->whereNull('closed_at')->whereNull('completed_at')->where('updated_at', '<', $cutoff)));
+    }
+
     public function isVisibleTo(User $user): bool
     {
-        return match ($user->role) {
-            Role::Admin, Role::Coordinator, Role::FoodSafety => true,
-            Role::DepartmentManager => $this->department_id === $user->department_id,
-            Role::Technician => $this->assigned_technician_id === $user->id,
+        return match (true) {
+            $user->canWatchAllRequests() => true,
+            $user->role === Role::DepartmentManager => $this->department_id === $user->department_id,
+            $user->role === Role::Technician => $this->hasTechnician($user),
             default => $this->created_by_id === $user->id,
         };
     }
 
-    /** Requester or the requester's department manager (and admin) may confirm / reopen / cancel. */
+    /** Technicians never cancel; staff with the cancel permission may cancel until the request is closed; a requester may only withdraw their own request before work starts. */
+    public function canCancel(User $user): bool
+    {
+        if ($user->isTechnician() || in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)) {
+            return false;
+        }
+        if ($user->hasPermission(Permission::RequestsCancel)) {
+            return true;
+        }
+
+        return $user->hasPermission(Permission::RequestsCancelOwn)
+            && $this->created_by_id === $user->id
+            && in_array($this->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Assigned], true);
+    }
+
+    public function canReopen(User $user): bool
+    {
+        return ! $user->isTechnician()
+            && in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)
+            && $user->hasPermission(Permission::RequestsReopen);
+    }
+
+    /** Requester or the requester's department manager (and admin) may confirm completion. */
     public function isRequesterSide(User $user): bool
     {
         return $this->created_by_id === $user->id

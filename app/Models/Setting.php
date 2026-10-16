@@ -16,6 +16,18 @@ class Setting extends Model
 
     public const BACKUP_KEEP = 'backup_keep';
 
+    public const COMPANY_NAME_AR = 'company_name_ar';
+
+    public const COMPANY_NAME_EN = 'company_name_en';
+
+    public const COMPANY_LOGO = 'company_logo';
+
+    public const COMPANY_ADDRESS = 'company_address';
+
+    public const COMPANY_PHONE = 'company_phone';
+
+    public const ARCHIVE_DAYS = 'archive_days';
+
     protected $primaryKey = 'key';
 
     protected $keyType = 'string';
@@ -25,6 +37,12 @@ class Setting extends Model
     public static function get(string $key, ?string $default = null): ?string
     {
         return static::all()[$key] ?? $default;
+    }
+
+    /** Days after a request is completed, closed or cancelled before it moves to the archive. */
+    public static function archiveDays(): int
+    {
+        return max(1, (int) static::get(static::ARCHIVE_DAYS, '30'));
     }
 
     public static function bool(string $key, bool $default = false): bool

@@ -94,11 +94,11 @@ class SummaryReport extends Report
                 $countTable($corrective->filter(fn (MaintenanceRequest $r) => $r->equipment !== null), fn (MaintenanceRequest $r) => $r->equipment->name, __('TopFailingEquipment')),
                 [
                     'title' => __('TechnicianPerformance'),
-                    'columns' => [Column::text('name', __('Technician')), Column::int('count', __('CompletedRequests'), total: true), Column::hours('hours', __('AvgCompletionHours'))],
-                    'rows' => $completed->filter(fn (MaintenanceRequest $r) => $r->assignedTechnician !== null)
-                        ->groupBy(fn (MaintenanceRequest $r) => $r->assignedTechnician->full_name)
-                        ->map(fn (Collection $g, string $name) => ['name' => $name, 'count' => $g->count(), 'hours' => $this->avgHours($g, 'completed_at')])
-                        ->sortByDesc('count')->values(),
+                    'columns' => [Column::text('name', __('Technician')), Column::int('count', __('CompletedRequests')), Column::int('lead', __('WorkedAsLead')), Column::int('participant', __('WorkedAsParticipant')), Column::hours('hours', __('AvgCompletionHours'))],
+                    'rows' => (new TechniciansReport)->rows($filters)->map(fn (array $row) => [
+                        'name' => $row['technician'], 'count' => $row['completed'],
+                        'lead' => $row['lead'], 'participant' => $row['participant'], 'hours' => $row['avg_completion'],
+                    ])->values(),
                 ],
                 $costTable($requests, fn (MaintenanceRequest $r) => $r->department?->localized_name ?? '-', __('CostPerDepartment')),
                 $costTable($requests->filter(fn (MaintenanceRequest $r) => $r->equipment !== null), fn (MaintenanceRequest $r) => $r->equipment->name, __('CostPerEquipment')),

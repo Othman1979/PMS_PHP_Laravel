@@ -4,6 +4,7 @@ namespace App\Reports;
 
 use App\Enums\RequestStatus;
 use App\Models\MaintenanceRequest;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 class TechniciansReport extends Report
@@ -28,13 +29,15 @@ class TechniciansReport extends Report
         return [
             Column::text('technician', __('Technician')),
             Column::text('specialty', __('Specialty'), groupable: true),
-            Column::int('assigned', __('AssignedRequests'), total: true),
-            Column::int('completed', __('CompletedRequests'), total: true),
-            Column::int('open', __('OpenRequests'), total: true),
+            Column::int('assigned', __('AssignedRequests')),
+            Column::int('completed', __('CompletedRequests')),
+            Column::int('lead', __('WorkedAsLead')),
+            Column::int('participant', __('WorkedAsParticipant')),
+            Column::int('open', __('OpenRequests')),
             Column::percent('completion_rate', __('CompletionRate')),
             Column::hours('avg_response', __('AvgResponseHours')),
             Column::hours('avg_completion', __('AvgCompletionHours')),
-            Column::money('cost', __('TotalCost')),
+            Column::money('cost', __('CostManagedAsLead')),
         ];
     }
 
@@ -42,25 +45,30 @@ class TechniciansReport extends Report
     {
         $closed = RequestStatus::closed();
 
-        return $filters->requests()
+        $requests = $filters->requests()
             ->whereNotNull('assigned_technician_id')
-            ->with('assignedTechnician')
-            ->get()
-            ->groupBy('assigned_technician_id')
-            ->map(function (Collection $group) use ($closed) {
-                $technician = $group->first()->assignedTechnician;
-                $completed = $group->filter(fn (MaintenanceRequest $r) => $r->completed_at !== null);
+            ->with(['assignedTechnician', 'teamMembers.user'])->get();
+
+        return User::whereIn('id', $requests->flatMap(fn (MaintenanceRequest $r) => [$r->assigned_technician_id, ...$r->teamMembers->pluck('user_id')->all()])->unique())
+            ->when($filters->technicianId, fn ($query) => $query->whereKey($filters->technicianId))
+            ->get()->map(function (User $technician) use ($requests, $closed) {
+                $group = $requests->filter(fn (MaintenanceRequest $r) => $r->assigned_technician_id === $technician->id || $r->teamMembers->contains('user_id', $technician->id));
+                $completed = $group->filter(fn (MaintenanceRequest $r) => in_array($technician->id, $r->actualTechnicianIds(), true));
+                $lead = $completed->filter(fn (MaintenanceRequest $r) => $r->teamMembers->firstWhere('user_id', $technician->id)?->worked_as_lead
+                    ?? $r->assigned_technician_id === $technician->id);
 
                 return [
                     'technician' => $technician?->full_name ?? '-',
-                    'specialty' => $technician?->specialty?->label() ?? '-',
+                    'specialty' => $technician?->specialtyLabel() ?: '-',
                     'assigned' => $group->count(),
                     'completed' => $completed->count(),
-                    'open' => $group->reject(fn (MaintenanceRequest $r) => in_array($r->status, $closed, true))->count(),
+                    'lead' => $lead->count(),
+                    'participant' => $completed->count() - $lead->count(),
+                    'open' => $group->filter(fn (MaintenanceRequest $r) => in_array($technician->id, $r->technicianIds(), true) && ! in_array($r->status, $closed, true))->count(),
                     'completion_rate' => round($completed->count() / $group->count() * 100, 1),
                     'avg_response' => $this->avgHours($group, 'started_at'),
-                    'avg_completion' => $this->avgHours($group, 'completed_at'),
-                    'cost' => round($group->sum(fn (MaintenanceRequest $r) => $this->cost($r)), 2),
+                    'avg_completion' => $this->avgHours($completed, 'completed_at'),
+                    'cost' => round($group->where('assigned_technician_id', $technician->id)->sum(fn (MaintenanceRequest $r) => $this->cost($r)), 2),
                 ];
             })
             ->sortByDesc('completed')
