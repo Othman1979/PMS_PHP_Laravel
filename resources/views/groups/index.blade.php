@@ -9,7 +9,7 @@
     <p class="text-muted small">{{ __('UserGroupsIntro') }}</p>
     <div class="table-responsive">
         <table class="table table-hover align-middle">
-            <thead><tr><th>{{ __('GroupName') }}</th><th>{{ __('Permissions') }}</th><th>{{ __('Members') }}</th><th></th></tr></thead>
+            <thead><tr><th>{{ __('GroupName') }}</th><th class="d-none d-md-table-cell">{{ __('Permissions') }}</th><th>{{ __('Members') }}</th><th></th></tr></thead>
             <tbody>
                 @foreach ($groups as $g)
                     <tr>
@@ -19,8 +19,9 @@
                                 <span class="badge bg-light text-dark border">{{ __('DefaultFor') }}: {{ $g->default_for_role->label() }}</span>
                             @endif
                             @if ($g->description)<div class="small text-muted">{{ $g->description }}</div>@endif
+                            <div class="small text-muted d-md-none">{{ $g->permissions->count() }} {{ __('Permissions') }}</div>
                         </td>
-                        <td class="small">
+                        <td class="small d-none d-md-table-cell">
                             @php $perms = $g->permissions->pluck('permission')->map(fn ($p) => \App\Enums\Permission::from($p)->label()); @endphp
                             @if ($perms->count() === count(\App\Enums\Permission::cases()))
                                 <span class="badge bg-success">{{ __('AllPermissions') }}</span>

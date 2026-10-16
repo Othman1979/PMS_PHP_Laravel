@@ -144,6 +144,23 @@ class GroupPermissionsTest extends TestCase
         $this->assertNull($mr->cancel_reason);
     }
 
+    public function test_technicians_never_cancel_or_reopen_even_with_an_explicit_group_grant(): void
+    {
+        $group = UserGroup::create(['name_ar' => 'اختبار', 'name_en' => 'Cancel grant']);
+        $group->syncPermissions(['requests.cancel', 'requests.reopen']);
+        $tech = $this->user('tech1');
+        $tech->groups()->attach($group->id);
+
+        $mr = $this->newRequest();
+        $mr->forceFill(['status' => RequestStatus::Assigned, 'assigned_technician_id' => $tech->id])->save();
+        $this->assertTrue($tech->fresh()->hasPermission(Permission::RequestsCancel));
+        $this->actingAs($tech)->post("/requests/{$mr->id}/cancel", ['note' => 'x'])->assertForbidden();
+        $this->actingAs($tech)->get("/requests/{$mr->id}")->assertOk()->assertDontSee('/requests/'.$mr->id.'/cancel');
+
+        $mr->forceFill(['status' => RequestStatus::Closed, 'closed_at' => now()])->save();
+        $this->actingAs($tech)->post("/requests/{$mr->id}/reopen")->assertForbidden();
+    }
+
     public function test_finished_requests_are_archived_after_the_retention_period_and_hidden_from_lists(): void
     {
         $recent = $this->newRequest();

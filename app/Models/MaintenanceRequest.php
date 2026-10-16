@@ -276,10 +276,10 @@ class MaintenanceRequest extends Model
         };
     }
 
-    /** Staff with the cancel permission may cancel until the request is closed; a requester may only withdraw their own request before work starts. */
+    /** Technicians never cancel; staff with the cancel permission may cancel until the request is closed; a requester may only withdraw their own request before work starts. */
     public function canCancel(User $user): bool
     {
-        if (in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)) {
+        if ($user->isTechnician() || in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)) {
             return false;
         }
         if ($user->hasPermission(Permission::RequestsCancel)) {
@@ -287,14 +287,14 @@ class MaintenanceRequest extends Model
         }
 
         return $user->hasPermission(Permission::RequestsCancelOwn)
-            && ! $user->isTechnician()
             && $this->created_by_id === $user->id
             && in_array($this->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Assigned], true);
     }
 
     public function canReopen(User $user): bool
     {
-        return in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)
+        return ! $user->isTechnician()
+            && in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)
             && $user->hasPermission(Permission::RequestsReopen);
     }
 
