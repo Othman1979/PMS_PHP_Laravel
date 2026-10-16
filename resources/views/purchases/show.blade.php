@@ -67,7 +67,7 @@
         </div>
 
         <div class="col-lg-4">
-            @if ($me->isAdmin() && $isPending)
+            @if ($me->can('purchases.approve') && $isPending)
                 <div class="card mb-3 border-warning">
                     <div class="card-header"><strong>{{ __('ManagerDecision') }}</strong></div>
                     <div class="card-body">

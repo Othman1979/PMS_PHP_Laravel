@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DepartmentConfirmation;
+use App\Enums\Permission;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'resolution_notes', 'technician_notes', 'department_confirmation',
     'food_safety_impact', 'affected_product', 'food_safety_decision', 'is_temporary_repair', 'permanent_repair_due', 'follow_up_of_id',
     'released_at', 'released_by_id', 'release_checklist', 'release_notes',
+    'archived_at', 'cancelled_at', 'cancelled_by_id', 'cancel_reason',
 ])]
 class MaintenanceRequest extends Model
 {
@@ -38,6 +40,8 @@ class MaintenanceRequest extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'closed_at' => 'datetime',
+            'archived_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'is_under_warranty' => 'boolean',
             'is_preventive' => 'boolean',
             'food_safety_impact' => 'boolean',
@@ -202,6 +206,11 @@ class MaintenanceRequest extends Model
     }
 
     /** Open follow-up (permanent repair) still pending for a temporary repair. */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
+    }
+
     public function hasOpenFollowUp(): bool
     {
         return $this->followUps()->whereNotIn('status', RequestStatus::closedValues())->exists();
@@ -224,28 +233,69 @@ class MaintenanceRequest extends Model
     #[Scope]
     protected function visibleTo(Builder $query, User $user): void
     {
-        match ($user->role) {
-            Role::Admin, Role::Coordinator, Role::FoodSafety => null,
-            Role::DepartmentManager => $query->where('department_id', $user->department_id),
-            Role::Technician => $query->assignedTo($user->id),
+        match (true) {
+            $user->canWatchAllRequests() => null,
+            $user->role === Role::DepartmentManager => $query->where('department_id', $user->department_id),
+            $user->role === Role::Technician => $query->assignedTo($user->id),
             default => $query->where('created_by_id', $user->id),
         };
     }
 
+    #[Scope]
+    protected function archived(Builder $query, bool $archived = true): void
+    {
+        $archived ? $query->whereNotNull('archived_at') : $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /** Terminal requests older than the configured retention are archived; the latest terminal timestamp is the reference. */
+    #[Scope]
+    protected function archivable(Builder $query, int $days): void
+    {
+        $cutoff = now()->subDays($days);
+        $query->whereNull('archived_at')
+            ->whereIn('status', RequestStatus::closedValues())
+            ->where(fn (Builder $q) => $q
+                ->where(fn (Builder $c) => $c->where('status', RequestStatus::Cancelled)->where('cancelled_at', '<', $cutoff))
+                ->orWhere(fn (Builder $c) => $c->where('status', RequestStatus::Closed)->where('closed_at', '<', $cutoff))
+                ->orWhere(fn (Builder $c) => $c->where('status', RequestStatus::Completed)->where('completed_at', '<', $cutoff))
+                ->orWhere(fn (Builder $c) => $c->whereNull('cancelled_at')->whereNull('closed_at')->whereNull('completed_at')->where('updated_at', '<', $cutoff)));
+    }
+
     public function isVisibleTo(User $user): bool
     {
-        return match ($user->role) {
-            Role::Admin, Role::Coordinator, Role::FoodSafety => true,
-            Role::DepartmentManager => $this->department_id === $user->department_id,
-            Role::Technician => $this->hasTechnician($user),
+        return match (true) {
+            $user->canWatchAllRequests() => true,
+            $user->role === Role::DepartmentManager => $this->department_id === $user->department_id,
+            $user->role === Role::Technician => $this->hasTechnician($user),
             default => $this->created_by_id === $user->id,
         };
     }
 
-    /** Cancel/reopen: maintenance staff, or the non-technician employee who filed the request. */
-    public function canCancelOrReopen(User $user): bool
+    /** Staff with the cancel permission may cancel until the request is closed; a requester may only withdraw their own request before work starts. */
+    public function canCancel(User $user): bool
     {
-        return $user->canManage() || ($this->created_by_id === $user->id && ! $user->isTechnician());
+        if (in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)) {
+            return false;
+        }
+        if ($user->hasPermission(Permission::RequestsCancel)) {
+            return true;
+        }
+
+        return $user->hasPermission(Permission::RequestsCancelOwn)
+            && ! $user->isTechnician()
+            && $this->created_by_id === $user->id
+            && in_array($this->status, [RequestStatus::New, RequestStatus::UnderReview, RequestStatus::Assigned], true);
+    }
+
+    public function canReopen(User $user): bool
+    {
+        return in_array($this->status, [RequestStatus::Closed, RequestStatus::Cancelled], true)
+            && $user->hasPermission(Permission::RequestsReopen);
     }
 
     /** Requester or the requester's department manager (and admin) may confirm completion. */

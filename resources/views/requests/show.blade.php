@@ -12,7 +12,8 @@
     $isAssignedTech = $mr->isLeadTechnician($user);
     $isParticipant = $mr->hasTechnician($user);
     $isRequesterSide = $mr->isRequesterSide($user);
-    $canCancelOrReopen = $mr->canCancelOrReopen($user);
+    $canCancel = $mr->canCancel($user);
+    $canReopen = $mr->canReopen($user);
     $canComplete = $isAssignedTech && in_array($status, [S::InProgress, S::WaitingParts], true);
     $canAddNote = $isParticipant && in_array($status, [S::Accepted, S::InProgress, S::WaitingParts], true);
     $requiresRelease = $mr->requiresRelease();
@@ -36,6 +37,9 @@
             @endif
             @if ($mr->is_temporary_repair)
                 <span class="badge bg-warning text-dark fs-6">{{ __('TemporaryRepair') }}</span>
+            @endif
+            @if ($mr->isArchived())
+                <span class="badge bg-secondary fs-6">{{ __('Archived') }}</span>
             @endif
             @if ($mr->followUpOf)
                 <a class="badge bg-secondary fs-6 text-decoration-none" href="{{ route('requests.show', $mr->followUpOf) }}">{{ __('FollowUpOf') }} {{ $mr->followUpOf->request_number }}</a>
@@ -366,7 +370,7 @@
                         @endif
                     @endif
 
-                    @if ($status === S::Closed && $canCancelOrReopen)
+                    @if ($canReopen)
                         <form action="{{ route('requests.reopen', $mr) }}" method="post" class="row g-2 mb-2">
                             @csrf
                             <div class="col-auto flex-grow-1"><input name="note" class="form-control form-control-sm" placeholder="{{ __('NoteOptional') }}"></div>
@@ -374,11 +378,21 @@
                         </form>
                     @endif
 
-                    @if (! in_array($status, [S::Closed, S::Cancelled, S::Completed], true) && $canCancelOrReopen)
-                        <form action="{{ route('requests.cancel', $mr) }}" method="post" class="d-inline" onsubmit="return confirm(@js(__('AreYouSure')))">
+                    @if ($canCancel)
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-2" data-bs-toggle="collapse" data-bs-target="#cancelForm" aria-expanded="{{ $errors->has('note') ? 'true' : 'false' }}">{{ __('CancelRequest') }}</button>
+                        <form action="{{ route('requests.cancel', $mr) }}" method="post" class="collapse {{ $errors->has('note') ? 'show' : '' }} border rounded p-2 mb-2" id="cancelForm">
                             @csrf
-                            <button class="btn btn-outline-secondary btn-sm mb-2">{{ __('CancelRequest') }}</button>
+                            <label class="form-label small mb-1" for="cancelReason">{{ __('CancelReason') }} <span class="text-danger">*</span></label>
+                            <textarea name="note" id="cancelReason" class="form-control form-control-sm mb-2 @error('note') is-invalid @enderror" rows="2" required maxlength="1000" placeholder="{{ __('CancelReasonPlaceholder') }}">{{ old('note') }}</textarea>
+                            @error('note')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+                            <button class="btn btn-danger btn-sm" onclick="return confirm(@js(__('AreYouSure')))">{{ __('ConfirmCancelRequest') }}</button>
                         </form>
+                    @endif
+                    @if ($status === S::Cancelled && $mr->cancel_reason)
+                        <div class="alert alert-secondary py-2 small mb-2">
+                            <strong>{{ __('CancelReason') }}:</strong> {{ $mr->cancel_reason }}
+                            <div class="text-muted">{{ $mr->cancelledBy?->full_name }} · {{ $fmt($mr->cancelled_at) }}</div>
+                        </div>
                     @endif
                 </div>
             </div>

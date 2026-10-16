@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\MaintenanceRequest;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\CalibrationReminder;
@@ -92,3 +93,10 @@ Artisan::command('cmms:developer {username} {--name=} {--password=}', function (
 
     return self::SUCCESS;
 })->purpose('Create or promote a hidden developer account that can edit branding and deployment settings');
+
+Artisan::command('cmms:archive-requests', function () {
+    $days = Setting::archiveDays();
+    $count = MaintenanceRequest::query()->archivable($days)->update(['archived_at' => now()]);
+    $this->info("Archived {$count} request(s) finished more than {$days} days ago.");
+})->purpose('Archive completed, closed and cancelled requests older than the retention period');
+Schedule::command('cmms:archive-requests')->dailyAt('03:00')->withoutOverlapping();

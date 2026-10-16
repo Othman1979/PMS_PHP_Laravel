@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EquipmentCategory;
+use App\Enums\Permission;
 use App\Enums\Role;
 use App\Enums\TechnicianTrade;
 use Database\Factories\UserFactory;
@@ -12,8 +13,10 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Collection;
 
 #[Fillable(['username', 'full_name', 'email', 'phone', 'password', 'role', 'department_id', 'specialty', 'trade', 'locale', 'is_active', 'is_developer'])]
 #[Hidden(['password', 'remember_token'])]
@@ -76,22 +79,69 @@ class User extends Authenticatable implements HasLocalePreference
         return (bool) $this->is_developer;
     }
 
-    /** Admin or Coordinator — the maintenance staff who triage and manage. */
-    public function canManage(): bool
+    public function groups(): BelongsToMany
     {
-        return $this->hasRole(Role::Admin, Role::Coordinator);
+        return $this->belongsToMany(UserGroup::class)->withTimestamps();
     }
 
-    /** Admin or the food-safety officer: signs equipment release, commissioning and food-safety decisions. */
+    /** @var Collection<int, string>|null */
+    private ?Collection $resolvedPermissions = null;
+
+    private ?int $resolvedPermissionsVersion = null;
+
+    /** Union of the permissions granted by every group the user belongs to. @return Collection<int, string> */
+    public function permissions(): Collection
+    {
+        $version = UserGroup::cacheVersion();
+        if ($this->resolvedPermissions === null || $this->resolvedPermissionsVersion !== $version) {
+            $this->resolvedPermissions = UserGroupPermission::query()
+                ->whereIn('user_group_id', $this->groups()->select('user_groups.id'))
+                ->distinct()
+                ->pluck('permission');
+            $this->resolvedPermissionsVersion = $version;
+        }
+
+        return $this->resolvedPermissions;
+    }
+
+    public function hasPermission(Permission|string $permission): bool
+    {
+        $value = $permission instanceof Permission ? $permission->value : $permission;
+
+        return $this->isAdmin() || $this->permissions()->contains($value);
+    }
+
+    public function forgetPermissions(): void
+    {
+        $this->resolvedPermissions = null;
+    }
+
+    /** Puts a user into the built-in group of their role when no group was chosen explicitly. */
+    public function attachDefaultGroup(): void
+    {
+        $group = UserGroup::defaultFor($this->role);
+        if ($group !== null) {
+            $this->groups()->syncWithoutDetaching([$group->id]);
+        }
+        $this->forgetPermissions();
+    }
+
+    /** Maintenance staff who triage and assign requests. */
+    public function canManage(): bool
+    {
+        return $this->hasPermission(Permission::RequestsAssign);
+    }
+
     /** Sees every request regardless of department, so subscribes to the staff-wide channel. */
     public function canWatchAllRequests(): bool
     {
-        return $this->canManage() || $this->isFoodSafety();
+        return $this->hasPermission(Permission::RequestsViewAll);
     }
 
+    /** Signs equipment release, commissioning and food-safety decisions. */
     public function canApproveFoodSafety(): bool
     {
-        return $this->hasRole(Role::Admin, Role::FoodSafety);
+        return $this->hasPermission(Permission::RequestsFoodSafety);
     }
 
     public function isFoodSafety(): bool

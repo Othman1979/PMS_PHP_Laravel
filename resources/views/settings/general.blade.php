@@ -23,6 +23,12 @@
                             <div class="form-text">{{ __('BackupKeep_Hint') }}</div>
                             @error('backup_keep')<div class="text-danger small">{{ $message }}</div>@enderror
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="archive_days">{{ __('ArchiveDays') }}</label>
+                            <input id="archive_days" name="archive_days" type="number" min="1" max="3650" class="form-control" style="max-width:140px" value="{{ old('archive_days', $archiveDays) }}" required>
+                            <div class="form-text">{{ __('ArchiveDays_Hint') }}</div>
+                            @error('archive_days')<div class="text-danger small">{{ $message }}</div>@enderror
+                        </div>
                         <button class="btn btn-primary">{{ __('Save') }}</button>
                     </form>
                 </div>

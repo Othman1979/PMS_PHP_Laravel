@@ -8,6 +8,7 @@ use App\Enums\TechnicianTrade;
 use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\User;
+use App\Models\UserGroup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,7 +19,7 @@ class UserController extends Controller
     public function index(Request $request): View
     {
         return view('users.index', [
-            'users' => User::with('department')->visibleTo($request->user())->orderBy('role')->orderBy('full_name')->get(),
+            'users' => User::with(['department', 'groups'])->visibleTo($request->user())->orderBy('role')->orderBy('full_name')->get(),
         ]);
     }
 
@@ -30,8 +31,11 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request, null);
+        $groups = $data['groups'] ?? [];
+        unset($data['groups']);
         $user = User::create($data);
-        ActivityLog::record('user_created', $user, $user->username.' ('.$user->role->value.')');
+        $groups === [] ? $user->attachDefaultGroup() : $user->groups()->sync($groups);
+        ActivityLog::record('user_created', $user, $user->username.' ('.$user->role->value.') '.__('Groups').': '.$this->groupNames($user));
 
         return redirect()->route('users.index')->with('ok', 'Saved');
     }
@@ -55,8 +59,16 @@ class UserController extends Controller
             $data['is_active'] = true;
         }
 
+        $groups = $data['groups'] ?? [];
+        unset($data['groups']);
         $user->update($data);
-        ActivityLog::record('user_updated', $user, $user->username.' ('.$user->role->value.')');
+        if ($user->is($request->user()) && $groups === []) {
+            $groups = $user->groups()->pluck('user_groups.id')->all();
+        }
+        $changes = $user->groups()->sync($groups);
+        $user->forgetPermissions();
+        $groupsChanged = $changes['attached'] !== [] || $changes['detached'] !== [];
+        ActivityLog::record('user_updated', $user, $user->username.' ('.$user->role->value.')'.($groupsChanged ? ' '.__('Groups').': '.$this->groupNames($user) : ''));
 
         return redirect()->route('users.index')->with('ok', 'Saved');
     }
@@ -67,11 +79,18 @@ class UserController extends Controller
         abort_if($user->isDeveloper() && ! $request->user()->isDeveloper(), 404);
     }
 
+    private function groupNames(User $user): string
+    {
+        return $user->groups()->get()->map(fn (UserGroup $g) => $g->name_en)->implode(', ') ?: '-';
+    }
+
     private function form(User $user): View
     {
         return view('users.form', [
             'user' => $user,
             'departments' => Department::active()->ordered()->get(),
+            'groups' => UserGroup::query()->with('permissions')->orderBy('id')->get(),
+            'selectedGroups' => old('groups', $user->exists ? $user->groups()->pluck('user_groups.id')->all() : []),
         ]);
     }
 
@@ -88,6 +107,8 @@ class UserController extends Controller
             'trade' => ['nullable', Rule::enum(TechnicianTrade::class)],
             'password' => [$user === null ? 'required' : 'nullable', 'string', 'min:4'],
             'is_active' => ['boolean'],
+            'groups' => ['nullable', 'array'],
+            'groups.*' => ['integer', Rule::exists('user_groups', 'id')],
         ]);
         $data['username'] = trim($data['username']);
         $data['is_active'] = $request->boolean('is_active');

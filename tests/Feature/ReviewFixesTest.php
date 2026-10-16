@@ -114,7 +114,7 @@ class ReviewFixesTest extends TestCase
     {
         $mr = $this->newRequest();
         $stale = MaintenanceRequest::findOrFail($mr->id);
-        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel")->assertRedirect();
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertRedirect();
 
         $this->expectException(ValidationException::class);
         app(RequestWorkflow::class)->transition($stale, RequestStatus::UnderReview, $this->user('coord'));
@@ -233,7 +233,7 @@ class ReviewFixesTest extends TestCase
         $this->assertContains($subscriptionOf('tech1'), $byTitle('not resolved'));
         $this->assertContains($subscriptionOf('coord'), $byTitle('not resolved'));
 
-        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel")->assertRedirect();
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertRedirect();
         $this->assertContains($subscriptionOf('tech1'), $byTitle('Request cancelled'));
         $this->assertContains($subscriptionOf('employee'), $byTitle('Request cancelled'));
     }

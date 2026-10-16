@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\CalibrationStatus;
 use App\Enums\EquipmentStatus;
 use App\Enums\RequestStatus;
-use App\Enums\Role;
 use App\Events\RequestChanged;
 use App\Models\Department;
 use App\Models\Equipment;
@@ -48,7 +47,7 @@ class DashboardController extends Controller
             'warrantyExpiring' => Equipment::query()->where('has_warranty', true)
                 ->whereBetween('warranty_end', [today(), today()->addDays(60)])
                 ->orderBy('warranty_end')->get(),
-            'foodSafety' => $user->hasRole(Role::Admin, Role::Coordinator, Role::FoodSafety) ? $this->foodSafety() : null,
+            'foodSafety' => $user->canManage() || $user->canApproveFoodSafety() ? $this->foodSafety() : null,
             'pmDueSoon' => PreventiveMaintenancePlan::with('equipment')->where('is_active', true)
                 ->where('next_due_date', '<=', today()->addDays(14))
                 ->orderBy('next_due_date')->take(10)->get(),

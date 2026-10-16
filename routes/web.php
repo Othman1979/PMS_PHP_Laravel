@@ -23,6 +23,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserGroupController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/language', LanguageController::class)->name('language');
@@ -43,7 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats')->middleware('role:Admin,Coordinator,DepartmentManager,FoodSafety');
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats')->middleware('can:dashboard.stats');
 
     Route::controller(PushController::class)->prefix('push')->name('push.')->group(function () {
         Route::get('/public-key', 'publicKey')->name('public-key');
@@ -66,13 +67,13 @@ Route::middleware('auth')->group(function () {
     Route::controller(MaintenanceRequestController::class)->prefix('requests')->name('requests.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/mine', 'mine')->name('mine')->middleware('role:Technician');
-        Route::post('/bulk', 'bulk')->name('bulk')->middleware('role:Admin,Coordinator');
+        Route::post('/bulk', 'bulk')->name('bulk')->middleware('can:requests.assign');
         Route::get('/create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
         Route::get('/{maintenanceRequest}', 'show')->name('show');
-        Route::post('/{maintenanceRequest}/review', 'review')->name('review')->middleware('role:Admin,Coordinator');
-        Route::post('/{maintenanceRequest}/assign', 'assign')->name('assign')->middleware('role:Admin,Coordinator');
-        Route::post('/{maintenanceRequest}/team', 'team')->name('team')->middleware('role:Admin,Coordinator');
+        Route::post('/{maintenanceRequest}/review', 'review')->name('review')->middleware('can:requests.review');
+        Route::post('/{maintenanceRequest}/assign', 'assign')->name('assign')->middleware('can:requests.assign');
+        Route::post('/{maintenanceRequest}/team', 'team')->name('team')->middleware('can:requests.assign');
         Route::post('/{maintenanceRequest}/participate', 'participate')->name('participate');
         Route::post('/{maintenanceRequest}/accept', 'accept')->name('accept');
         Route::post('/{maintenanceRequest}/start', 'start')->name('start');
@@ -83,42 +84,42 @@ Route::middleware('auth')->group(function () {
         Route::post('/{maintenanceRequest}/resume', 'resume')->name('resume');
         Route::post('/{maintenanceRequest}/complete', 'complete')->name('complete');
         Route::post('/{maintenanceRequest}/confirm', 'confirm')->name('confirm');
-        Route::post('/{maintenanceRequest}/close', 'close')->name('close')->middleware('role:Admin,Coordinator');
-        Route::post('/{maintenanceRequest}/release', 'release')->name('release')->middleware('role:Admin,DepartmentManager,FoodSafety');
-        Route::post('/{maintenanceRequest}/food-safety', 'foodSafety')->name('food-safety')->middleware('role:Admin,FoodSafety');
+        Route::post('/{maintenanceRequest}/close', 'close')->name('close')->middleware('can:requests.close');
+        Route::post('/{maintenanceRequest}/release', 'release')->name('release')->middleware('can:requests.release');
+        Route::post('/{maintenanceRequest}/food-safety', 'foodSafety')->name('food-safety')->middleware('can:requests.food_safety');
         Route::post('/{maintenanceRequest}/reopen', 'reopen')->name('reopen');
         Route::post('/{maintenanceRequest}/cancel', 'cancel')->name('cancel');
     });
 
     Route::controller(EquipmentController::class)->prefix('equipment')->name('equipment.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,DepartmentManager,FoodSafety');
-        Route::get('/labels', 'labels')->name('labels')->middleware('role:Admin,Coordinator');
-        Route::post('/{equipment}/calibrations', 'calibrate')->name('calibrate')->middleware('role:Admin,Coordinator,FoodSafety');
-        Route::post('/{equipment}/commission', 'commission')->name('commission')->middleware('role:Admin,FoodSafety');
-        Route::controller(EquipmentImportController::class)->prefix('import')->name('import.')->middleware('role:Admin,Coordinator')->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:equipment.view');
+        Route::get('/labels', 'labels')->name('labels')->middleware('can:equipment.manage');
+        Route::post('/{equipment}/calibrations', 'calibrate')->name('calibrate')->middleware('can:equipment.calibrate');
+        Route::post('/{equipment}/commission', 'commission')->name('commission')->middleware('can:equipment.commission');
+        Route::controller(EquipmentImportController::class)->prefix('import')->name('import.')->middleware('can:equipment.manage')->group(function () {
             Route::get('/template', 'template')->name('template');
             Route::get('/create', 'create')->name('create');
             Route::post('/preview', 'preview')->name('preview');
             Route::post('/', 'store')->name('store');
         });
-        Route::middleware('role:Admin,Coordinator')->group(function () {
+        Route::middleware('can:equipment.manage')->group(function () {
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
             Route::get('/{equipment}/edit', 'edit')->name('edit');
             Route::put('/{equipment}', 'update')->name('update');
         });
-        Route::delete('/{equipment}', 'destroy')->name('destroy')->middleware('role:Admin');
+        Route::delete('/{equipment}', 'destroy')->name('destroy')->middleware('can:equipment.delete');
         Route::get('/{equipment}/qr.svg', 'qr')->name('qr');
         Route::get('/{equipment}', 'show')->name('show');
     });
 
-    Route::middleware('role:Admin,Coordinator,FoodSafety')->group(function () {
+    Route::middleware('can:reports.view')->group(function () {
         Route::get('/reports', [ReportController::class, 'show'])->name('reports.index');
         Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show')->where('report', '[a-z-]+');
         Route::get('/reports/{report}/export/{format}', [ReportController::class, 'export'])->name('reports.export')->where('report', '[a-z-]+')->whereIn('format', ['xlsx', 'pdf']);
     });
 
-    Route::middleware('role:Admin,Coordinator')->group(function () {
+    Route::middleware('can:pm.manage')->group(function () {
         Route::controller(PreventiveMaintenanceController::class)->prefix('pm')->name('pm.')->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
@@ -146,8 +147,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/create', 'create')->name('create');
                 Route::post('/', 'store')->name('store');
                 Route::get('/{purchase}', 'show')->name('show');
-                Route::post('/{purchase}/approve', 'approve')->name('approve')->middleware('role:Admin');
-                Route::post('/{purchase}/reject', 'reject')->name('reject')->middleware('role:Admin');
+                Route::post('/{purchase}/approve', 'approve')->name('approve')->middleware('can:purchases.approve');
+                Route::post('/{purchase}/reject', 'reject')->name('reject')->middleware('can:purchases.approve');
                 Route::post('/{purchase}/cancel', 'cancel')->name('cancel');
                 Route::get('/{purchase}/receive', 'receiveForm')->name('receive');
                 Route::post('/{purchase}/receive', 'receive')->name('receive.store');
@@ -159,20 +160,24 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::controller(SparePartController::class)->prefix('parts')->name('parts.')->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('role:Admin,Coordinator,FoodSafety');
-        Route::middleware('role:Admin,Coordinator')->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:parts.view');
+        Route::middleware('can:parts.manage')->group(function () {
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
             Route::get('/{part}/edit', 'edit')->name('edit');
             Route::put('/{part}', 'update')->name('update');
             Route::post('/{part}/adjust', 'adjust')->name('adjust');
         });
-        Route::delete('/{part}', 'destroy')->name('destroy')->middleware('role:Admin');
+        Route::delete('/{part}', 'destroy')->name('destroy')->middleware('can:parts.delete');
     });
 
-    Route::middleware('role:Admin')->group(function () {
-        Route::resource('departments', DepartmentController::class)->except('show');
+    Route::middleware('can:users.manage')->group(function () {
         Route::resource('users', UserController::class)->except(['show', 'destroy']);
+        Route::resource('groups', UserGroupController::class)->except('show');
+    });
+
+    Route::middleware('can:settings.manage')->group(function () {
+        Route::resource('departments', DepartmentController::class)->except('show');
         Route::resource('priorities', PriorityController::class)->except('show');
         Route::resource('fault-types', FaultTypeController::class)->except('show');
         Route::resource('fault-causes', FaultCauseController::class)->except('show');

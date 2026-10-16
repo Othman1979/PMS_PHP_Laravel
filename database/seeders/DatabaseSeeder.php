@@ -10,6 +10,7 @@ use App\Models\FaultCause;
 use App\Models\FaultType;
 use App\Models\Priority;
 use App\Models\User;
+use App\Models\UserGroup;
 use Illuminate\Database\Seeder;
 
 /**
@@ -82,14 +83,17 @@ class DatabaseSeeder extends Seeder
             }
         }
 
+        UserGroup::seedDefaults();
+
         if (User::query()->where('role', Role::Admin)->doesntExist()) {
-            User::create([
+            $admin = User::create([
                 'username' => config('cmms.admin_username'),
                 'full_name' => 'مدير الصيانة',
                 'password' => config('cmms.admin_password'),
                 'role' => Role::Admin,
                 'department_id' => Department::where('name_en', 'Management')->value('id'),
             ]);
+            $admin->attachDefaultGroup();
         }
     }
 
