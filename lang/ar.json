@@ -863,5 +863,13 @@
     "CancelReason": "سبب الإلغاء",
     "CancelReasonRequired": "يرجى كتابة سبب إلغاء الطلب.",
     "CancelReasonPlaceholder": "لماذا يتم إلغاء هذا الطلب؟",
-    "ConfirmCancelRequest": "تأكيد الإلغاء"
+    "ConfirmCancelRequest": "تأكيد الإلغاء",
+    "to": "إلى",
+    "of": "من",
+    "results": "نتيجة",
+    "Pagination Navigation": "التنقل بين الصفحات",
+    "&laquo; Previous": "&laquo; السابق",
+    "Next &raquo;": "التالي &raquo;",
+    "pagination.previous": "&laquo; السابق",
+    "pagination.next": "التالي &raquo;"
 }
