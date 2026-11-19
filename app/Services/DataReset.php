@@ -20,6 +20,9 @@ class DataReset
         'user_notifications', 'activity_logs',
     ];
 
+    /** Ids keep growing so the Android app's saved last-notification cursor still sees new alerts. */
+    public const KEEP_SEQUENCE = ['user_notifications'];
+
     /**
      * Empties every operational table and deletes uploaded files.
      *
@@ -31,7 +34,11 @@ class DataReset
         Schema::withoutForeignKeyConstraints(function () use (&$counts) {
             foreach (self::TABLES as $table) {
                 $counts[$table] = DB::table($table)->count();
-                DB::table($table)->truncate();
+                if (in_array($table, self::KEEP_SEQUENCE, true)) {
+                    DB::table($table)->delete();
+                } else {
+                    DB::table($table)->truncate();
+                }
             }
         });
 
