@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\DatabaseBackup;
+use App\Services\DataReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -55,6 +56,16 @@ class SettingController extends Controller
                 echo $chunk;
             }
         }, $name, ['Content-Type' => 'application/sql; charset=utf-8']);
+    }
+
+    public function resetData(Request $request, DataReset $reset): RedirectResponse
+    {
+        $request->validateWithBag('reset', ['password' => ['required', 'current_password']]);
+
+        $result = $reset->run();
+        ActivityLog::record('data_reset', null, basename($result['backup']).' rows='.array_sum($result['tables']));
+
+        return redirect()->route('settings.index')->with('ok', __('DataResetDone'));
     }
 
     public function activity(Request $request): View

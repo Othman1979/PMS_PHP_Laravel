@@ -172,6 +172,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/', 'index')->name('index');
             Route::put('/', 'update')->name('update');
             Route::post('/backup', 'backup')->name('backup');
+            Route::post('/reset-data', 'resetData')->name('reset-data');
             Route::get('/activity', 'activity')->name('activity');
         });
     });
