@@ -62,8 +62,8 @@ class SettingController extends Controller
     {
         $request->validateWithBag('reset', ['password' => ['required', 'current_password']]);
 
-        $result = $reset->run();
-        ActivityLog::record('data_reset', null, basename($result['backup']).' rows='.array_sum($result['tables']));
+        $deleted = $reset->run();
+        ActivityLog::record('data_reset', null, 'rows='.array_sum($deleted));
 
         return redirect()->route('settings.index')->with('ok', __('DataResetDone'));
     }

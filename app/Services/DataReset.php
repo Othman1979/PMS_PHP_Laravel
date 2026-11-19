@@ -20,17 +20,13 @@ class DataReset
         'user_notifications', 'activity_logs',
     ];
 
-    public function __construct(private DatabaseBackup $backup) {}
-
     /**
-     * Writes a safety backup, then empties every operational table and deletes uploaded files.
+     * Empties every operational table and deletes uploaded files.
      *
-     * @return array{backup: string, tables: array<string, int>}
+     * @return array<string, int> rows deleted per table
      */
     public function run(): array
     {
-        $backupPath = $this->backup->toFile(storage_path('app/backups'));
-
         $counts = [];
         Schema::withoutForeignKeyConstraints(function () use (&$counts) {
             foreach (self::TABLES as $table) {
@@ -41,6 +37,6 @@ class DataReset
 
         File::deleteDirectory(public_path('uploads'));
 
-        return ['backup' => $backupPath, 'tables' => $counts];
+        return $counts;
     }
 }

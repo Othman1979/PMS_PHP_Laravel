@@ -169,7 +169,6 @@ class AdminToolsTest extends TestCase
         $publicPath = storage_path('framework/testing/reset-public');
         File::ensureDirectoryExists($publicPath.'/uploads/equipment');
         File::put($publicPath.'/uploads/equipment/photo.jpg', 'x');
-        $existingBackups = glob(storage_path('app/backups/cmms-backup-*.sql')) ?: [];
 
         $this->newRequest();
         Setting::set(Setting::BACKUP_KEEP, '9');
@@ -202,9 +201,6 @@ class AdminToolsTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'data_reset', 'user_id' => $admin->id]);
         $this->assertDirectoryDoesNotExist($publicPath.'/uploads');
 
-        $newBackups = array_diff(glob(storage_path('app/backups/cmms-backup-*.sql')) ?: [], $existingBackups);
-        $this->assertNotEmpty($newBackups);
-        File::delete($newBackups);
         File::deleteDirectory($publicPath);
     }
 }
