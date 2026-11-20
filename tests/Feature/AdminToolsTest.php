@@ -4,15 +4,20 @@ namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
 use App\Models\ActivityLog;
+use App\Models\Department;
+use App\Models\Equipment;
 use App\Models\FaultCause;
 use App\Models\FaultType;
 use App\Models\MaintenanceRequest;
+use App\Models\Priority;
 use App\Models\Setting;
+use App\Models\SparePart;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class AdminToolsTest extends TestCase
@@ -184,5 +189,46 @@ class AdminToolsTest extends TestCase
 
         $this->actingAs($this->user('tech1'))->post("/requests/{$mr->id}/cancel", ['note' => 'duplicate request'])->assertForbidden();
         $this->actingAs($this->user('tech1'))->get("/requests/{$mr->id}")->assertDontSee('/requests/'.$mr->id.'/cancel');
+    }
+
+    public function test_admin_reset_clears_data_but_keeps_users_and_company_settings(): void
+    {
+        $publicPath = storage_path('framework/testing/reset-public');
+        File::ensureDirectoryExists($publicPath.'/uploads/equipment');
+        File::put($publicPath.'/uploads/equipment/photo.jpg', 'x');
+
+        $this->newRequest();
+        Setting::set(Setting::BACKUP_KEEP, '9');
+        $admin = $this->user('admin');
+        $users = User::count();
+        $departments = Department::count();
+        $priorities = Priority::count();
+        $checklists = DB::table('checklists')->count();
+        $this->assertGreaterThan(0, Equipment::count());
+
+        $this->actingAs($this->user('coord'))->post('/settings/reset-data', ['password' => '1234'])->assertForbidden();
+        $this->actingAs($admin)->post('/settings/reset-data', ['password' => 'wrong'])->assertSessionHasErrorsIn('reset', 'password');
+        $this->assertGreaterThan(0, MaintenanceRequest::count());
+
+        $originalPublicPath = public_path();
+        $this->app->usePublicPath($publicPath);
+        $this->actingAs($admin)->post('/settings/reset-data', ['password' => '1234'])->assertRedirect('/settings');
+        $this->app->usePublicPath($originalPublicPath);
+
+        $this->assertSame(0, MaintenanceRequest::count());
+        $this->assertSame(0, Equipment::count());
+        $this->assertSame(0, SparePart::count());
+        $this->assertSame(0, DB::table('request_technicians')->count());
+        $this->assertSame(0, DB::table('user_notifications')->count());
+        $this->assertSame($users, User::count());
+        $this->assertSame($departments, Department::count());
+        $this->assertSame($priorities, Priority::count());
+        $this->assertSame($checklists, DB::table('checklists')->count());
+        $this->assertSame('9', Setting::get(Setting::BACKUP_KEEP));
+        $this->assertSame(1, ActivityLog::count());
+        $this->assertDatabaseHas('activity_logs', ['action' => 'data_reset', 'user_id' => $admin->id]);
+        $this->assertDirectoryDoesNotExist($publicPath.'/uploads');
+
+        File::deleteDirectory($publicPath);
     }
 }

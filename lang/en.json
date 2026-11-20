@@ -863,5 +863,11 @@
     "CancelReason": "Cancellation reason",
     "CancelReasonRequired": "Please enter the reason for cancelling the request.",
     "CancelReasonPlaceholder": "Why is this request being cancelled?",
-    "ConfirmCancelRequest": "Confirm cancellation"
+    "ConfirmCancelRequest": "Confirm cancellation",
+    "ResetData": "Clear all data",
+    "ResetData_Hint": "Deletes all equipment, maintenance requests, preventive plans, spare parts, purchasing, stock movements, notifications, activity log and uploaded files. Users, departments, settings, priorities, fault types/causes and checklists are kept.",
+    "ResetData_Password": "Enter your password to confirm",
+    "ResetData_Confirm": "Delete all data? This cannot be undone from the app.",
+    "DataResetDone": "All data was cleared. Users and company settings were kept.",
+    "Activity_data_reset": "All data cleared"
 }

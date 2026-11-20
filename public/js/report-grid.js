@@ -8,9 +8,9 @@
     var cfg = JSON.parse(dataEl.textContent);
     var L = cfg.lang;
     var BADGE = {
-        'bg-success': '#107c10', 'bg-danger': '#c42b1c', 'bg-warning text-dark': '#fcd116', 'bg-primary': '#005fb8',
-        'bg-secondary': '#616161', 'bg-dark': '#1a1a1a', 'bg-info text-dark': '#5cc3dc', 'bg-orange': '#ca5010',
-        'bg-light text-dark border': '#f3f3f3', 'bg-primary-subtle text-primary-emphasis border border-primary': '#e5f0fb'
+        'bg-success': '#107c10', 'bg-danger': '#c42b1c', 'bg-warning text-dark': '#fcd116', 'bg-primary': '#1c2b45',
+        'bg-secondary': '#5a6270', 'bg-dark': '#141a24', 'bg-info text-dark': '#5cc3dc', 'bg-orange': '#ca5010',
+        'bg-light text-dark border': '#f5f4f0', 'bg-primary-subtle text-primary-emphasis border border-primary': '#e9edf3'
     };
 
     function esc(s) {
@@ -26,11 +26,11 @@
         var h = hex.replace('#', '');
         if (h.length !== 6) return '#fff';
         var r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#1a1a1a' : '#fff';
+        return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#141a24' : '#fff';
     }
     function badge(value, color) {
         if (value === null || value === undefined || value === '') return '';
-        var hex = color && color.charAt(0) === '#' ? color : (BADGE[color] || '#616161');
+        var hex = color && color.charAt(0) === '#' ? color : (BADGE[color] || '#5a6270');
         return '<span class="badge" style="background:' + esc(hex) + ';color:' + textColor(hex) + '">' + esc(value) + '</span>';
     }
 

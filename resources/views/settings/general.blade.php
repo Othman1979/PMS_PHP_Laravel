@@ -61,6 +61,19 @@
                     <a class="btn btn-outline-secondary" href="{{ route('settings.activity') }}">{{ __('OpenActivityLog') }}</a>
                 </div>
             </div>
+            <div class="card mt-4 border-danger">
+                <div class="card-header text-danger"><strong>{{ __('ResetData') }}</strong></div>
+                <div class="card-body">
+                    <p class="text-muted small">{{ __('ResetData_Hint') }}</p>
+                    <form method="post" action="{{ route('settings.reset-data') }}" onsubmit="return confirm(@js(__('ResetData_Confirm')))">
+                        @csrf
+                        <label class="form-label fw-semibold" for="reset_password">{{ __('ResetData_Password') }}</label>
+                        <input id="reset_password" name="password" type="password" class="form-control mb-2" style="max-width:260px" autocomplete="current-password" required>
+                        @error('password', 'reset')<div class="text-danger small mb-2">{{ $message }}</div>@enderror
+                        <button class="btn btn-danger">{{ __('ResetData') }}</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </x-layouts.app>

@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\CalibrationReminder;
 use App\Services\DatabaseBackup;
+use App\Services\DataReset;
 use App\Services\PmGenerator;
 use App\Services\RequestWorkflow;
 use Illuminate\Support\Facades\Artisan;
@@ -100,3 +101,11 @@ Artisan::command('cmms:archive-requests', function () {
     $this->info("Archived {$count} request(s) finished more than {$days} days ago.");
 })->purpose('Archive completed, closed and cancelled requests older than the retention period');
 Schedule::command('cmms:archive-requests')->dailyAt('03:00')->withoutOverlapping();
+
+Artisan::command('cmms:reset-data {--force : Skip the confirmation prompt}', function (DataReset $reset) {
+    if (! $this->option('force') && ! $this->confirm('Delete ALL data except users and company settings? This cannot be undone.')) {
+        return;
+    }
+    $deleted = $reset->run();
+    $this->info('Deleted '.array_sum($deleted).' row(s); users and company settings kept.');
+})->purpose('Delete all operational data, keeping users, departments, settings and lookups');
