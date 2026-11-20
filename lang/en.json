@@ -751,5 +751,11 @@
     "Activity_calibration_reminder": "Calibration reminder sent",
     "Activity_equipment_commissioned": "Equipment commissioned",
     "Activity_request_released": "Equipment released after maintenance",
-    "Activity_food_safety_decision": "Food-safety decision"
+    "Activity_food_safety_decision": "Food-safety decision",
+    "ResetData": "Clear all data",
+    "ResetData_Hint": "Deletes all equipment, maintenance requests, preventive plans, spare parts, purchasing, stock movements, notifications, activity log and uploaded files. Users, departments, settings, priorities, fault types/causes and checklists are kept.",
+    "ResetData_Password": "Enter your password to confirm",
+    "ResetData_Confirm": "Delete all data? This cannot be undone from the app.",
+    "DataResetDone": "All data was cleared. Users and company settings were kept.",
+    "Activity_data_reset": "All data cleared"
 }
