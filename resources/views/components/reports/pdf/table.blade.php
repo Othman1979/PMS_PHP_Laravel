@@ -1,7 +1,7 @@
 @props(['columns', 'rows', 'totals' => []])
 @php
     use App\Reports\ReportExporter;
-    $badgeColors = ['bg-success' => '#107c10', 'bg-danger' => '#c42b1c', 'bg-warning text-dark' => '#9d5d00', 'bg-primary' => '#005fb8', 'bg-secondary' => '#616161', 'bg-dark' => '#1a1a1a', 'bg-info text-dark' => '#0b7285', 'bg-orange' => '#ca5010'];
+    $badgeColors = ['bg-success' => '#107c10', 'bg-danger' => '#c42b1c', 'bg-warning text-dark' => '#9d5d00', 'bg-primary' => '#1c2b45', 'bg-secondary' => '#5a6270', 'bg-dark' => '#141a24', 'bg-info text-dark' => '#0b7285', 'bg-orange' => '#ca5010'];
 @endphp
 <table class="grid" autosize="1">
     <thead>
@@ -17,7 +17,7 @@
                 @foreach ($columns as $column)
                     @php $value = $row[$column->key] ?? null; @endphp
                     @if ($column->type === 'badge' && $value !== null)
-                        @php $color = $row[$column->colorKey] ?? ''; $hex = str_starts_with((string) $color, '#') ? $color : ($badgeColors[$color] ?? '#616161'); @endphp
+                        @php $color = $row[$column->colorKey] ?? ''; $hex = str_starts_with((string) $color, '#') ? $color : ($badgeColors[$color] ?? '#5a6270'); @endphp
                         <td style="text-align:center"><span class="badge" style="background:{{ $hex }}">{{ $value }}</span></td>
                     @else
                         <td @class(['num' => $column->isNumeric()])>{{ ReportExporter::format($column, $value) }}</td>
