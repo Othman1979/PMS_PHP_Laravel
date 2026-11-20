@@ -215,14 +215,14 @@
     const C = @js($charts);
     const rtl = document.documentElement.dir === 'rtl';
     Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-    const palette = ['#0d6efd', '#6c757d', '#6610f2', '#20c997', '#fd7e14', '#dc3545', '#198754', '#ffc107', '#343a40', '#adb5bd'];
-    const statusColors = { New: '#0d6efd', UnderReview: '#6c757d', Assigned: '#6610f2', Accepted: '#20c997', InProgress: '#fd7e14', WaitingParts: '#dc3545', Completed: '#198754', Reopened: '#ffc107', Closed: '#343a40', Cancelled: '#adb5bd' };
+    const palette = ['#1c2b45', '#6c757d', '#6610f2', '#20c997', '#fd7e14', '#dc3545', '#198754', '#ffc107', '#343a40', '#adb5bd'];
+    const statusColors = { New: '#1c2b45', UnderReview: '#6c757d', Assigned: '#6610f2', Accepted: '#20c997', InProgress: '#fd7e14', WaitingParts: '#dc3545', Completed: '#198754', Reopened: '#ffc107', Closed: '#343a40', Cancelled: '#adb5bd' };
     const T = @js(['created' => __('Created'), 'completed' => __('Completed'), 'open' => __('OpenRequests')]);
 
     new Chart(document.getElementById('chartTrend'), {
         type: 'line',
         data: { labels: C.trend.labels, datasets: [
-            { label: T.created, data: C.trend.created, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,.12)', fill: true, tension: .3, pointRadius: 2 },
+            { label: T.created, data: C.trend.created, borderColor: '#1c2b45', backgroundColor: 'rgba(13,110,253,.12)', fill: true, tension: .3, pointRadius: 2 },
             { label: T.completed, data: C.trend.completed, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,.12)', fill: true, tension: .3, pointRadius: 2 },
         ] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', rtl } }, scales: { x: { reverse: rtl, ticks: { maxTicksLimit: 8 } }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
@@ -241,7 +241,7 @@
 
     new Chart(document.getElementById('chartAging'), {
         type: 'bar',
-        data: { labels: C.aging.labels, datasets: [{ label: T.open, data: C.aging.values, backgroundColor: ['#198754', '#0d6efd', '#fd7e14', '#dc3545'] }] },
+        data: { labels: C.aging.labels, datasets: [{ label: T.open, data: C.aging.values, backgroundColor: ['#198754', '#1c2b45', '#fd7e14', '#dc3545'] }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { reverse: rtl }, y: { beginAtZero: true, ticks: { precision: 0 }, position: rtl ? 'right' : 'left' } } }
     });
     const wrapLabel = function (v) {

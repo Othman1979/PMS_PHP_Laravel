@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{{ asset(app()->getLocale() === 'ar' ? 'lib/bootstrap/dist/css/bootstrap.rtl.min.css' : 'lib/bootstrap/dist/css/bootstrap.min.css') }}">
 <link rel="stylesheet" href="{{ asset('css/site.css') }}?v={{ filemtime(public_path('css/site.css')) }}">
 <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-<meta name="theme-color" content="#f3f3f3">
+<meta name="theme-color" content="#f5f4f0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
