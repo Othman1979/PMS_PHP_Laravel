@@ -154,7 +154,7 @@ private val STRINGS: Map<String, Pair<String, String>> = mapOf(
     "TooManyAttempts" to ("Too many attempts. Try again in a minute." to "محاولات كثيرة. حاول مرة أخرى بعد دقيقة."),
     "SigningIn" to ("Signing in…" to "جارٍ تسجيل الدخول…"),
     "ServerUrl" to ("Server address" to "عنوان الخادم"),
-    "ServerUrlHint" to ("The address of your CMMS server, e.g. http://192.168.1.214:8000" to "عنوان خادم النظام، مثال: http://192.168.1.214:8000"),
+    "ServerUrlHint" to ("The address of your CMMS server, e.g. https://darkgreen-cattle-882066.hostingersite.com" to "عنوان خادم النظام، مثال: https://darkgreen-cattle-882066.hostingersite.com"),
     "ServerUnreachable" to ("Cannot reach the server — check the address and network" to "تعذر الوصول إلى الخادم — تحقق من العنوان والشبكة"),
     "Loading" to ("Loading…" to "جارٍ التحميل…"),
     "Retry" to ("Retry" to "إعادة المحاولة"),

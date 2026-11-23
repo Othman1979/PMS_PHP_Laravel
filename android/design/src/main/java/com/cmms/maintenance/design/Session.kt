@@ -19,12 +19,14 @@ object Session {
     private const val KEY_LAST_NOTIF = "last_notif_id"
     private const val KEY_BATTERY_ASKED = "battery_asked"
     private const val KEY_LANGUAGE = "language"
-    const val DEFAULT_URL = "http://192.168.1.30:8000"
+    const val DEFAULT_URL = "https://darkgreen-cattle-882066.hostingersite.com"
+    private const val OLD_DEFAULT_URL = "http://192.168.1.30:8000"
 
     private lateinit var prefs: SharedPreferences
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_URL, null) == OLD_DEFAULT_URL) prefs.edit().remove(KEY_URL).apply()
     }
 
     var serverUrl: String

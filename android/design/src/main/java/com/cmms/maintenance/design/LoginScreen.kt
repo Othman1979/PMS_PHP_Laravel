@@ -162,7 +162,7 @@ fun LoginScreen(onLogin: (id: Int, token: String, name: String, username: String
             }
             if (showServer) {
                 Spacer(Modifier.height(8.dp))
-                CmmsField(value = server, onValue = { server = it }, placeholder = "http://192.168.1.214:8000")
+                CmmsField(value = server, onValue = { server = it }, placeholder = Session.DEFAULT_URL)
                 Spacer(Modifier.height(4.dp))
                 Text(s("ServerUrlHint"), fontSize = 10.5.sp, color = CmmsMuted, lineHeight = 14.sp)
             }
