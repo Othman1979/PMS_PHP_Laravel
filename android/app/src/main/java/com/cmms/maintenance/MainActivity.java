@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "cmms";
     private static final String KEY_URL = "server_url";
     private static final String KEY_LAST_NOTIF = "last_notif_id";
-    private static final String DEFAULT_URL = "http://192.168.1.30:8000";
+    private static final String DEFAULT_URL = "https://darkgreen-cattle-882066.hostingersite.com";
     private static final String CHANNEL_ID = "cmms_alerts";
     private static final int REQ_FILE = 1;
     private static final int REQ_STORAGE = 2;
