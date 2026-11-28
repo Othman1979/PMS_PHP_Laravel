@@ -875,5 +875,6 @@
     "RequestDeleted": "The request was permanently deleted.",
     "Error_DeleteOnlyCancelled": "Only cancelled requests can be deleted.",
     "Error_RequestHasParts": "This request has spare parts recorded on it and cannot be deleted.",
+    "Error_RequestHasOpenFollowUp": "This request has an open permanent repair and cannot be deleted.",
     "Activity_request_deleted": "Request deleted"
 }

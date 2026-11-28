@@ -883,5 +883,6 @@
     "RequestDeleted": "تم حذف الطلب نهائياً.",
     "Error_DeleteOnlyCancelled": "يمكن حذف الطلبات الملغاة فقط.",
     "Error_RequestHasParts": "هذا الطلب مسجّل عليه قطع غيار ولا يمكن حذفه.",
+    "Error_RequestHasOpenFollowUp": "لهذا الطلب إصلاح دائم مفتوح ولا يمكن حذفه.",
     "Activity_request_deleted": "حذف طلب"
 }

@@ -104,6 +104,18 @@ class AdminWorkflowOptionsTest extends TestCase
         $this->assertTrue(ActivityLog::where('action', 'request_deleted')->exists());
     }
 
+    public function test_cancelled_temporary_repair_with_an_open_follow_up_cannot_be_deleted(): void
+    {
+        $temporary = $this->newRequest();
+        $temporary->forceFill(['status' => RequestStatus::Cancelled, 'cancelled_at' => now()])->save();
+        $followUp = $this->newRequest();
+        $followUp->forceFill(['follow_up_of_id' => $temporary->id])->save();
+
+        $this->actingAs($this->user('admin'))->delete("/requests/{$temporary->id}")->assertRedirect()->assertSessionHas('err');
+        $this->assertNotNull($temporary->fresh());
+        $this->assertSame($temporary->id, $followUp->fresh()->follow_up_of_id);
+    }
+
     public function test_open_requests_cannot_be_deleted(): void
     {
         $mr = $this->newRequest();
@@ -111,6 +123,22 @@ class AdminWorkflowOptionsTest extends TestCase
         $this->actingAs($this->user('admin'))->get("/requests/{$mr->id}")->assertOk()->assertDontSee(__('DeleteRequest'));
         $this->actingAs($this->user('admin'))->delete("/requests/{$mr->id}")->assertRedirect()->assertSessionHas('err');
         $this->assertNotNull($mr->fresh());
+    }
+
+    public function test_permanent_repair_follow_ups_keep_their_agreed_deadline(): void
+    {
+        $normal = Priority::where('code', 'Normal')->firstOrFail();
+        $temporary = $this->newRequest($normal);
+        $temporary->forceFill(['status' => RequestStatus::Completed, 'is_temporary_repair' => true, 'permanent_repair_due' => now()->addDays(3)->toDateString()])->save();
+        $followUp = $this->newRequest($normal);
+        $followUp->forceFill(['follow_up_of_id' => $temporary->id, 'due_at' => now()->addDays(3)->endOfDay()])->save();
+
+        (require database_path('migrations/2026_11_28_000000_archive_after_one_day_and_normal_priority_without_sla.php'))->up();
+        $this->assertNotNull($followUp->fresh()->due_at);
+
+        $followUp->forceFill(['due_at' => null])->save();
+        (require database_path('migrations/2026_11_28_000001_restore_permanent_repair_deadlines_on_follow_ups.php'))->up();
+        $this->assertSame(now()->addDays(3)->endOfDay()->toDateTimeString(), $followUp->fresh()->due_at->toDateTimeString());
     }
 
     public function test_normal_priority_requests_have_no_deadline_or_overdue_flag(): void

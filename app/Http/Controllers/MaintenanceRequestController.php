@@ -565,23 +565,34 @@ class MaintenanceRequestController extends Controller
     /** Admin only: permanently deletes a cancelled request with its timeline and uploaded files. */
     public function destroy(MaintenanceRequest $maintenanceRequest): RedirectResponse
     {
-        if ($maintenanceRequest->status !== RequestStatus::Cancelled) {
-            return $this->back($maintenanceRequest)->with('err', __('Error_DeleteOnlyCancelled'));
-        }
-        if ($maintenanceRequest->partsUsed()->exists()) {
-            return $this->back($maintenanceRequest)->with('err', __('Error_RequestHasParts'));
+        $files = collect();
+        $error = DB::transaction(function () use ($maintenanceRequest, &$files): ?string {
+            $locked = MaintenanceRequest::query()->lockForUpdate()->findOrFail($maintenanceRequest->id);
+            $error = match (true) {
+                $locked->status !== RequestStatus::Cancelled => 'Error_DeleteOnlyCancelled',
+                $locked->partsUsed()->exists() => 'Error_RequestHasParts',
+                $locked->hasOpenFollowUp() => 'Error_RequestHasOpenFollowUp',
+                default => null,
+            };
+            if ($error === null) {
+                $files = $locked->attachments()->pluck('file_url');
+                $locked->delete();
+                ActivityLog::record('request_deleted', null, $locked->request_number);
+            }
+
+            return $error;
+        });
+
+        if ($error !== null) {
+            return $this->back($maintenanceRequest)->with('err', __($error));
         }
 
-        $files = $maintenanceRequest->attachments()->pluck('file_url');
-        $number = $maintenanceRequest->request_number;
-        $maintenanceRequest->delete();
         foreach ($files as $url) {
             if (str_starts_with((string) $url, '/uploads/')) {
                 File::delete(public_path(ltrim($url, '/')));
             }
         }
         File::deleteDirectory(public_path('uploads/requests/'.$maintenanceRequest->id));
-        ActivityLog::record('request_deleted', null, $number);
 
         return redirect()->route('requests.index')->with('ok', __('RequestDeleted'));
     }
