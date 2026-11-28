@@ -52,6 +52,16 @@ class AdminWorkflowOptionsTest extends TestCase
         $this->assertSame(RequestStatus::InProgress, $mr->fresh()->status);
     }
 
+    public function test_hidden_developer_admins_are_not_offered_or_assignable(): void
+    {
+        $developer = User::factory()->create(['role' => 'Admin', 'is_developer' => true, 'full_name' => 'Hidden Dev']);
+        $mr = $this->newRequest();
+
+        $this->actingAs($this->user('coord'))->get("/requests/{$mr->id}")->assertOk()->assertDontSee('Hidden Dev');
+        $this->actingAs($this->user('coord'))->post("/requests/{$mr->id}/assign", ['technician_id' => $developer->id])
+            ->assertSessionHasErrors('technician_id');
+    }
+
     public function test_employees_still_cannot_be_assigned_requests(): void
     {
         $mr = $this->newRequest();

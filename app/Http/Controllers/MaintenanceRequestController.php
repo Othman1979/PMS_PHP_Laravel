@@ -98,7 +98,7 @@ class MaintenanceRequestController extends Controller
             'filters' => $filters,
             'counts' => $counts,
             'overdueCount' => $overdueCount,
-            'technicians' => $request->user()->canManage() ? User::query()->whereIn('role', User::assignableRoles())->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']) : collect(),
+            'technicians' => $request->user()->canManage() ? User::query()->assignable()->orderBy('full_name')->get(['id', 'full_name']) : collect(),
             'departments' => Department::query()->where('is_active', true)->orderBy('name_en')->get(),
         ]);
     }
@@ -223,7 +223,7 @@ class MaintenanceRequestController extends Controller
 
         $category = $maintenanceRequest->equipment?->category;
         $technicians = $user->canManage()
-            ? User::query()->whereIn('role', User::assignableRoles())->where('is_active', true)->orderBy('full_name')->get()
+            ? User::query()->assignable()->orderBy('full_name')->get()
                 ->sortByDesc(fn (User $t) => $category !== null && $t->specialty === $category)->values()
             : collect();
 
@@ -253,9 +253,9 @@ class MaintenanceRequestController extends Controller
     public function assign(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
     {
         $data = $request->validate([
-            'technician_id' => ['required', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)],
+            'technician_id' => ['required', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)->where(fn ($query) => $query->where('is_developer', false))],
             'technician_ids' => ['nullable', 'array', 'max:100'],
-            'technician_ids.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)],
+            'technician_ids.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)->where(fn ($query) => $query->where('is_developer', false))],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -478,7 +478,7 @@ class MaintenanceRequestController extends Controller
             'action' => ['required', Rule::in(['assign', 'cancel', 'close'])],
             'ids' => ['required', 'array', 'min:1', 'max:100'],
             'ids.*' => ['integer'],
-            'technician_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)],
+            'technician_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)->where(fn ($query) => $query->where('is_developer', false))],
             'note' => ['required_if:action,cancel', 'nullable', 'string', 'max:1000'],
         ], ['note.required_if' => __('CancelReasonRequired')]);
 
