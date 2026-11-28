@@ -15,6 +15,7 @@ return new class extends Migration
         $normalIds = DB::table('priorities')->where('code', 'Normal')->pluck('id');
         DB::table('priorities')->whereIn('id', $normalIds)->update(['sla_hours' => null]);
         DB::table('maintenance_requests')->whereIn('priority_id', $normalIds)
+            ->whereNull('follow_up_of_id')
             ->whereNotIn('status', ['Completed', 'Closed', 'Cancelled'])
             ->update(['due_at' => null, 'escalated_at' => null]);
     }
