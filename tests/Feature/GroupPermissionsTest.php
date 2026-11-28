@@ -163,6 +163,7 @@ class GroupPermissionsTest extends TestCase
 
     public function test_finished_requests_are_archived_after_the_retention_period_and_hidden_from_lists(): void
     {
+        Setting::set(Setting::ARCHIVE_DAYS, '30');
         $recent = $this->newRequest();
         $recent->forceFill(['status' => RequestStatus::Closed, 'closed_at' => now()->subDays(5)])->save();
         $old = $this->newRequest();

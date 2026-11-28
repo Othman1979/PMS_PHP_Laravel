@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\Role;
 use App\Enums\StockMovementType;
 use App\Models\Department;
 use App\Models\Equipment;
@@ -59,7 +58,7 @@ class ReportController extends Controller
         return [
             'equipmentList' => $filters->has('equipment_id') ? Equipment::query()->orderBy('code')->get(['id', 'code', 'name']) : collect(),
             'departments' => $filters->has('department_id') ? Department::active()->ordered()->get() : collect(),
-            'technicians' => $filters->has('technician_id') ? User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']) : collect(),
+            'technicians' => $filters->has('technician_id') ? User::query()->whereIn('role', User::assignableRoles())->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']) : collect(),
             'faultTypes' => $filters->has('fault_type_id') ? FaultType::query()->ordered()->get() : collect(),
             'faultCauses' => $filters->has('fault_cause_id') ? FaultCause::query()->ordered()->get() : collect(),
             'spareParts' => $filters->has('spare_part_id') ? SparePart::query()->orderBy('name')->get(['id', 'name']) : collect(),

@@ -73,6 +73,17 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->role === Role::Admin;
     }
 
+    /** @return list<string> roles that can be assigned maintenance requests (the admin also works as a technician) */
+    public static function assignableRoles(): array
+    {
+        return [Role::Technician->value, Role::Admin->value];
+    }
+
+    public function canBeAssigned(): bool
+    {
+        return in_array($this->role?->value, self::assignableRoles(), true);
+    }
+
     /** Hidden maintainer account: full admin rights plus the developer-only settings; invisible to other users. */
     public function isDeveloper(): bool
     {

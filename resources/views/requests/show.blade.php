@@ -388,6 +388,13 @@
                             <button class="btn btn-danger btn-sm" onclick="return confirm(@js(__('AreYouSure')))">{{ __('ConfirmCancelRequest') }}</button>
                         </form>
                     @endif
+                    @if ($status === S::Cancelled && $user->isAdmin())
+                        <form action="{{ route('requests.destroy', $mr) }}" method="post" class="mb-2" onsubmit="return confirm(@js(__('DeleteRequest_Confirm')))">
+                            @csrf
+                            @method('DELETE')
+                            <button class="btn btn-outline-danger btn-sm">{{ __('DeleteRequest') }}</button>
+                        </form>
+                    @endif
                     @if ($status === S::Cancelled && $mr->cancel_reason)
                         <div class="alert alert-secondary py-2 small mb-2">
                             <strong>{{ __('CancelReason') }}:</strong> {{ $mr->cancel_reason }}

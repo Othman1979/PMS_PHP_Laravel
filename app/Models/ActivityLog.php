@@ -22,7 +22,7 @@ class ActivityLog extends Model
         'request_released', 'food_safety_decision',
         'user_created', 'user_updated',
         'purchase_decided', 'stock_adjusted',
-        'settings_updated', 'branding_updated', 'backup_downloaded', 'data_reset',
+        'settings_updated', 'branding_updated', 'backup_downloaded', 'data_reset', 'request_deleted',
     ];
 
     protected function casts(): array

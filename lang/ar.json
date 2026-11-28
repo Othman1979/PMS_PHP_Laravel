@@ -877,5 +877,11 @@
     "ResetData_Password": "أدخل كلمة المرور للتأكيد",
     "ResetData_Confirm": "هل تريد حذف جميع البيانات؟ لا يمكن التراجع من داخل النظام.",
     "DataResetDone": "تم مسح جميع البيانات مع الإبقاء على المستخدمين وإعدادات الشركة.",
-    "Activity_data_reset": "مسح جميع البيانات"
+    "Activity_data_reset": "مسح جميع البيانات",
+    "DeleteRequest": "حذف نهائي",
+    "DeleteRequest_Confirm": "حذف هذا الطلب الملغي نهائياً مع سجله وصوره؟ لا يمكن التراجع.",
+    "RequestDeleted": "تم حذف الطلب نهائياً.",
+    "Error_DeleteOnlyCancelled": "يمكن حذف الطلبات الملغاة فقط.",
+    "Error_RequestHasParts": "هذا الطلب مسجّل عليه قطع غيار ولا يمكن حذفه.",
+    "Activity_request_deleted": "حذف طلب"
 }

@@ -227,7 +227,7 @@ class RequestWorkflow
                 $ids[] = $leadId;
                 $ids = array_values(array_unique($ids));
             }
-            $technicians = User::whereIn('id', $ids)->where('role', Role::Technician)->where('is_active', true)->get();
+            $technicians = User::whereIn('id', $ids)->whereIn('role', User::assignableRoles())->where('is_active', true)->get();
             if ($technicians->count() !== count($ids)) {
                 throw ValidationException::withMessages(['technician_ids' => __('Error_InvalidTechnicians')]);
             }
