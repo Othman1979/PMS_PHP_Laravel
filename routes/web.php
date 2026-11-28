@@ -89,6 +89,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{maintenanceRequest}/food-safety', 'foodSafety')->name('food-safety')->middleware('can:requests.food_safety');
         Route::post('/{maintenanceRequest}/reopen', 'reopen')->name('reopen');
         Route::post('/{maintenanceRequest}/cancel', 'cancel')->name('cancel');
+        Route::delete('/{maintenanceRequest}', 'destroy')->name('destroy')->middleware('role:Admin');
     });
 
     Route::controller(EquipmentController::class)->prefix('equipment')->name('equipment.')->group(function () {

@@ -111,7 +111,7 @@ class MaintenanceRequest extends Model
 
     public function isLeadTechnician(User $user): bool
     {
-        return $user->isTechnician() && $this->assigned_technician_id === $user->id;
+        return $user->canBeAssigned() && $this->assigned_technician_id === $user->id;
     }
 
     /** @return list<int> */
@@ -126,7 +126,7 @@ class MaintenanceRequest extends Model
 
     public function hasTechnician(User $user): bool
     {
-        return $user->isTechnician() && in_array($user->id, $this->technicianIds(), true);
+        return $user->canBeAssigned() && in_array($user->id, $this->technicianIds(), true);
     }
 
     #[Scope]

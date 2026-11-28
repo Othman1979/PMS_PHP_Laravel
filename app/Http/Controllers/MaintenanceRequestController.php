@@ -7,6 +7,7 @@ use App\Enums\EquipmentStatus;
 use App\Enums\Permission;
 use App\Enums\RequestStatus;
 use App\Enums\Role;
+use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\Equipment;
 use App\Models\FaultCause;
@@ -21,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -96,7 +98,7 @@ class MaintenanceRequestController extends Controller
             'filters' => $filters,
             'counts' => $counts,
             'overdueCount' => $overdueCount,
-            'technicians' => $request->user()->canManage() ? User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get(['id', 'full_name']) : collect(),
+            'technicians' => $request->user()->canManage() ? User::query()->assignable()->orderBy('full_name')->get(['id', 'full_name']) : collect(),
             'departments' => Department::query()->where('is_active', true)->orderBy('name_en')->get(),
         ]);
     }
@@ -221,7 +223,7 @@ class MaintenanceRequestController extends Controller
 
         $category = $maintenanceRequest->equipment?->category;
         $technicians = $user->canManage()
-            ? User::query()->where('role', Role::Technician)->where('is_active', true)->orderBy('full_name')->get()
+            ? User::query()->assignable()->orderBy('full_name')->get()
                 ->sortByDesc(fn (User $t) => $category !== null && $t->specialty === $category)->values()
             : collect();
 
@@ -251,9 +253,9 @@ class MaintenanceRequestController extends Controller
     public function assign(Request $request, MaintenanceRequest $maintenanceRequest): RedirectResponse
     {
         $data = $request->validate([
-            'technician_id' => ['required', Rule::exists('users', 'id')->where('role', Role::Technician->value)->where('is_active', true)],
+            'technician_id' => ['required', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)->where(fn ($query) => $query->where('is_developer', false))],
             'technician_ids' => ['nullable', 'array', 'max:100'],
-            'technician_ids.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->where('role', Role::Technician->value)->where('is_active', true)],
+            'technician_ids.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)->where(fn ($query) => $query->where('is_developer', false))],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -476,7 +478,7 @@ class MaintenanceRequestController extends Controller
             'action' => ['required', Rule::in(['assign', 'cancel', 'close'])],
             'ids' => ['required', 'array', 'min:1', 'max:100'],
             'ids.*' => ['integer'],
-            'technician_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->where('role', Role::Technician->value)->where('is_active', true)],
+            'technician_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->whereIn('role', User::assignableRoles())->where('is_active', true)->where(fn ($query) => $query->where('is_developer', false))],
             'note' => ['required_if:action,cancel', 'nullable', 'string', 'max:1000'],
         ], ['note.required_if' => __('CancelReasonRequired')]);
 
@@ -558,6 +560,41 @@ class MaintenanceRequestController extends Controller
         $this->cancelRequest($maintenanceRequest, $user, trim($reason));
 
         return $this->back($maintenanceRequest);
+    }
+
+    /** Admin only: permanently deletes a cancelled request with its timeline and uploaded files. */
+    public function destroy(MaintenanceRequest $maintenanceRequest): RedirectResponse
+    {
+        $files = collect();
+        $error = DB::transaction(function () use ($maintenanceRequest, &$files): ?string {
+            $locked = MaintenanceRequest::query()->lockForUpdate()->findOrFail($maintenanceRequest->id);
+            $error = match (true) {
+                $locked->status !== RequestStatus::Cancelled => 'Error_DeleteOnlyCancelled',
+                $locked->partsUsed()->exists() => 'Error_RequestHasParts',
+                $locked->hasOpenFollowUp() => 'Error_RequestHasOpenFollowUp',
+                default => null,
+            };
+            if ($error === null) {
+                $files = $locked->attachments()->pluck('file_url');
+                $locked->delete();
+                ActivityLog::record('request_deleted', null, $locked->request_number);
+            }
+
+            return $error;
+        });
+
+        if ($error !== null) {
+            return $this->back($maintenanceRequest)->with('err', __($error));
+        }
+
+        foreach ($files as $url) {
+            if (str_starts_with((string) $url, '/uploads/')) {
+                File::delete(public_path(ltrim($url, '/')));
+            }
+        }
+        File::deleteDirectory(public_path('uploads/requests/'.$maintenanceRequest->id));
+
+        return redirect()->route('requests.index')->with('ok', __('RequestDeleted'));
     }
 
     private function cancelRequest(MaintenanceRequest $mr, User $by, string $reason): bool

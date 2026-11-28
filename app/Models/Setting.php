@@ -42,7 +42,7 @@ class Setting extends Model
     /** Days after a request is completed, closed or cancelled before it moves to the archive. */
     public static function archiveDays(): int
     {
-        return max(1, (int) static::get(static::ARCHIVE_DAYS, '30'));
+        return max(1, (int) static::get(static::ARCHIVE_DAYS, '1'));
     }
 
     public static function bool(string $key, bool $default = false): bool

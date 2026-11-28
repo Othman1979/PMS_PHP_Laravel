@@ -869,5 +869,12 @@
     "ResetData_Password": "Enter your password to confirm",
     "ResetData_Confirm": "Delete all data? This cannot be undone from the app.",
     "DataResetDone": "All data was cleared. Users and company settings were kept.",
-    "Activity_data_reset": "All data cleared"
+    "Activity_data_reset": "All data cleared",
+    "DeleteRequest": "Delete permanently",
+    "DeleteRequest_Confirm": "Permanently delete this cancelled request with its timeline and photos? This cannot be undone.",
+    "RequestDeleted": "The request was permanently deleted.",
+    "Error_DeleteOnlyCancelled": "Only cancelled requests can be deleted.",
+    "Error_RequestHasParts": "This request has spare parts recorded on it and cannot be deleted.",
+    "Error_RequestHasOpenFollowUp": "This request has an open permanent repair and cannot be deleted.",
+    "Activity_request_deleted": "Request deleted"
 }
